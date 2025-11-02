@@ -229,11 +229,11 @@
     // Set timestamp IMMEDIATELY to prevent duplicate calls
     lastAnalyticsLoad = Date.now();
     
-    // Try browser cache first
+    // Try browser cache first (show immediately, then fetch fresh in background)
     const cachedData = getAnalyticsCache();
     if (cachedData) {
       renderFromCache(cachedData);
-      return;
+      // Continue to fetch fresh data in background
     }
     
     const timeframe = $("#analytics-timeframe").val() || "30d";
@@ -334,10 +334,30 @@
             revenue: formattedRevenue
           });
           
-          $buyers.text(formattedBuyers);
-          $sellers.text(formattedSellers);
-          $transactions.text(formattedTransactions);
-          $revenue.text(formattedRevenue);
+          // Smooth transitions to prevent jarring "zeros → numbers" jump
+          if ($buyers.text() !== formattedBuyers) {
+            $buyers.fadeOut(100, function() { $(this).text(formattedBuyers).fadeIn(200); });
+          } else {
+            $buyers.text(formattedBuyers);
+          }
+          
+          if ($sellers.text() !== formattedSellers) {
+            $sellers.fadeOut(100, function() { $(this).text(formattedSellers).fadeIn(200); });
+          } else {
+            $sellers.text(formattedSellers);
+          }
+          
+          if ($transactions.text() !== formattedTransactions) {
+            $transactions.fadeOut(100, function() { $(this).text(formattedTransactions).fadeIn(200); });
+          } else {
+            $transactions.text(formattedTransactions);
+          }
+          
+          if ($revenue.text() !== formattedRevenue) {
+            $revenue.fadeOut(100, function() { $(this).text(formattedRevenue).fadeIn(200); });
+          } else {
+            $revenue.text(formattedRevenue);
+          }
           
           // Cache the data
           setAnalyticsCache({ ecosystem: data });

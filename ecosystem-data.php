@@ -82,7 +82,16 @@ $status_code = wp_remote_retrieve_response_code($response);
 $body = wp_remote_retrieve_body($response);
 
 $elapsed_time = round((microtime(true) - $start_time) * 1000);
-error_log('[ecosystem-data.php] ⏱️ Edge function response time: ' . $elapsed_time . 'ms');
+
+// Categorize response time with visual indicators
+$status_emoji = $elapsed_time < 200 ? '⚡' : ($elapsed_time < 1000 ? '✅' : '⚠️');
+error_log('[ecosystem-data.php] ' . $status_emoji . ' Response time: ' . $elapsed_time . 'ms');
+
+// Warn on slow requests
+if ($elapsed_time > 1000) {
+    error_log('[ecosystem-data.php] 🐌 SLOW REQUEST WARNING: Took ' . $elapsed_time . 'ms (threshold: 1000ms)');
+}
+
 error_log('[ecosystem-data.php] 🌍 Response status: ' . $status_code);
 error_log('[ecosystem-data.php] 🌍 Response body: ' . $body);
 
