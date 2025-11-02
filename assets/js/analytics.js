@@ -38,21 +38,25 @@
   // Track previous AJAX requests to abort duplicates
   let rqEcosystem = null;
   let rqTopPages = null;
+  
+  // Single-flight lock for ecosystem requests
+  let ecoSeq = 0;
 
-  // Browser-level cache for analytics data
-  const ANALYTICS_CACHE_KEY = 'agent_hub_analytics_cache';
-  const ANALYTICS_CACHE_TTL = 300000; // 5 minutes
+  // Browser-level cache for analytics data (timeframe-specific)
+  const ANALYTICS_CACHE_TTL = 120000; // 2 minutes
+  
+  const getCacheKey = (timeframe) => `agent_hub_analytics_cache_${timeframe}`;
 
-  function getAnalyticsCache() {
+  function getAnalyticsCache(timeframe) {
     try {
-      const cached = localStorage.getItem(ANALYTICS_CACHE_KEY);
+      const cached = localStorage.getItem(getCacheKey(timeframe));
       if (!cached) return null;
       const {data, timestamp} = JSON.parse(cached);
       if (Date.now() - timestamp > ANALYTICS_CACHE_TTL) {
-        localStorage.removeItem(ANALYTICS_CACHE_KEY);
+        localStorage.removeItem(getCacheKey(timeframe));
         return null;
       }
-      console.log('📊 [Analytics] Using cached data from localStorage');
+      console.log('📊 [Analytics] Using cached', timeframe, 'data from localStorage');
       return data;
     } catch (e) {
       console.warn('[Analytics] Failed to read cache:', e);
@@ -60,19 +64,28 @@
     }
   }
 
-  function setAnalyticsCache(data) {
+  function setAnalyticsCache(timeframe, data) {
     try {
-      localStorage.setItem(ANALYTICS_CACHE_KEY, JSON.stringify({
+      localStorage.setItem(getCacheKey(timeframe), JSON.stringify({
         data: data,
         timestamp: Date.now()
       }));
-      console.log('📊 [Analytics] Data cached to localStorage');
+      console.log('📊 [Analytics] Cached', timeframe, 'data to localStorage');
     } catch (e) {
       console.warn('[Analytics] Failed to cache data:', e);
     }
   }
 
   /* ------------------ Utilities ------------------ */
+  
+  // Debounce helper
+  const debounce = (fn, ms = 200) => {
+    let t;
+    return (...args) => {
+      clearTimeout(t);
+      t = setTimeout(() => fn(...args), ms);
+    };
+  };
 
   const log = (...args) => {
     if (DEBUG) console.log("[Analytics]", ...args);
@@ -84,7 +97,7 @@
       url: w.agentHubData.ajaxUrl,
       type: "POST",
       dataType: "json",
-      timeout: 15000,
+      timeout: 10000,
       data: { action, nonce: w.agentHubData.nonce, ...payload },
     });
   };
@@ -229,15 +242,15 @@
     // Set timestamp IMMEDIATELY to prevent duplicate calls
     lastAnalyticsLoad = Date.now();
     
+    const timeframe = $("#analytics-timeframe").val() || "30d";
+    console.log("📊 [Analytics] Selected timeframe:", timeframe);
+    
     // Try browser cache first (show immediately, then fetch fresh in background)
-    const cachedData = getAnalyticsCache();
+    const cachedData = getAnalyticsCache(timeframe);
     if (cachedData) {
       renderFromCache(cachedData);
       // Continue to fetch fresh data in background
     }
-    
-    const timeframe = $("#analytics-timeframe").val() || "30d";
-    console.log("📊 [Analytics] Selected timeframe:", timeframe);
     
     // Show loading overlay
     showAnalyticsLoading();
@@ -279,10 +292,8 @@
   }
 
   function loadEcosystemData(timeframe) {
-    console.log("🌍 [ECOSYSTEM] ==================== DIRECT CALL START ====================");
-    console.log("🌍 [ECOSYSTEM] Plugin URL:", w.agentHubData.pluginUrl);
-    console.log("🌍 [ECOSYSTEM] Full endpoint:", w.agentHubData.pluginUrl + 'ecosystem-data.php');
-    console.log("🌍 [ECOSYSTEM] Request data:", { timeframe });
+    const seq = ++ecoSeq;  // Single-flight lock
+    console.log("🌍 [ECOSYSTEM] Direct call for timeframe:", timeframe, "seq:", seq);
     
     const $buyers = $("#stat-ecosystem-buyers");
     const $sellers = $("#stat-ecosystem-sellers");
@@ -301,8 +312,6 @@
       rqEcosystem.abort();
     }
     
-    console.log("🌍 [ECOSYSTEM] Sending AJAX request...");
-    
     rqEcosystem = $.ajax({
       url: w.agentHubData.pluginUrl + 'ecosystem-data.php',
       method: 'POST',
@@ -310,83 +319,91 @@
         timeframe: timeframe,
         nonce: w.agentHubData.nonce
       },
-      timeout: 20000,  // Extended timeout for ecosystem-wide queries
-            success: function(response) {
-                console.log("✅ [ECOSYSTEM] Response received");
-                console.log("🌍 [ECOSYSTEM] Raw response type:", typeof response);
-                console.log("🌍 [ECOSYSTEM] Response keys:", Object.keys(response));
-                console.log("🌍 [ECOSYSTEM] Response success:", response.success);
-                console.log("🌍 [ECOSYSTEM] Response has data:", !!response.data);
+      timeout: 10000,  // Reduced timeout with PHP fallback
+      success: function(response) {
+        // Ignore stale responses
+        if (seq !== ecoSeq) {
+          console.log("⚪ [ECOSYSTEM] Ignoring stale response seq:", seq, "current:", ecoSeq);
+          return;
+        }
+        
+        console.log("✅ [ECOSYSTEM] Response received seq:", seq);
         
         if (response.success && response.data) {
           const data = response.data;
           
-          // Always update DOM with valid data (including zeros for new sites)
-          const formattedBuyers = formatLargeNumber(data.unique_buyers || 0);
-          const formattedSellers = formatLargeNumber(data.unique_sellers || 0);
-          const formattedTransactions = formatLargeNumber(data.total_transactions || 0);
-          const formattedRevenue = formatCurrency(data.total_amount || 0);
+          // Update DOM with values
+          $buyers.text(formatLargeNumber(data.unique_buyers || 0));
+          $sellers.text(formatLargeNumber(data.unique_sellers || 0));
+          $transactions.text(formatLargeNumber(data.total_transactions || 0));
+          $revenue.text(formatCurrency(data.total_amount || 0));
           
-          console.log("🌍 [ECOSYSTEM] Formatted values:", {
-            buyers: formattedBuyers,
-            sellers: formattedSellers,
-            transactions: formattedTransactions,
-            revenue: formattedRevenue
-          });
-          
-          // Update values (smooth transitions handled by CSS if needed)
-          $buyers.text(formattedBuyers);
-          $sellers.text(formattedSellers);
-          $transactions.text(formattedTransactions);
-          $revenue.text(formattedRevenue);
-          
-          // Cache the data
-          setAnalyticsCache({ ecosystem: data });
-          
-          console.log("✅ [ECOSYSTEM] DOM updated successfully");
+          // Cache the data with timeframe
+          setAnalyticsCache(timeframe, { ecosystem: data });
           
           // Update chart if we have bucketed data
           if (data.bucketed_data && data.bucketed_data.length) {
-            console.log("🌍 [ECOSYSTEM] Rendering chart with", data.bucketed_data.length, "buckets");
             renderMarketOverviewChart(data.bucketed_data);
           }
         } else {
-          console.error("🔴 [ECOSYSTEM] Request failed or no data");
-          console.error("🔴 [ECOSYSTEM] Full response:", response);
-          if (response.message) {
-            console.error("🔴 [ECOSYSTEM] Error message:", response.message);
+          // Soft failure: prefer cache over error
+          const cached = getAnalyticsCache(timeframe);
+          if (cached?.ecosystem) {
+            console.warn("⚠️ [ECOSYSTEM] Using cached data (live fetch failed)");
+            const data = cached.ecosystem;
+            $buyers.text(formatLargeNumber(data.unique_buyers || 0));
+            $sellers.text(formatLargeNumber(data.unique_sellers || 0));
+            $transactions.text(formatLargeNumber(data.total_transactions || 0));
+            $revenue.text(formatCurrency(data.total_amount || 0));
+            if (data.bucketed_data?.length) {
+              renderMarketOverviewChart(data.bucketed_data);
+            }
+          } else {
+            // Only show error if NO cache exists
+            $buyers.text("—");
+            $sellers.text("—");
+            $transactions.text("—");
+            $revenue.text("—");
           }
-          
-          // Show user-friendly error in UI
-          $buyers.text("Error");
-          $sellers.text("Error");
-          $transactions.text("Error");
-          $revenue.text("Error");
         }
         
         hideAnalyticsLoading();
       },
       error: function(xhr, status, error) {
-        console.error("🔴 [ECOSYSTEM] Request failed");
-        console.error("🔴 [ECOSYSTEM] Status:", status);
-        console.error("🔴 [ECOSYSTEM] Error:", error);
-        console.error("🔴 [ECOSYSTEM] XHR status:", xhr.status);
-        
-        // If timeout and this is first attempt, retry once with longer timeout
-        if (status === 'timeout' && !this.retried) {
-          console.warn("⚠️ [ECOSYSTEM] Timeout occurred, retrying once...");
-          this.retried = true;
-          setTimeout(function() {
-            loadEcosystemData(timeframe);
-          }, 1000);
+        // Ignore stale responses
+        if (seq !== ecoSeq) {
+          console.log("⚪ [ECOSYSTEM] Ignoring stale error seq:", seq);
           return;
         }
         
-        // Show user-friendly error
-        $buyers.text(status === 'timeout' ? "Timeout" : "Error");
-        $sellers.text(status === 'timeout' ? "Timeout" : "Error");
-        $transactions.text(status === 'timeout' ? "Timeout" : "Error");
-        $revenue.text(status === 'timeout' ? "Timeout" : "Error");
+        // Don't log aborts as errors
+        if (status === 'abort') {
+          console.log("⚪ [ECOSYSTEM] Request aborted (expected on tab/timeframe change)");
+          hideAnalyticsLoading();
+          return;
+        }
+        
+        console.error("🔴 [ECOSYSTEM] Request failed:", status, error);
+        
+        // Prefer cache over error
+        const cached = getAnalyticsCache(timeframe);
+        if (cached?.ecosystem) {
+          console.warn("⚠️ [ECOSYSTEM] Using cached data (network error fallback)");
+          const data = cached.ecosystem;
+          $buyers.text(formatLargeNumber(data.unique_buyers || 0));
+          $sellers.text(formatLargeNumber(data.unique_sellers || 0));
+          $transactions.text(formatLargeNumber(data.total_transactions || 0));
+          $revenue.text(formatCurrency(data.total_amount || 0));
+          if (data.bucketed_data?.length) {
+            renderMarketOverviewChart(data.bucketed_data);
+          }
+        } else {
+          // Only show error if NO cache exists
+          $buyers.text("—");
+          $sellers.text("—");
+          $transactions.text("—");
+          $revenue.text("—");
+        }
         
         hideAnalyticsLoading();
       }
@@ -435,19 +452,13 @@
         }
       })
       .fail((xhr, status, error) => {
-        console.log("🔴 [TopPages] Request failed:", {
-          status: status,
-          error: error,
-          xhr_status: xhr?.status,
-          xhr_statusText: xhr?.statusText,
-          is_abort: status === 'abort'
-        });
-        
-        // Don't show errors for intentional aborts
+        // Don't log aborts as errors
         if (status === 'abort') {
-          console.log("⚪ [TopPages] Request aborted (normal when switching timeframes)");
+          console.log("⚪ [TopPages] Request aborted (expected)");
           return;
         }
+        
+        console.error("🔴 [TopPages] Request failed:", status, error);
         
         console.error("❌ [TopPages] Real error:", status, error, xhr?.responseText);
         $("#top-content-body").html(

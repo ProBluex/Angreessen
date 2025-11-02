@@ -27,10 +27,11 @@ if (!current_user_can('manage_options')) {
 }
 
 // Get timeframe parameter
-$timeframe = sanitize_text_field($_POST['timeframe'] ?? '30d');
+$timeframe = in_array($_POST['timeframe'] ?? '30d', ['7d', '30d', '90d', 'all'], true) 
+    ? sanitize_text_field($_POST['timeframe']) 
+    : '30d';
 
-error_log('[ecosystem-data.php] 🌍 ==================== DIRECT ECOSYSTEM REQUEST ====================');
-error_log('[ecosystem-data.php] 🌍 Timeframe: ' . $timeframe);
+error_log('[ecosystem-data.php] 🌍 Direct ecosystem request for timeframe: ' . $timeframe);
 
 // Get API key
 $api_key = get_option('402links_api_key');
@@ -48,6 +49,10 @@ if (empty($site_id)) {
     exit;
 }
 
+// Check last-known-good cache
+$cache_key = 'tolliver_ecosystem_last_good_' . $timeframe;
+$cached = get_transient($cache_key);
+
 // Direct call to wordpress-ecosystem-stats edge function
 $edge_function_url = 'https://cnionwnknwnzpwfuacse.supabase.co/functions/v1/wordpress-ecosystem-stats';
 
@@ -55,13 +60,10 @@ $request_body = [
     'timeframe' => $timeframe
 ];
 
-error_log('[ecosystem-data.php] 🌍 Calling edge function: ' . $edge_function_url);
-error_log('[ecosystem-data.php] 🌍 Request body: ' . json_encode($request_body));
-
 $start_time = microtime(true);
 
 $response = wp_remote_post($edge_function_url, [
-    'timeout' => 15,
+    'timeout' => 8,
     'headers' => [
         'Content-Type' => 'application/json',
         'Authorization' => 'Bearer ' . $api_key,
@@ -70,79 +72,74 @@ $response = wp_remote_post($edge_function_url, [
     'body' => json_encode($request_body)
 ]);
 
-// Handle errors
+// Handle errors - serve last-known-good if available
 if (is_wp_error($response)) {
     $error_message = $response->get_error_message();
     error_log('[ecosystem-data.php] ❌ WP Error: ' . $error_message);
-    wp_send_json_error(['message' => 'Request failed: ' . $error_message]);
+    
+    if ($cached) {
+        error_log('[ecosystem-data.php] ⚠️ Serving cached data (WP error fallback)');
+        $cached['cache'] = ($cached['cache'] ?? []) + ['served_from_wp_cache' => true, 'stale' => true];
+        header('Content-Type: application/json');
+        echo json_encode($cached);
+        exit;
+    }
+    
+    wp_send_json_error(['message' => 'edge_unreachable']);
     exit;
 }
 
 $status_code = wp_remote_retrieve_response_code($response);
 $body = wp_remote_retrieve_body($response);
-
 $elapsed_time = round((microtime(true) - $start_time) * 1000);
 
-// Categorize response time with visual indicators
-$status_emoji = $elapsed_time < 200 ? '⚡' : ($elapsed_time < 1000 ? '✅' : '⚠️');
-error_log('[ecosystem-data.php] ' . $status_emoji . ' Response time: ' . $elapsed_time . 'ms');
-
-// Warn on slow requests
-if ($elapsed_time > 1000) {
-    error_log('[ecosystem-data.php] 🐌 SLOW REQUEST WARNING: Took ' . $elapsed_time . 'ms (threshold: 1000ms)');
-}
-
-error_log('[ecosystem-data.php] 🌍 Response status: ' . $status_code);
-error_log('[ecosystem-data.php] 🌍 Response body: ' . $body);
-
-// Log the exact raw response structure
-error_log('[ecosystem-data.php] 🌍 RAW RESPONSE ANALYSIS:');
-error_log('[ecosystem-data.php] 🌍   - Response type: ' . gettype($body));
-error_log('[ecosystem-data.php] 🌍   - Response length: ' . strlen($body));
-error_log('[ecosystem-data.php] 🌍   - First 500 chars: ' . substr($body, 0, 500));
+error_log('[ecosystem-data.php] Response: ' . $status_code . ' in ' . $elapsed_time . 'ms');
 
 if ($status_code !== 200) {
-    error_log('[ecosystem-data.php] ❌ Non-200 status code: ' . $status_code);
-    wp_send_json_error([
-        'message' => 'Edge function returned error',
-        'status_code' => $status_code,
-        'body' => $body
-    ]);
+    error_log('[ecosystem-data.php] ❌ Non-200 status: ' . $status_code);
+    
+    if ($cached) {
+        error_log('[ecosystem-data.php] ⚠️ Serving cached data (non-200 fallback)');
+        $cached['cache'] = ($cached['cache'] ?? []) + ['served_from_wp_cache' => true, 'stale' => true];
+        header('Content-Type: application/json');
+        echo json_encode($cached);
+        exit;
+    }
+    
+    wp_send_json_error(['message' => 'bad_edge_response', 'status_code' => $status_code]);
     exit;
 }
 
 // Parse response
 $data = json_decode($body, true);
 
-if (json_last_error() !== JSON_ERROR_NONE) {
+if (json_last_error() !== JSON_ERROR_NONE || !is_array($data)) {
     error_log('[ecosystem-data.php] ❌ JSON decode error: ' . json_last_error_msg());
-    wp_send_json_error(['message' => 'Invalid JSON response']);
+    
+    if ($cached) {
+        error_log('[ecosystem-data.php] ⚠️ Serving cached data (JSON error fallback)');
+        $cached['cache'] = ($cached['cache'] ?? []) + ['served_from_wp_cache' => true, 'stale' => true];
+        header('Content-Type: application/json');
+        echo json_encode($cached);
+        exit;
+    }
+    
+    wp_send_json_error(['message' => 'invalid_json']);
     exit;
 }
 
-// Log the parsed data structure in detail
-error_log('[ecosystem-data.php] 🌍 PARSED DATA STRUCTURE:');
-error_log('[ecosystem-data.php] 🌍   - Data type: ' . gettype($data));
-error_log('[ecosystem-data.php] 🌍   - Keys: ' . json_encode(array_keys($data)));
-if (isset($data['success'])) {
-    error_log('[ecosystem-data.php] 🌍   - success value: ' . json_encode($data['success']));
-    error_log('[ecosystem-data.php] 🌍   - success type: ' . gettype($data['success']));
+// If edge claims success with data, cache it
+if (!empty($data['success']) && !empty($data['data'])) {
+    set_transient($cache_key, $data, 5 * MINUTE_IN_SECONDS);
+    error_log('[ecosystem-data.php] ✅ Cached fresh data');
+} elseif ($cached) {
+    // Edge not happy but we have last-known-good
+    error_log('[ecosystem-data.php] ⚠️ Serving cached data (edge success:false fallback)');
+    $data = $cached;
+    $data['cache'] = ($data['cache'] ?? []) + ['served_from_wp_cache' => true, 'stale' => true];
 }
 
-error_log('[ecosystem-data.php] ✅ Successfully retrieved ecosystem data');
-error_log('[ecosystem-data.php] 🌍 Response structure check:');
-error_log('[ecosystem-data.php] 🌍   - Has "success" key: ' . (isset($data['success']) ? 'YES' : 'NO'));
-error_log('[ecosystem-data.php] 🌍   - Has "data" key: ' . (isset($data['data']) ? 'YES' : 'NO'));
-
-if (isset($data['data'])) {
-    error_log('[ecosystem-data.php] 🌍   - data.total_transactions: ' . ($data['data']['total_transactions'] ?? 'MISSING'));
-    error_log('[ecosystem-data.php] 🌍   - data.unique_buyers: ' . ($data['data']['unique_buyers'] ?? 'MISSING'));
-    error_log('[ecosystem-data.php] 🌍   - data.unique_sellers: ' . ($data['data']['unique_sellers'] ?? 'MISSING'));
-    error_log('[ecosystem-data.php] 🌍   - data.total_amount: ' . ($data['data']['total_amount'] ?? 'MISSING'));
-}
-
-// Edge function already returns {success: true, data: {...}}, pass it through directly
-// DO NOT double-wrap with wp_send_json_success()
+// Return response
 header('Content-Type: application/json');
 echo json_encode($data);
 exit;
