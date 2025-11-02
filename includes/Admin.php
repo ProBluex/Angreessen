@@ -346,7 +346,7 @@ class Admin {
         
         $timeframe = sanitize_text_field($_POST['timeframe'] ?? '30d');
         
-        // Check cache first (90 second TTL)
+        // Check cache first (30 second TTL for better real-time experience)
         $cache_key = 'agent_hub_analytics_' . $timeframe;
         $cached = get_transient($cache_key);
         
@@ -447,18 +447,26 @@ class Admin {
             error_log('[Admin.php] 📊 Extracted $site_metrics: ' . json_encode($site_metrics));
             error_log('[Admin.php] 📊 $site_metrics keys: ' . json_encode(array_keys($site_metrics)));
             
-            // Count protected pages using optimized direct SQL query
-            global $wpdb;
-            $protected_pages_count = $wpdb->get_var("
-                SELECT COUNT(DISTINCT p.ID) 
-                FROM {$wpdb->posts} p
-                INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
-                WHERE p.post_status = 'publish'
-                AND p.post_type IN ('post', 'page')
-                AND pm.meta_key = '_402links_id'
-            ");
-            $protected_pages_count = intval($protected_pages_count);
-            error_log('[Admin.php] 📄 Protected pages count (SQL): ' . $protected_pages_count);
+            // Count protected pages with 5-minute cache
+            $pages_cache_key = 'agent_hub_protected_pages_count';
+            $protected_pages_count = get_transient($pages_cache_key);
+            
+            if ($protected_pages_count === false) {
+                global $wpdb;
+                $protected_pages_count = $wpdb->get_var("
+                    SELECT COUNT(DISTINCT p.ID) 
+                    FROM {$wpdb->posts} p
+                    INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
+                    WHERE p.post_status = 'publish'
+                    AND p.post_type IN ('post', 'page')
+                    AND pm.meta_key = '_402links_id'
+                ");
+                $protected_pages_count = intval($protected_pages_count);
+                set_transient($pages_cache_key, $protected_pages_count, 300); // 5 min cache
+                error_log('[Admin.php] 📄 Protected pages count (SQL): ' . $protected_pages_count);
+            } else {
+                error_log('[Admin.php] 📦 Protected pages count (CACHED): ' . $protected_pages_count);
+            }
             
             $final_response = [
                 'site' => [
@@ -495,8 +503,8 @@ class Admin {
                 'ecosystem_total_transactions' => $final_response['ecosystem']['total_transactions']
             ]));
             
-            // Cache the response for 5 minutes
-            set_transient($cache_key, $final_response, 300);
+            // Cache the response for 30 seconds (better real-time experience)
+            set_transient($cache_key, $final_response, 30);
             
             // Release lock
             delete_transient($lock_key);

@@ -147,6 +147,7 @@
         
         // ========== ANALYTICS LOADING FOR OVERVIEW TAB ==========
         let overviewDataInterval;
+        let rqOverview = null; // Track active request for deduplication
         
         // Browser-level cache
         const CACHE_KEY = 'agent_hub_overview_cache';
@@ -183,11 +184,17 @@
             console.log('🔵 [Overview] ==================== ANALYTICS REQUEST START ====================');
             console.log('🔵 [Overview] Timestamp:', new Date().toISOString());
             
-            // Try browser cache first
+            // Abort previous request (deduplication)
+            if (rqOverview && rqOverview.abort) {
+                console.log('🔵 [Overview] Aborting stale request');
+                rqOverview.abort();
+            }
+            
+            // Try browser cache first (show instantly, then fetch fresh in background)
             const cachedData = getCachedData();
             if (cachedData) {
                 updateMetrics(cachedData);
-                return;
+                // Continue to fetch fresh data in background
             }
             
             // Show loading skeleton
@@ -202,11 +209,21 @@
             };
             console.log('🔵 [Overview] Request payload:', requestPayload);
             
-            $.ajax({
+            // Set timeout for error recovery
+            const requestTimeout = setTimeout(function() {
+                if (rqOverview) {
+                    console.warn('⚠️ [Overview] Request timeout after 10s');
+                    rqOverview.abort();
+                    showErrorRecoveryUI();
+                }
+            }, 10000);
+            
+            rqOverview = $.ajax({
                 url: agentHubData.ajaxUrl,
                 type: 'POST',
                 data: requestPayload,
                 success: function(response) {
+                    clearTimeout(requestTimeout);
                     console.log('🟢 [Overview] ==================== RESPONSE RECEIVED ====================');
                     console.log('🟢 [Overview] Raw response:', response);
                     console.log('🟢 [Overview] response.success:', response.success);
@@ -233,14 +250,32 @@
                     hideLoadingSkeleton();
                 },
                 error: function(xhr, status, error) {
+                    clearTimeout(requestTimeout);
                     console.error('🔴 [Overview] ==================== AJAX ERROR ====================');
                     console.error('🔴 [Overview] Status:', status);
                     console.error('🔴 [Overview] Error:', error);
                     
                     showZeroMetrics();
                     hideLoadingSkeleton();
+                    showErrorRecoveryUI();
                 }
             });
+        }
+        
+        function showErrorRecoveryUI() {
+            $('#overview-error-recovery').remove();
+            const errorHtml = `
+                <div id="overview-error-recovery" style="text-align: center; padding: 20px; margin: 20px 0; background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px;">
+                    <p style="margin: 0 0 10px 0; color: #856404;">
+                        <span class="dashicons dashicons-warning" style="color: #ffc107;"></span>
+                        Failed to load analytics data
+                    </p>
+                    <button type="button" class="button button-primary" onclick="jQuery('#overview-error-recovery').remove(); loadOverviewAnalytics();">
+                        <span class="dashicons dashicons-update"></span> Retry
+                    </button>
+                </div>
+            `;
+            $('.agent-hub-stats').prepend(errorHtml);
         }
 
         function updateMetrics(data) {
