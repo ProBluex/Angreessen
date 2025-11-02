@@ -334,30 +334,11 @@
             revenue: formattedRevenue
           });
           
-          // Smooth transitions to prevent jarring "zeros → numbers" jump
-          if ($buyers.text() !== formattedBuyers) {
-            $buyers.fadeOut(100, function() { $(this).text(formattedBuyers).fadeIn(200); });
-          } else {
-            $buyers.text(formattedBuyers);
-          }
-          
-          if ($sellers.text() !== formattedSellers) {
-            $sellers.fadeOut(100, function() { $(this).text(formattedSellers).fadeIn(200); });
-          } else {
-            $sellers.text(formattedSellers);
-          }
-          
-          if ($transactions.text() !== formattedTransactions) {
-            $transactions.fadeOut(100, function() { $(this).text(formattedTransactions).fadeIn(200); });
-          } else {
-            $transactions.text(formattedTransactions);
-          }
-          
-          if ($revenue.text() !== formattedRevenue) {
-            $revenue.fadeOut(100, function() { $(this).text(formattedRevenue).fadeIn(200); });
-          } else {
-            $revenue.text(formattedRevenue);
-          }
+          // Update values (smooth transitions handled by CSS if needed)
+          $buyers.text(formattedBuyers);
+          $sellers.text(formattedSellers);
+          $transactions.text(formattedTransactions);
+          $revenue.text(formattedRevenue);
           
           // Cache the data
           setAnalyticsCache({ ecosystem: data });
