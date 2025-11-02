@@ -3,7 +3,7 @@
  * Plugin Name: Tolliver - Ai Agent Pay Collector
  * Plugin URI: https://402links.com
  * Description: Convert any WordPress page into a paid API endpoint using HTTP 402 - requiring payment before AI agents access your content.
- * Version:           3.15.4
+ * Version:           3.15.5
  * Author: Tolliver Team
  * Author URI: https://402links.com
  * License: MIT
@@ -22,10 +22,28 @@ if (!function_exists('get_plugin_data')) {
     require_once(ABSPATH . 'wp-admin/includes/plugin.php');
 }
 $plugin_data = get_plugin_data(__FILE__);
-define('AGENT_HUB_VERSION', '3.15.4');
+define('AGENT_HUB_VERSION', '3.15.5');
 define('AGENT_HUB_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('AGENT_HUB_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('AGENT_HUB_PLUGIN_FILE', __FILE__);
+
+// Autoload classes
+spl_autoload_register(function ($class) {
+    $prefix = 'AgentHub\\';
+    $base_dir = AGENT_HUB_PLUGIN_DIR . 'includes/';
+
+    $len = strlen($prefix);
+    if (strncmp($prefix, $class, $len) !== 0) {
+        return;
+    }
+
+    $relative_class = substr($class, $len);
+    $file = $base_dir . str_replace('\\', '/', $relative_class) . '.php';
+
+    if (file_exists($file)) {
+        require $file;
+    }
+});
 
 // Load translations at the correct time (init hook, priority 10+)
 add_action('init', function() {
@@ -36,8 +54,24 @@ add_action('init', function() {
     );
 }, 10);
 
-// GitHub Auto-Update Integration - moved to init hook to prevent translation loading issues
-add_action('init', function() {
+// GitHub Auto-Update Integration - only run in admin, skip during activation/AJAX
+add_action('admin_init', function() {
+    // Skip during AJAX requests
+    if (wp_doing_ajax()) {
+        return;
+    }
+    
+    // Skip during WordPress installation
+    if (defined('WP_INSTALLING') && WP_INSTALLING) {
+        return;
+    }
+    
+    // Skip during plugin activation
+    $action = isset($_GET['action']) ? sanitize_key($_GET['action']) : '';
+    if (in_array($action, ['activate', 'activate-plugin'], true)) {
+        return;
+    }
+    
     if (file_exists(AGENT_HUB_PLUGIN_DIR . 'vendor/plugin-update-checker/plugin-update-checker.php')) {
         require_once AGENT_HUB_PLUGIN_DIR . 'vendor/plugin-update-checker/plugin-update-checker.php';
         
@@ -60,7 +94,7 @@ add_action('init', function() {
             });
         }
     }
-}, 11); // Priority 11 ensures it runs AFTER translation loading at priority 10
+}, 12); // Priority 12 ensures it runs safely in admin context
 
 // Activation hook - now using Installer class
 register_activation_hook(__FILE__, ['\AgentHub\Installer', 'activate']);
@@ -88,6 +122,16 @@ function agent_hub_activate() {
     
     require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
     dbDelta($sql);
+    
+    // One-time migration: fix typo in meta key (missing 's' after '402link')
+    if (!get_option('402links_block_humans_migrated')) {
+        $wpdb->query("
+            UPDATE {$wpdb->postmeta} 
+            SET meta_key = '_402links_block_humans' 
+            WHERE meta_key = '_402link_block_humans'
+        ");
+        update_option('402links_block_humans_migrated', '1');
+    }
     
     // Set default options
     if (!get_option('402links_settings')) {
@@ -122,8 +166,10 @@ function agent_hub_deactivate() {
     flush_rewrite_rules();
 }
 
-// Initialize plugin
-add_action('plugins_loaded', function() {
-    $core = new AgentHub\Core();
-    $core->init();
-});
+// Initialize plugin core after all translation/update systems are ready
+add_action('init', function() {
+    if (class_exists('\AgentHub\Core')) {
+        $core = new \AgentHub\Core();
+        $core->init();
+    }
+}, 13); // Priority 13 ensures it runs after textdomain @10 and update checker @12
