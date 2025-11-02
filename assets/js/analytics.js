@@ -311,10 +311,12 @@
         nonce: w.agentHubData.nonce
       },
       timeout: 20000,  // Extended timeout for ecosystem-wide queries
-      success: function(response) {
-        console.log("✅ [ECOSYSTEM] Response received");
-        console.log("🌍 [ECOSYSTEM] Response success:", response.success);
-        console.log("🌍 [ECOSYSTEM] Response has data:", !!response.data);
+            success: function(response) {
+                console.log("✅ [ECOSYSTEM] Response received");
+                console.log("🌍 [ECOSYSTEM] Raw response type:", typeof response);
+                console.log("🌍 [ECOSYSTEM] Response keys:", Object.keys(response));
+                console.log("🌍 [ECOSYSTEM] Response success:", response.success);
+                console.log("🌍 [ECOSYSTEM] Response has data:", !!response.data);
         
         if (response.success && response.data) {
           const data = response.data;

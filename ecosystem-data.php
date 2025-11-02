@@ -86,6 +86,12 @@ error_log('[ecosystem-data.php] ⏱️ Edge function response time: ' . $elapsed
 error_log('[ecosystem-data.php] 🌍 Response status: ' . $status_code);
 error_log('[ecosystem-data.php] 🌍 Response body: ' . $body);
 
+// Log the exact raw response structure
+error_log('[ecosystem-data.php] 🌍 RAW RESPONSE ANALYSIS:');
+error_log('[ecosystem-data.php] 🌍   - Response type: ' . gettype($body));
+error_log('[ecosystem-data.php] 🌍   - Response length: ' . strlen($body));
+error_log('[ecosystem-data.php] 🌍   - First 500 chars: ' . substr($body, 0, 500));
+
 if ($status_code !== 200) {
     error_log('[ecosystem-data.php] ❌ Non-200 status code: ' . $status_code);
     wp_send_json_error([
@@ -103,6 +109,15 @@ if (json_last_error() !== JSON_ERROR_NONE) {
     error_log('[ecosystem-data.php] ❌ JSON decode error: ' . json_last_error_msg());
     wp_send_json_error(['message' => 'Invalid JSON response']);
     exit;
+}
+
+// Log the parsed data structure in detail
+error_log('[ecosystem-data.php] 🌍 PARSED DATA STRUCTURE:');
+error_log('[ecosystem-data.php] 🌍   - Data type: ' . gettype($data));
+error_log('[ecosystem-data.php] 🌍   - Keys: ' . json_encode(array_keys($data)));
+if (isset($data['success'])) {
+    error_log('[ecosystem-data.php] 🌍   - success value: ' . json_encode($data['success']));
+    error_log('[ecosystem-data.php] 🌍   - success type: ' . gettype($data['success']));
 }
 
 error_log('[ecosystem-data.php] ✅ Successfully retrieved ecosystem data');
