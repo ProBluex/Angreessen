@@ -250,7 +250,7 @@
             const finalValues = {
                 total_crawls: siteData.total_crawls || 0,
                 paid_crawls: siteData.paid_crawls || 0,
-                total_revenue: '$' + (siteData.total_revenue || 0).toFixed(2),
+                total_revenue: '$' + (siteData.total_revenue || 0).toFixed(3),
                 protected_pages: siteData.protected_pages || 0
             };
             console.log('🟢 [Overview] Final values:', finalValues);
@@ -266,7 +266,7 @@
         function showZeroMetrics() {
             $('#total-crawls').text('0');
             $('#paid-crawls').text('0');
-            $('#total-revenue').text('$0.00');
+            $('#total-revenue').text('$0.000');
             $('#protected-pages').text('0');
         }
 

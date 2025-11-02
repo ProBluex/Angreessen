@@ -79,7 +79,7 @@ $is_connected = !empty($api_key) && !empty($site_id);
                 </div>
                 <div class="stat-content">
                     <div class="stat-label">Total Revenue</div>
-                    <div class="stat-value" id="total-revenue">$0.00</div>
+                    <div class="stat-value" id="total-revenue">$0.000</div>
                 </div>
             </div>
             
@@ -261,7 +261,7 @@ $is_connected = !empty($api_key) && !empty($site_id);
                     </div>
                     <div class="stat-content">
                         <div class="stat-label">Market Revenue</div>
-                        <div class="stat-value" id="stat-market-revenue">$0.00</div>
+                        <div class="stat-value" id="stat-market-revenue">$0.000</div>
                     </div>
                 </div>
             </div>

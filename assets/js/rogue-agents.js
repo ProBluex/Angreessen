@@ -91,7 +91,7 @@ jQuery(document).ready(function($) {
     function renderRogueData(data) {
         // Update summary cards
         $('#rogue-total-violations').text(data.summary.total_violations || 0);
-        $('#rogue-lost-revenue').text('$' + (parseFloat(data.summary.lost_revenue) || 0).toFixed(2));
+        $('#rogue-lost-revenue').text('$' + (parseFloat(data.summary.lost_revenue) || 0).toFixed(3));
         $('#rogue-unique-agents').text(data.summary.unique_agents || 0);
         $('#rogue-pages-affected').text(data.summary.pages_affected || 0);
 
@@ -140,7 +140,7 @@ jQuery(document).ready(function($) {
             const row = $('<tr>')
                 .append($('<td>').html('<strong>' + escapeHtml(agent.agent_name) + '</strong>'))
                 .append($('<td>').text(agent.total_violations))
-                .append($('<td>').text('$' + agent.lost_revenue.toFixed(2)))
+                .append($('<td>').text('$' + agent.lost_revenue.toFixed(3)))
                 .append($('<td>').text(agent.pages_scraped))
                 .append($('<td>').text(firstViolation))
                 .append($('<td>').text(lastViolation))

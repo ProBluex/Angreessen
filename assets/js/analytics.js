@@ -121,7 +121,7 @@
 
   const formatCurrency = (amount) => {
     const n = Number(amount || 0);
-    if (!Number.isFinite(n)) return "$0.00";
+    if (!Number.isFinite(n)) return "$0.000";
     if (n >= 1_000_000) return "$" + (n / 1_000_000).toFixed(1) + "M";
     if (n >= 1_000) return "$" + (n / 1_000).toFixed(1) + "K";
     return cf.format(n);
@@ -129,7 +129,7 @@
 
   const formatMoney = (amount) => {
     const n = Number(amount || 0);
-    return Number.isFinite(n) ? n.toFixed(2) : "0.00";
+    return Number.isFinite(n) ? n.toFixed(3) : "0.000";
   };
 
   const formatDate = (dateStr) => {
