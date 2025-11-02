@@ -14,6 +14,12 @@ if (!defined('ABSPATH')) {
     die('Direct access not allowed');
 }
 
+// Prevent PHP notices/warnings from printing on JSON endpoints
+// This ensures headers can be sent cleanly for JSON responses
+if (defined('WP_DEBUG_DISPLAY') && WP_DEBUG_DISPLAY) {
+    @ini_set('display_errors', '0');
+}
+
 // Verify nonce
 if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'agent_hub_nonce')) {
     wp_send_json_error(['message' => 'Invalid nonce']);
