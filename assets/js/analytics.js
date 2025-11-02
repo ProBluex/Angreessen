@@ -617,7 +617,7 @@
       .map((p) => {
         const url = p.url || p.page_url || "#";
         const title = p.title || p.page_title || "Untitled";
-        const revenue = p.revenue ?? p.agent_revenue ?? 0;
+        const revenue = p.total_revenue ?? p.revenue ?? 0;
         return `
         <tr>
           <td>${safeLink(url, title)}</td>
