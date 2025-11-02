@@ -2,6 +2,13 @@
 (function (w, d, $) {
   "use strict";
 
+  // Debug mode detection
+  const DEBUG_MODE = w.location.hostname === 'localhost' || 
+                     w.location.hostname.includes('127.0.0.1') ||
+                     w.location.search.includes('debug=true');
+  const debugLog = DEBUG_MODE ? console.log.bind(console) : () => {};
+  const debugWarn = DEBUG_MODE ? console.warn.bind(console) : () => {};
+
   if (!w.agentHubData || !w.agentHubData.ajaxUrl || !w.agentHubData.nonce) {
     console.error("[batch-processor] Missing agentHubData config.");
     return;
@@ -148,7 +155,7 @@
     })
       .done((res) => {
         if (!res || !res.success) {
-          console.error("[batch-processor] Error polling:", res);
+          debugLog("[batch-processor] Error polling:", res);
           if (w.showToast) {
             w.showToast("Error", res?.data?.message || "Failed to process batch.", "error");
           }
@@ -178,7 +185,7 @@
         }
       })
       .fail((xhr, status, error) => {
-        console.error("[batch-processor] Poll failed:", status, error);
+        debugLog("[batch-processor] Poll failed:", status, error);
         if (w.showToast) {
           w.showToast("Error", "Network error during batch processing.", "error");
         }
@@ -224,7 +231,7 @@
         }
       })
       .fail((xhr, status, error) => {
-        console.error("[batch-processor] Start failed:", status, error);
+        debugLog("[batch-processor] Start failed:", status, error);
         if (w.showToast) {
           w.showToast("Error", "Network error. Please try again.", "error");
         }
@@ -236,7 +243,7 @@
   $(d).ready(function () {
     const $bulkBtn = $("#bulk-generate-links");
     if (!$bulkBtn.length) {
-      console.warn("[batch-processor] Bulk generate button not found.");
+      debugWarn("[batch-processor] Bulk generate button not found.");
       return;
     }
 
@@ -250,6 +257,6 @@
       startBatchGeneration();
     });
 
-    console.log("[batch-processor] Modal batch processor initialized.");
+    debugLog("[batch-processor] Modal batch processor initialized.");
   });
 })(window, document, jQuery);

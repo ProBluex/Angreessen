@@ -3,6 +3,13 @@
  */
 (function($) {
     'use strict';
+    
+    // Debug mode detection
+    const DEBUG_MODE = window.location.hostname === 'localhost' || 
+                       window.location.hostname.includes('127.0.0.1') ||
+                       window.location.search.includes('debug=true');
+    const debugLog = DEBUG_MODE ? console.log.bind(console) : () => {};
+    const debugWarn = DEBUG_MODE ? console.warn.bind(console) : () => {};
 
     // Store bot policies: key = bot_registry_id, value = action
     let botPolicies = {};
@@ -30,7 +37,7 @@
             const botId = $(this).data('bot-id');
             const newAction = $(this).val();
             
-            console.log('[Violations] Policy changed for bot:', botId, 'to:', newAction);
+            debugLog('[Violations] Policy changed for bot:', botId, 'to:', newAction);
             
             botPolicies[botId] = newAction;
             changedPolicies.add(botId);
@@ -132,12 +139,12 @@
                         botPolicies[policy.bot_registry_id] = policy.action;
                     });
                     
-                    console.log('[Violations] Loaded policies:', botPolicies);
+                    debugLog('[Violations] Loaded policies:', botPolicies);
                     
                     // Now display violations with policies
                     displayViolations(violationsData);
                 } else {
-                    console.log('[Violations] No policies found, using defaults');
+                    debugLog('[Violations] No policies found, using defaults');
                     botPolicies = {};
                     
                     // Display violations with default policies
@@ -322,7 +329,7 @@
             $tbody.append($row);
         });
 
-        console.log('[Violations] Rendering', sortedAgents.length, 'agents');
+        debugLog('[Violations] Rendering', sortedAgents.length, 'agents');
         $table.show();
         
         // Show policy actions container when table has data
@@ -415,7 +422,7 @@
             });
         });
 
-        console.log('[Violations] Saving policies:', policies);
+        debugLog('[Violations] Saving policies:', policies);
 
         $.ajax({
             url: ajaxurl,
@@ -432,7 +439,7 @@
                 }
 
                 if (response.success) {
-                    console.log('[Violations] Policies saved successfully');
+                    debugLog('[Violations] Policies saved successfully');
                     
                     // Clear changed policies
                     changedPolicies.clear();

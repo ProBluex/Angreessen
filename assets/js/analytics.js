@@ -5,6 +5,13 @@
 (function (w, d, $) {
   "use strict";
 
+  // Debug mode detection
+  const DEBUG_MODE = w.location.hostname === 'localhost' || 
+                     w.location.hostname.includes('127.0.0.1') ||
+                     w.location.search.includes('debug=true');
+  const debugLog = DEBUG_MODE ? console.log.bind(console) : () => {};
+  const debugWarn = DEBUG_MODE ? console.warn.bind(console) : () => {};
+
   if (!w.agentHubData || !w.agentHubData.ajaxUrl || !w.agentHubData.nonce) {
     console.error("[Analytics] Missing agentHubData config.");
     return;
@@ -56,10 +63,10 @@
         localStorage.removeItem(getCacheKey(timeframe));
         return null;
       }
-      console.log('📊 [Analytics] Using cached', timeframe, 'data from localStorage');
+      debugLog('📊 [Analytics] Using cached', timeframe, 'data from localStorage');
       return data;
     } catch (e) {
-      console.warn('[Analytics] Failed to read cache:', e);
+      debugWarn('[Analytics] Failed to read cache:', e);
       return null;
     }
   }
@@ -70,9 +77,9 @@
         data: data,
         timestamp: Date.now()
       }));
-      console.log('📊 [Analytics] Cached', timeframe, 'data to localStorage');
+      debugLog('📊 [Analytics] Cached', timeframe, 'data to localStorage');
     } catch (e) {
-      console.warn('[Analytics] Failed to cache data:', e);
+      debugWarn('[Analytics] Failed to cache data:', e);
     }
   }
 
@@ -236,14 +243,14 @@
   /* ------------------ API Calls ------------------ */
 
   function loadAnalyticsData() {
-    console.log("📊 [Analytics] ==================== LOAD ANALYTICS START ====================");
-    console.log("📊 [Analytics] Timestamp:", new Date().toISOString());
+    debugLog("📊 [Analytics] ==================== LOAD ANALYTICS START ====================");
+    debugLog("📊 [Analytics] Timestamp:", new Date().toISOString());
     
     // Set timestamp IMMEDIATELY to prevent duplicate calls
     lastAnalyticsLoad = Date.now();
     
     const timeframe = $("#analytics-timeframe").val() || "30d";
-    console.log("📊 [Analytics] Selected timeframe:", timeframe);
+    debugLog("📊 [Analytics] Selected timeframe:", timeframe);
     
     // Try browser cache first (show immediately, then fetch fresh in background)
     const cachedData = getAnalyticsCache(timeframe);
@@ -266,7 +273,7 @@
   }
 
   function renderFromCache(data) {
-    console.log("📊 [Analytics] Rendering from cache:", data);
+    debugLog("📊 [Analytics] Rendering from cache:", data);
     
     if (data.ecosystem) {
       const { unique_buyers, unique_sellers, total_transactions, total_amount } = data.ecosystem;
@@ -293,7 +300,7 @@
 
   function loadEcosystemData(timeframe) {
     const seq = ++ecoSeq;  // Single-flight lock
-    console.log("🌍 [ECOSYSTEM] Direct call for timeframe:", timeframe, "seq:", seq);
+    debugLog("🌍 [ECOSYSTEM] Direct call for timeframe:", timeframe, "seq:", seq);
     
     const $buyers = $("#stat-ecosystem-buyers");
     const $sellers = $("#stat-ecosystem-sellers");
@@ -308,7 +315,7 @@
     
     // Abort previous request if exists
     if (rqEcosystem && rqEcosystem.abort) {
-      console.log("⚪ [ECOSYSTEM] Aborting previous ecosystem request");
+      debugLog("⚪ [ECOSYSTEM] Aborting previous ecosystem request");
       rqEcosystem.abort();
     }
     
@@ -323,11 +330,11 @@
       success: function(response) {
         // Ignore stale responses
         if (seq !== ecoSeq) {
-          console.log("⚪ [ECOSYSTEM] Ignoring stale response seq:", seq, "current:", ecoSeq);
+          debugLog("⚪ [ECOSYSTEM] Ignoring stale response seq:", seq, "current:", ecoSeq);
           return;
         }
         
-        console.log("✅ [ECOSYSTEM] Response received seq:", seq);
+        debugLog("✅ [ECOSYSTEM] Response received seq:", seq);
         
         if (response.success && response.data) {
           const data = response.data;
@@ -349,7 +356,7 @@
           // Soft failure: prefer cache over error
           const cached = getAnalyticsCache(timeframe);
           if (cached?.ecosystem) {
-            console.warn("⚠️ [ECOSYSTEM] Using cached data (live fetch failed)");
+            debugWarn("⚠️ [ECOSYSTEM] Using cached data (live fetch failed)");
             const data = cached.ecosystem;
             $buyers.text(formatLargeNumber(data.unique_buyers || 0));
             $sellers.text(formatLargeNumber(data.unique_sellers || 0));
@@ -372,13 +379,13 @@
       error: function(xhr, status, error) {
         // Ignore stale responses
         if (seq !== ecoSeq) {
-          console.log("⚪ [ECOSYSTEM] Ignoring stale error seq:", seq);
+          debugLog("⚪ [ECOSYSTEM] Ignoring stale error seq:", seq);
           return;
         }
         
         // Don't log aborts as errors
         if (status === 'abort') {
-          console.log("⚪ [ECOSYSTEM] Request aborted (expected on tab/timeframe change)");
+          debugLog("⚪ [ECOSYSTEM] Request aborted (expected on tab/timeframe change)");
           hideAnalyticsLoading();
           return;
         }
@@ -388,7 +395,7 @@
         // Prefer cache over error
         const cached = getAnalyticsCache(timeframe);
         if (cached?.ecosystem) {
-          console.warn("⚠️ [ECOSYSTEM] Using cached data (network error fallback)");
+          debugWarn("⚠️ [ECOSYSTEM] Using cached data (network error fallback)");
           const data = cached.ecosystem;
           $buyers.text(formatLargeNumber(data.unique_buyers || 0));
           $sellers.text(formatLargeNumber(data.unique_sellers || 0));
@@ -411,40 +418,40 @@
   }
 
   function loadTopPages(page = 1) {
-    console.log("📄 [TopPages] ==================== LOAD TOP PAGES START ====================");
-    console.log("📄 [TopPages] Page:", page);
+    debugLog("📄 [TopPages] ==================== LOAD TOP PAGES START ====================");
+    debugLog("📄 [TopPages] Page:", page);
     
     currentPage = page;
     const offset = (page - 1) * perPage;
     const timeframe = $("#analytics-timeframe").val() || "30d";
     const requestData = { timeframe, limit: perPage, offset };
 
-    console.log("📄 [TopPages] Request data:", requestData);
+    debugLog("📄 [TopPages] Request data:", requestData);
 
     // abort stale request
     if (rqTopPages && rqTopPages.abort) {
-      console.log("⚪ [TopPages] Aborting previous top pages request");
+      debugLog("⚪ [TopPages] Aborting previous top pages request");
       rqTopPages.abort();
     }
 
-    console.log("📄 [TopPages] Making AJAX request to agent_hub_get_top_pages");
+    debugLog("📄 [TopPages] Making AJAX request to agent_hub_get_top_pages");
     rqTopPages = ajaxPost("agent_hub_get_top_pages", requestData)
       .done((res) => {
-        console.log("✅ [TopPages] Response received");
-        console.log("📄 [TopPages] Response success:", res?.success);
-        console.log("📄 [TopPages] Response has data:", !!res?.data);
+        debugLog("✅ [TopPages] Response received");
+        debugLog("📄 [TopPages] Response success:", res?.success);
+        debugLog("📄 [TopPages] Response has data:", !!res?.data);
         
         if (res?.success && res.data) {
           const pages = res.data.pages || [];
           const total = Number(res.data.total || 0);
-          console.log("📄 [TopPages] Pages count:", pages.length);
-          console.log("📄 [TopPages] Total pages:", total);
+          debugLog("📄 [TopPages] Pages count:", pages.length);
+          debugLog("📄 [TopPages] Total pages:", total);
           
           renderTopContent(pages);
           renderPagination(total, currentPage, perPage);
-          console.log("✅ [TopPages] Rendering completed");
+          debugLog("✅ [TopPages] Rendering completed");
         } else {
-          console.warn("⚠️ [TopPages] No pages found in response");
+          debugWarn("⚠️ [TopPages] No pages found in response");
           $("#top-content-body").html(
             '<tr><td colspan="2" style="text-align:center; color:#666;">No pages found</td></tr>',
           );
@@ -454,7 +461,7 @@
       .fail((xhr, status, error) => {
         // Don't log aborts as errors
         if (status === 'abort') {
-          console.log("⚪ [TopPages] Request aborted (expected)");
+          debugLog("⚪ [TopPages] Request aborted (expected)");
           return;
         }
         

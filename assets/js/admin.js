@@ -2,6 +2,13 @@
 (function (w, d, $) {
   "use strict";
 
+  // Debug mode detection
+  const DEBUG_MODE = w.location.hostname === 'localhost' || 
+                     w.location.hostname.includes('127.0.0.1') ||
+                     w.location.search.includes('debug=true');
+  const debugLog = DEBUG_MODE ? console.log.bind(console) : () => {};
+  const debugWarn = DEBUG_MODE ? console.warn.bind(console) : () => {};
+
   if (!w.agentHubData || !w.agentHubData.ajaxUrl || !w.agentHubData.nonce) {
     console.error("[agent-hub] Missing agentHubData config. Aborting.");
     return;
@@ -70,12 +77,12 @@
   /* ---------- Namespace ---------- */
 
   const hub = (w.agentHub = w.agentHub || {});
-  console.log('[admin.js] Hub namespace initialized');
+  debugLog('[admin.js] Hub namespace initialized');
 
   /* ---------- Tabs (hash-aware) ---------- */
 
   function activateTab(tab) {
-    console.log('[admin.js] Activating tab:', tab);
+    debugLog('[admin.js] Activating tab:', tab);
     
     $(".tab-button").removeClass("active");
     $(".tab-content").removeClass("active");
@@ -92,7 +99,7 @@
       }
     }
     
-    console.log('[admin.js] Tab activated:', tab);
+    debugLog('[admin.js] Tab activated:', tab);
   }
 
   $(".tab-button").on("click", function () {
@@ -104,10 +111,10 @@
 
   // Move initialization to jQuery ready to ensure all functions are defined
   $(function() {
-    console.log('[admin.js] Initializing tabs...');
+    debugLog('[admin.js] Initializing tabs...');
     
     // Log available functions
-    console.log('[admin.js] All hub functions defined:', {
+    debugLog('[admin.js] All hub functions defined:', {
       loadContent: typeof hub.loadContent,
       loadAnalytics: typeof hub.loadAnalytics,
       toggleHumanAccess: typeof hub.toggleHumanAccess,
@@ -123,7 +130,7 @@
       if (firstTab) activateTab(firstTab);
     }
     
-    console.log('[admin.js] Tabs initialized');
+    debugLog('[admin.js] Tabs initialized');
   });
 
   // react to external hash changes (e.g., browser back)

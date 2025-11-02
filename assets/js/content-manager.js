@@ -6,6 +6,13 @@
 (function($) {
     'use strict';
     
+    // Debug mode detection
+    const DEBUG_MODE = window.location.hostname === 'localhost' || 
+                       window.location.hostname.includes('127.0.0.1') ||
+                       window.location.search.includes('debug=true');
+    const debugLog = DEBUG_MODE ? console.log.bind(console) : () => {};
+    const debugWarn = DEBUG_MODE ? console.warn.bind(console) : () => {};
+    
     let currentContent = [];
     let filteredContent = [];
     let sortColumn = 'published';
@@ -15,7 +22,7 @@
      * Initialize content manager when DOM is ready
      */
     $(document).ready(function() {
-        console.log('[ContentManager] Initializing content manager');
+        debugLog('[ContentManager] Initializing content manager');
         
         // Load content when tab is clicked
         $(document).on('click', '[data-tab="my-content"]', function() {
@@ -52,14 +59,14 @@
         // Filter by link status
         $(document).on('change', '#content-link-filter', handleLinkFilter);
         
-        console.log('[ContentManager] Event handlers registered');
+        debugLog('[ContentManager] Event handlers registered');
     });
     
     /**
      * Load content from WordPress
      */
     function loadContent() {
-        console.log('[ContentManager] Loading content list');
+        debugLog('[ContentManager] Loading content list');
         
         $.ajax({
             url: agentHubData.ajaxUrl,
@@ -73,7 +80,7 @@
                 $('#content-table-container').hide();
             },
             success: function(response) {
-                console.log('[ContentManager] Content loaded:', response);
+                debugLog('[ContentManager] Content loaded:', response);
                 
                 if (response.success && response.data.content) {
                     currentContent = response.data.content;
@@ -150,7 +157,7 @@
             tbody.append(row);
         });
         
-        console.log('[ContentManager] Rendered', sorted.length, 'content items');
+        debugLog('[ContentManager] Rendered', sorted.length, 'content items');
     }
     
     /**
@@ -178,7 +185,7 @@
      */
     function handleSearch(e) {
         const searchTerm = $(e.target).val().toLowerCase();
-        console.log('[ContentManager] Searching for:', searchTerm);
+        debugLog('[ContentManager] Searching for:', searchTerm);
         
         if (!searchTerm) {
             filteredContent = [...currentContent];
@@ -210,7 +217,7 @@
         $('.sortable-column').removeClass('sorted-asc sorted-desc');
         $(e.currentTarget).addClass('sorted-' + sortDirection);
         
-        console.log('[ContentManager] Sorting by', column, sortDirection);
+        debugLog('[ContentManager] Sorting by', column, sortDirection);
         renderContent();
     }
     
@@ -254,7 +261,7 @@
             return;
         }
         
-        console.log('[ContentManager] Bulk action:', action, 'for', selectedIds.length, 'items');
+        debugLog('[ContentManager] Bulk action:', action, 'for', selectedIds.length, 'items');
         
         if (action === 'generate') {
             bulkGenerateLinks(selectedIds);
@@ -269,7 +276,7 @@
      * Bulk generate links
      */
     function bulkGenerateLinks(postIds) {
-        console.log('[ContentManager] Bulk generating links for', postIds.length, 'posts');
+        debugLog('[ContentManager] Bulk generating links for', postIds.length, 'posts');
         
         let completed = 0;
         let failed = 0;
@@ -330,7 +337,7 @@
         e.preventDefault();
         const postId = $(e.currentTarget).data('id');
         
-        console.log('[ContentManager] Generating link for post', postId);
+        debugLog('[ContentManager] Generating link for post', postId);
         
         $.ajax({
             url: agentHubData.ajaxUrl,
@@ -371,7 +378,7 @@
         const item = currentContent.find(c => c.id === postId);
         if (!item) return;
         
-        console.log('[ContentManager] Editing link for post', postId);
+        debugLog('[ContentManager] Editing link for post', postId);
         
         // TODO: Open modal with link settings
         // For now, just show info
@@ -386,7 +393,7 @@
         const postId = checkbox.data('post-id');
         const blockHumans = checkbox.is(':checked');
         
-        console.log('[ContentManager] Toggling human access for post', postId, 'block:', blockHumans);
+        debugLog('[ContentManager] Toggling human access for post', postId, 'block:', blockHumans);
         
         $.ajax({
             url: agentHubData.ajaxUrl,
@@ -452,7 +459,7 @@
             return true;
         });
         
-        console.log('[ContentManager] Filtered to', filteredContent.length, 'items');
+        debugLog('[ContentManager] Filtered to', filteredContent.length, 'items');
     }
     
     /**

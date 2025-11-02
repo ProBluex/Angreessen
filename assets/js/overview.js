@@ -5,6 +5,13 @@
 (function($) {
     'use strict';
     
+    // Debug mode detection
+    const DEBUG_MODE = window.location.hostname === 'localhost' || 
+                       window.location.hostname.includes('127.0.0.1') ||
+                       window.location.search.includes('debug=true');
+    const debugLog = DEBUG_MODE ? console.log.bind(console) : () => {};
+    const debugWarn = DEBUG_MODE ? console.warn.bind(console) : () => {};
+    
     $(document).ready(function() {
         // Track if user has started editing
         let userIsEditing = false;
@@ -103,7 +110,7 @@
                             const priceChanged = originalPrice !== null && originalPrice !== newPrice;
                             
                             if (priceChanged) {
-                                console.log('[Overview] Price changed from', originalPrice, 'to', newPrice);
+                                debugLog('[Overview] Price changed from', originalPrice, 'to', newPrice);
                                 checkExistingLinksAndAlert();
                                 originalPrice = newPrice; // Update for next change
                             }
@@ -162,7 +169,7 @@
                     localStorage.removeItem(CACHE_KEY);
                     return null;
                 }
-                console.log('🔵 [Overview] Using cached data from localStorage');
+                debugLog('🔵 [Overview] Using cached data from localStorage');
                 return data;
             } catch (e) {
                 return null;
@@ -176,17 +183,17 @@
                     timestamp: Date.now()
                 }));
             } catch (e) {
-                console.warn('[Overview] Failed to cache data:', e);
+                debugWarn('[Overview] Failed to cache data:', e);
             }
         }
 
         function loadOverviewAnalytics() {
-            console.log('🔵 [Overview] ==================== ANALYTICS REQUEST START ====================');
-            console.log('🔵 [Overview] Timestamp:', new Date().toISOString());
+            debugLog('🔵 [Overview] ==================== ANALYTICS REQUEST START ====================');
+            debugLog('🔵 [Overview] Timestamp:', new Date().toISOString());
             
             // Abort previous request (deduplication)
             if (rqOverview && rqOverview.abort) {
-                console.log('🔵 [Overview] Aborting stale request');
+                debugLog('🔵 [Overview] Aborting stale request');
                 rqOverview.abort();
             }
             
@@ -200,19 +207,19 @@
             // Show loading skeleton
             showLoadingSkeleton();
             
-            console.log('🔵 [Overview] AJAX URL:', agentHubData.ajaxUrl);
+            debugLog('🔵 [Overview] AJAX URL:', agentHubData.ajaxUrl);
             
             const requestPayload = {
                 action: 'agent_hub_get_analytics',
                 nonce: agentHubData.nonce,
                 timeframe: '30d'
             };
-            console.log('🔵 [Overview] Request payload:', requestPayload);
+            debugLog('🔵 [Overview] Request payload:', requestPayload);
             
             // Set timeout for error recovery
             const requestTimeout = setTimeout(function() {
                 if (rqOverview) {
-                    console.warn('⚠️ [Overview] Request timeout after 10s');
+                    debugWarn('⚠️ [Overview] Request timeout after 10s');
                     rqOverview.abort();
                     showErrorRecoveryUI();
                 }
@@ -224,15 +231,15 @@
                 data: requestPayload,
                 success: function(response) {
                     clearTimeout(requestTimeout);
-                    console.log('🟢 [Overview] ==================== RESPONSE RECEIVED ====================');
-                    console.log('🟢 [Overview] Raw response:', response);
-                    console.log('🟢 [Overview] response.success:', response.success);
-                    console.log('🟢 [Overview] response.data exists:', !!response.data);
+                    debugLog('🟢 [Overview] ==================== RESPONSE RECEIVED ====================');
+                    debugLog('🟢 [Overview] Raw response:', response);
+                    debugLog('🟢 [Overview] response.success:', response.success);
+                    debugLog('🟢 [Overview] response.data exists:', !!response.data);
                     
                     if (response.data) {
-                        console.log('🟢 [Overview] response.data.site exists:', !!response.data.site);
-                        console.log('🟢 [Overview] response.data.ecosystem exists:', !!response.data.ecosystem);
-                        console.log('🟢 [Overview] response.data structure:', {
+                        debugLog('🟢 [Overview] response.data.site exists:', !!response.data.site);
+                        debugLog('🟢 [Overview] response.data.ecosystem exists:', !!response.data.ecosystem);
+                        debugLog('🟢 [Overview] response.data structure:', {
                             site: response.data.site ? Object.keys(response.data.site) : 'N/A',
                             ecosystem: response.data.ecosystem ? Object.keys(response.data.ecosystem) : 'N/A'
                         });
@@ -280,7 +287,7 @@
 
         function updateMetrics(data) {
             const siteData = data.site;
-            console.log('🟢 [Overview] Extracted siteData:', siteData);
+            debugLog('🟢 [Overview] Extracted siteData:', siteData);
             
             const finalValues = {
                 total_crawls: siteData.total_crawls || 0,
@@ -288,14 +295,14 @@
                 total_revenue: '$' + (siteData.total_revenue || 0).toFixed(3),
                 protected_pages: siteData.protected_pages || 0
             };
-            console.log('🟢 [Overview] Final values:', finalValues);
+            debugLog('🟢 [Overview] Final values:', finalValues);
             
             $('#total-crawls').text(finalValues.total_crawls);
             $('#paid-crawls').text(finalValues.paid_crawls);
             $('#total-revenue').text(finalValues.total_revenue);
             $('#protected-pages').text(finalValues.protected_pages);
             
-            console.log('✅ [Overview] Metrics updated in DOM successfully');
+            debugLog('✅ [Overview] Metrics updated in DOM successfully');
         }
 
         function showZeroMetrics() {
@@ -318,12 +325,12 @@
         
         // DISABLED: No auto-refresh - only refresh on page load
         // Data will be cached and only updated when user refreshes page
-        console.log('[Overview] Auto-refresh disabled - data will only refresh on page load');
+        debugLog('[Overview] Auto-refresh disabled - data will only refresh on page load');
         
         // ========== PRICE CHANGE ALERT SYSTEM ==========
         
         function checkExistingLinksAndAlert() {
-            console.log('[Overview] Checking for existing links...');
+            debugLog('[Overview] Checking for existing links...');
             $.ajax({
                 url: agentHubData.ajaxUrl,
                 type: 'POST',
@@ -332,7 +339,7 @@
                     nonce: agentHubData.nonce
                 },
                 success: function(response) {
-                    console.log('[Overview] Check links response:', response);
+                    debugLog('[Overview] Check links response:', response);
                     if (response.success && response.data.has_links) {
                         showPriceChangeAlert(response.data.link_count);
                     }
@@ -344,7 +351,7 @@
         }
         
         function showPriceChangeAlert(linkCount) {
-            console.log('[Overview] Showing price change alert for', linkCount, 'links');
+            debugLog('[Overview] Showing price change alert for', linkCount, 'links');
             
             // Remove any existing alerts
             $('#price-change-alert').remove();
