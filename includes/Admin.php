@@ -385,7 +385,7 @@ class Admin {
             'site' => [
                 'url' => $api_endpoint . '/get-site-analytics?site_id=' . $site_id . '&period=' . $timeframe,
                 'type' => 'GET',
-                'timeout' => 3,
+                'timeout' => 8, // Increased from 3 to 8 seconds
                 'headers' => [
                     'Authorization' => 'Bearer ' . $api_key,
                     'Content-Type' => 'application/json'
@@ -394,7 +394,7 @@ class Admin {
             'ecosystem' => [
                 'url' => $api_endpoint . '/wordpress-ecosystem-stats',
                 'type' => 'POST',
-                'timeout' => 3,
+                'timeout' => 8, // Increased from 3 to 8 seconds
                 'data' => ['timeframe' => $timeframe],
                 'headers' => [
                     'Authorization' => 'Bearer ' . $api_key,

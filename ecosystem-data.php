@@ -63,29 +63,45 @@ $request_body = [
 $start_time = microtime(true);
 
 $response = wp_remote_post($edge_function_url, [
-    'timeout' => 8,
+    'timeout' => 10, // Increased from 8 to 10 seconds
+    'redirection' => 0, // Disable redirects to prevent delays
     'headers' => [
         'Content-Type' => 'application/json',
         'Authorization' => 'Bearer ' . $api_key,
         'x-site-id' => $site_id
     ],
-    'body' => json_encode($request_body)
+    'body' => json_encode($request_body),
+    'sslverify' => true // Ensure SSL verification
 ]);
 
 // Handle errors - serve last-known-good if available
 if (is_wp_error($response)) {
     $error_message = $response->get_error_message();
-    error_log('[ecosystem-data.php] ❌ WP Error: ' . $error_message);
+    $error_code = $response->get_error_code();
+    error_log('[ecosystem-data.php] ❌ WP Error [' . $error_code . ']: ' . $error_message);
+    
+    // Log additional error details for debugging
+    if ($error_code === 'http_request_failed') {
+        error_log('[ecosystem-data.php] ⚠️ Network error - possible timeout or DNS issue');
+    }
     
     if ($cached) {
         error_log('[ecosystem-data.php] ⚠️ Serving cached data (WP error fallback)');
-        $cached['cache'] = ($cached['cache'] ?? []) + ['served_from_wp_cache' => true, 'stale' => true];
+        $cached['cache'] = ($cached['cache'] ?? []) + [
+            'served_from_wp_cache' => true, 
+            'stale' => true,
+            'error_reason' => $error_code
+        ];
         header('Content-Type: application/json');
         echo json_encode($cached);
         exit;
     }
     
-    wp_send_json_error(['message' => 'edge_unreachable']);
+    wp_send_json_error([
+        'message' => 'edge_unreachable',
+        'error' => $error_message,
+        'error_code' => $error_code
+    ]);
     exit;
 }
 

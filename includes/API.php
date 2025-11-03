@@ -916,7 +916,9 @@ class API {
         
         $args = [
             'method' => $method,
-            'timeout' => 3, // Reduced timeout for faster failures
+            'timeout' => 8, // Increased from 3 to 8 seconds for stability
+            'redirection' => 0, // Disable redirects to prevent delays
+            'sslverify' => true, // Ensure SSL verification
             'headers' => [
                 'Content-Type' => 'application/json',
                 'Authorization' => 'Bearer ' . $this->api_key
