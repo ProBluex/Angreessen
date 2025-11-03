@@ -385,7 +385,7 @@ class Admin {
             'site' => [
                 'url' => $api_endpoint . '/get-site-analytics?site_id=' . $site_id . '&period=' . $timeframe,
                 'type' => 'GET',
-                'timeout' => 8,
+                'timeout' => 3,
                 'headers' => [
                     'Authorization' => 'Bearer ' . $api_key,
                     'Content-Type' => 'application/json'
@@ -394,7 +394,7 @@ class Admin {
             'ecosystem' => [
                 'url' => $api_endpoint . '/wordpress-ecosystem-stats',
                 'type' => 'POST',
-                'timeout' => 8,
+                'timeout' => 3,
                 'data' => ['timeframe' => $timeframe],
                 'headers' => [
                     'Authorization' => 'Bearer ' . $api_key,
@@ -432,8 +432,10 @@ class Admin {
         error_log('[Admin.php] 🌍 ecosystem_result success: ' . ($ecosystem_result['success'] ? 'true' : 'false'));
         
         if (($site_result['success'] ?? false) || ($ecosystem_result['success'] ?? false)) {
-            // Prevent caching of AJAX response
-            nocache_headers();
+            // Add cache-busting headers
+            header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+            header('Pragma: no-cache');
+            header('Expires: 0');
             
             // Normalize shapes to avoid collisions (note key names!)
             $site_data = $site_result['data'] ?? $site_result ?? [];
@@ -779,15 +781,6 @@ class Admin {
         $limit = intval($_POST['limit'] ?? 10);
         $offset = intval($_POST['offset'] ?? 0);
         
-        // 10-second transient cache to prevent rapid re-requests on tab switching
-        $cache_key = "agent_hub_top_pages_{$timeframe}_{$limit}_{$offset}";
-        $cached = get_transient($cache_key);
-        if ($cached !== false) {
-            error_log('🟦 [Admin] Returning cached top pages');
-            wp_send_json_success($cached);
-            return;
-        }
-        
         error_log('🟦 [Admin] Calling API with: timeframe=' . $timeframe . ', limit=' . $limit . ', offset=' . $offset);
         
         $site_id = get_option('402links_site_id');
@@ -800,7 +793,6 @@ class Admin {
         
         if ($result['success']) {
             error_log('🟢 [Admin] Sending success response with ' . count($result['pages'] ?? []) . ' pages');
-            set_transient($cache_key, $result, 10); // Cache for 10 seconds
             wp_send_json_success($result);
         } else {
             error_log('🔴 [Admin] Sending error response: ' . ($result['error'] ?? 'Unknown error'));
