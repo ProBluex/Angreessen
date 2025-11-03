@@ -3,7 +3,7 @@
  * Plugin Name: Tolliver - Ai Agent Pay Collector
  * Plugin URI: https://402links.com
  * Description: Convert any WordPress page into a paid API endpoint using HTTP 402 - requiring payment before AI agents access your content.
- * Version:           3.16.0
+ * Version:           3.16.1
  * Author: Tolliver Team
  * Author URI: https://402links.com
  * License: MIT
@@ -20,7 +20,7 @@ if (!function_exists('get_file_data')) {
     require_once(ABSPATH . 'wp-includes/functions.php');
 }
 $header = get_file_data(__FILE__, ['Version' => 'Version'], 'plugin');
-define('AGENT_HUB_VERSION', $header['Version'] ?: '3.16.0');
+define('AGENT_HUB_VERSION', $header['Version'] ?: '3.16.1');
 define('AGENT_HUB_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('AGENT_HUB_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('AGENT_HUB_PLUGIN_FILE', __FILE__);
@@ -52,36 +52,91 @@ add_action('init', function() {
     );
 }, 10);
 
-// GitHub Auto-Update Integration - deferred to admin_init to avoid early translation triggers
-add_action('admin_init', function () {
-    static $booted = false;
-    if ($booted) return;                 // One-time guard per request
-    if (wp_doing_ajax()) return;         // Skip AJAX requests
-    if (defined('WP_INSTALLING') && WP_INSTALLING) return; // Skip installation
+// GitHub Auto-Update Integration - dual hook strategy
+// Hook 1: plugins_loaded for wp-cron and admin (enables background updates)
+add_action('plugins_loaded', function () {
+    static $puc_initialized = false;
+    
+    // Prevent double initialization
+    if ($puc_initialized) return;
+    
+    // Only initialize in admin context or during cron
+    if (!is_admin() && !wp_doing_cron()) return;
+    
+    // Skip during AJAX requests
+    if (wp_doing_ajax()) return;
+    
+    // Skip during WordPress installation
+    if (defined('WP_INSTALLING') && WP_INSTALLING) return;
     
     // Skip during plugin activation flow
     $action = isset($_GET['action']) ? sanitize_key($_GET['action']) : '';
     if (in_array($action, ['activate', 'activate-plugin'], true)) return;
 
-    // Deferred include: load vendor only now, NOT at file scope
+    // Load PUC library
     $puc_path = AGENT_HUB_PLUGIN_DIR . 'vendor/plugin-update-checker/plugin-update-checker.php';
     if (!class_exists('YahnisElsts\\PluginUpdateChecker\\v5p6\\PucFactory') && file_exists($puc_path)) {
         require_once $puc_path;
     }
 
-    // Instantiate PUC now that WordPress is fully ready
+    // Initialize PUC
     if (class_exists('YahnisElsts\\PluginUpdateChecker\\v5p6\\PucFactory')) {
-        $booted = true;
+        $puc_initialized = true;
+        
         $updateChecker = YahnisElsts\PluginUpdateChecker\v5p6\PucFactory::buildUpdateChecker(
-            'https://github.com/ProBluex/wordpress-plugin-aiagentpaywall',
+            'https://github.com/ProBluex/Tolliver',
             AGENT_HUB_PLUGIN_FILE,
             'tolliver-agent'
         );
+        
         $updateChecker->getVcsApi()->enableReleaseAssets();
         $updateChecker->setBranch('main');
 
         if (defined('WP_DEBUG') && WP_DEBUG) {
-            error_log('Tolliver: PUC initialized on admin_init');
+            $context = wp_doing_cron() ? 'wp-cron' : 'admin';
+            error_log("Tolliver PUC: Initialized on plugins_loaded (context: {$context})");
+        }
+    }
+}, 20); // Priority 20 to run after most plugins are loaded
+
+// Hook 2: admin_init as fallback (for edge cases)
+add_action('admin_init', function () {
+    static $puc_initialized = false;
+    
+    // Prevent double initialization
+    if ($puc_initialized) return;
+    
+    // Skip during AJAX requests
+    if (wp_doing_ajax()) return;
+    
+    // Skip during WordPress installation
+    if (defined('WP_INSTALLING') && WP_INSTALLING) return;
+    
+    // Skip during plugin activation flow
+    $action = isset($_GET['action']) ? sanitize_key($_GET['action']) : '';
+    if (in_array($action, ['activate', 'activate-plugin'], true)) return;
+
+    // Load PUC library
+    $puc_path = AGENT_HUB_PLUGIN_DIR . 'vendor/plugin-update-checker/plugin-update-checker.php';
+    if (!class_exists('YahnisElsts\\PluginUpdateChecker\\v5p6\\PucFactory') && file_exists($puc_path)) {
+        require_once $puc_path;
+    }
+
+    // Initialize PUC
+    if (class_exists('YahnisElsts\\PluginUpdateChecker\\v5p6\\PucFactory')) {
+        $puc_initialized = true;
+        
+        $updateChecker = YahnisElsts\PluginUpdateChecker\v5p6\PucFactory::buildUpdateChecker(
+            'https://github.com/ProBluex/Tolliver',
+            AGENT_HUB_PLUGIN_FILE,
+            'tolliver-agent'
+        );
+        
+        $updateChecker->getVcsApi()->enableReleaseAssets();
+        $updateChecker->setBranch('main');
+
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('Tolliver PUC: Initialized on admin_init (fallback)');
         }
     }
 }, 12);
