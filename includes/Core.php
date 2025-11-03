@@ -3,6 +3,18 @@ namespace AgentHub;
 
 class Core {
     public function init() {
+        // One-time migration: fix typo in meta key (missing 's' after '402link')
+        if (!get_option('402links_block_humans_migrated')) {
+            global $wpdb;
+            $wpdb->query("
+                UPDATE {$wpdb->postmeta} 
+                SET meta_key = '_402links_block_humans' 
+                WHERE meta_key = '_402link_block_humans'
+            ");
+            update_option('402links_block_humans_migrated', '1');
+            error_log('402links: Migrated _402link_block_humans to _402links_block_humans');
+        }
+        
         // Agent interception (BEFORE WordPress serves content)
         add_action('template_redirect', [PaymentGate::class, 'intercept_request'], 1);
         
