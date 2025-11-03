@@ -141,6 +141,121 @@ add_action('admin_init', function () {
     }
 }, 12);
 
+// Add cache-clearing mechanism for PUC updates
+add_action('admin_init', function() {
+    // Handle manual cache clear request
+    if (isset($_GET['tolliver_clear_update_cache']) && current_user_can('update_plugins')) {
+        check_admin_referer('tolliver-clear-cache');
+        
+        // Clear all PUC-related caches
+        delete_site_option('external_updates-tolliver-agent');
+        delete_site_transient('puc_request_info_result-tolliver-agent');
+        delete_transient('puc_request_info_result-tolliver-agent');
+        
+        // Clear WordPress plugin update cache
+        delete_site_transient('update_plugins');
+        
+        // Force PUC to check immediately
+        if (function_exists('wp_update_plugins')) {
+            wp_update_plugins();
+        }
+        
+        wp_redirect(admin_url('plugins.php?tolliver_cache_cleared=1'));
+        exit;
+    }
+    
+    // Show success notice
+    if (isset($_GET['tolliver_cache_cleared'])) {
+        add_action('admin_notices', function() {
+            echo '<div class="notice notice-success is-dismissible">';
+            echo '<p><strong>Tolliver:</strong> Update cache cleared! Please check for updates again.</p>';
+            echo '</div>';
+        });
+    }
+}, 15);
+
+// Auto-clear cache if version mismatch detected
+add_action('admin_init', function() {
+    // Only check on plugins page
+    $screen = get_current_screen();
+    if (!$screen || $screen->id !== 'plugins') {
+        return;
+    }
+    
+    // Get cached update info
+    $cached_update = get_site_option('external_updates-tolliver-agent');
+    
+    if ($cached_update && isset($cached_update->update)) {
+        $cached_version = $cached_update->update->version ?? null;
+        $current_version = AGENT_HUB_VERSION;
+        
+        // If cached version shows "no update" but we're not on that version,
+        // the cache is stale
+        if ($cached_version && version_compare($current_version, $cached_version, '=')) {
+            // Check GitHub directly for newer version
+            $github_api_url = 'https://api.github.com/repos/ProBluex/Tolliver/releases/latest';
+            $response = wp_remote_get($github_api_url, ['timeout' => 5]);
+            
+            if (!is_wp_error($response)) {
+                $release = json_decode(wp_remote_retrieve_body($response), true);
+                $latest_version = isset($release['tag_name']) ? ltrim($release['tag_name'], 'v') : null;
+                
+                // If GitHub has a newer version, clear cache
+                if ($latest_version && version_compare($current_version, $latest_version, '<')) {
+                    delete_site_option('external_updates-tolliver-agent');
+                    delete_site_transient('update_plugins');
+                    
+                    if (defined('WP_DEBUG') && WP_DEBUG) {
+                        error_log("Tolliver: Auto-cleared stale cache (current: {$current_version}, GitHub: {$latest_version})");
+                    }
+                }
+            }
+        }
+    }
+}, 20);
+
+// Add "Clear Update Cache" action link on plugins page
+add_filter('plugin_action_links_' . plugin_basename(AGENT_HUB_PLUGIN_FILE), function($links) {
+    if (current_user_can('update_plugins')) {
+        $clear_cache_url = wp_nonce_url(
+            admin_url('admin.php?tolliver_clear_update_cache=1'),
+            'tolliver-clear-cache'
+        );
+        $clear_cache_link = sprintf(
+            '<a href="%s" style="color: #d63638;">%s</a>',
+            esc_url($clear_cache_url),
+            __('Clear Update Cache', 'tolliver-agent')
+        );
+        array_unshift($links, $clear_cache_link);
+    }
+    return $links;
+}, 10, 1);
+
+// Add custom update checker button on plugins page
+add_action('admin_footer', function() {
+    $screen = get_current_screen();
+    if ($screen && $screen->id === 'plugins') {
+        ?>
+        <script>
+        jQuery(document).ready(function($) {
+            // Add custom check button for Tolliver updates
+            const clearCacheUrl = '<?php echo wp_nonce_url(admin_url('admin.php?tolliver_clear_update_cache=1'), 'tolliver-clear-cache'); ?>';
+            
+            $('<a>', {
+                href: clearCacheUrl,
+                class: 'button button-secondary',
+                text: 'Check Tolliver Updates',
+                css: {
+                    marginLeft: '10px',
+                    marginTop: '10px'
+                }
+            }).insertAfter($('.subsubsub'));
+        });
+        </script>
+        <?php
+    }
+});
+
 // Activation hook - now using Installer class
 register_activation_hook(__FILE__, ['\AgentHub\Installer', 'activate']);
 register_activation_hook(__FILE__, 'agent_hub_activate');

@@ -65,6 +65,14 @@ The plugin automatically exposes payment metadata through the x402 protocol that
 
 == Changelog ==
 
+= 3.16.2 =
+* Fixed: Plugin update checker cache causing "already at latest version" errors
+* Added: Manual cache clearing mechanism for GitHub-hosted updates
+* Added: "Clear Update Cache" action link on plugins page
+* Added: "Check Tolliver Updates" button on plugins page
+* Improved: Automatic detection and clearing of stale update cache
+* Enhanced: Direct GitHub API check for version verification
+
 = 3.16.1 =
 * Fixed: Auto-update mechanism now works with background WordPress update checks
 * Fixed: Plugin Update Checker initializes during wp-cron for reliable update detection
