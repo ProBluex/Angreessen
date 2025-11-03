@@ -292,3 +292,6 @@ add_action('init', function() {
         $core->init();
     }
 }, 13); // Priority 13 ensures it runs after textdomain loading and update checker
+
+// Register AJAX handler for site recovery
+add_action('wp_ajax_request_site_recovery', ['\AgentHub\Admin', 'ajax_request_site_recovery']);
