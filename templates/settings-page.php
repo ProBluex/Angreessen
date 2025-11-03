@@ -13,12 +13,6 @@ $is_connected = !empty($api_key) && !empty($site_id);
         Tolliver - Ai Agent Pay Collector
     </h1>
     
-    <?php if ($site_id): ?>
-        <p style="margin: 8px 0 16px 0; color: #666; font-size: 14px;">
-            Site ID: <code style="background: #f0f0f1; padding: 2px 6px; border-radius: 3px; font-family: monospace;"><?php echo esc_html($site_id); ?></code>
-        </p>
-    <?php endif; ?>
-    
     <div class="agent-hub-connection-status">
         <?php if ($is_connected): ?>
             <span class="status-badge connected">
@@ -102,6 +96,24 @@ $is_connected = !empty($api_key) && !empty($site_id);
         
         <div class="agent-hub-config-card">
             <h3><span class="dashicons dashicons-admin-settings"></span> Configuration</h3>
+            
+            <?php if ($site_id): ?>
+                <div class="config-site-id">
+                    <span class="site-id-label">Site ID:</span>
+                    <?php if ($is_connected): ?>
+                        <span class="site-id-badge connected">
+                            <span class="dashicons dashicons-yes-alt"></span>
+                            <code><?php echo esc_html($site_id); ?></code>
+                        </span>
+                    <?php else: ?>
+                        <span class="site-id-badge disconnected">
+                            <span class="dashicons dashicons-warning"></span>
+                            <code><?php echo esc_html($site_id); ?></code>
+                        </span>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
+            
             <div class="config-fields">
                 <div class="config-field">
                     <label for="overview-payment-wallet">
