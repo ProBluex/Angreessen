@@ -62,17 +62,35 @@ $request_body = [
 
 $start_time = microtime(true);
 
-$response = wp_remote_post($edge_function_url, [
-    'timeout' => 10, // Increased from 8 to 10 seconds
-    'redirection' => 0, // Disable redirects to prevent delays
-    'headers' => [
-        'Content-Type' => 'application/json',
-        'Authorization' => 'Bearer ' . $api_key,
-        'x-site-id' => $site_id
-    ],
-    'body' => json_encode($request_body),
-    'sslverify' => true // Ensure SSL verification
-]);
+// Retry logic for handling cold starts and transient failures
+$max_retries = 2;
+$retry_count = 0;
+$response = null;
+
+while ($retry_count <= $max_retries) {
+    $response = wp_remote_post($edge_function_url, [
+        'timeout' => 15, // Increased from 10 to 15 seconds for cold starts
+        'redirection' => 0, // Disable redirects to prevent delays
+        'headers' => [
+            'Content-Type' => 'application/json',
+            'Authorization' => 'Bearer ' . $api_key,
+            'x-site-id' => $site_id
+        ],
+        'body' => json_encode($request_body),
+        'sslverify' => true // Ensure SSL verification
+    ]);
+    
+    // If successful or last retry, break
+    if (!is_wp_error($response) || $retry_count === $max_retries) {
+        break;
+    }
+    
+    // Exponential backoff: 500ms, 1000ms, 2000ms
+    $retry_count++;
+    $wait_ms = pow(2, $retry_count) * 250;
+    usleep($wait_ms * 1000);
+    error_log('[ecosystem-data.php] ⚠️ Retry ' . $retry_count . '/' . $max_retries . ' after ' . $wait_ms . 'ms');
+}
 
 // Handle errors - serve last-known-good if available
 if (is_wp_error($response)) {
