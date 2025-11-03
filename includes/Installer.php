@@ -32,16 +32,6 @@ class Installer {
             $result = self::attempt_provision();
             
             if ($result['success']) {
-                // Handle re-provisioning
-                if (isset($result['data']) && isset($result['data']['re_provisioned'])) {
-                    update_option('402links_api_key', $result['data']['api_key'] ?? '');
-                    update_option('402links_site_id', $result['data']['site_id'] ?? '');
-                    delete_option('402links_needs_recovery');
-                    error_log('✅ [Installer] Site automatically re-provisioned with new API key');
-                    update_option('402links_provisioning_success', true);
-                    return;
-                }
-                
                 // Store credentials on success
                 if (isset($result['api_key'])) {
                     update_option('402links_api_key', $result['api_key']);
@@ -61,14 +51,6 @@ class Installer {
                     update_option('402links_provisioning_info', 'Site was already registered. Please contact support if you need your API key.');
                     return;
                 }
-            } elseif (isset($result['needs_recovery']) && $result['needs_recovery']) {
-                // Handle recovery scenario
-                update_option('402links_needs_recovery', true);
-                update_option('402links_site_id', $result['data']['site_id'] ?? '');
-                update_option('402links_recovery_email', $result['data']['owner_email'] ?? get_option('admin_email'));
-                error_log('⚠️ [Installer] Site needs recovery - fingerprint mismatch detected');
-                update_option('402links_provisioning_error', 'Site recovery required. Check admin dashboard for recovery options.');
-                return;
             }
             
             // If not last attempt, wait before retry
@@ -119,26 +101,15 @@ class Installer {
         $body = wp_remote_retrieve_body($response);
         $result = json_decode($body, true);
         
-        if ($result && isset($result['success'])) {
-            if ($result['success'] === true) {
-                // Handle re-provisioning scenario
-                if (isset($result['re_provisioned']) && $result['re_provisioned'] === true) {
-                    return ['success' => true, 'data' => $result];
-                }
-                
-                // Standard provisioning - return full result
-                return ['success' => true] + $result;
-            } else {
-                // Check if recovery is needed
-                if (isset($result['needs_recovery']) && $result['needs_recovery'] === true) {
-                    return ['success' => false, 'needs_recovery' => true, 'data' => $result];
-                }
-                
-                return ['success' => false, 'error' => $result['message'] ?? $result['error'] ?? 'Unknown error'];
-            }
+        if (!isset($result['success']) || !$result['success']) {
+            return [
+                'success' => false,
+                'error' => $result['error'] ?? 'Unknown error'
+            ];
         }
         
-        return ['success' => false, 'error' => 'Invalid response from server'];
+        // Return the full result for processing by auto_provision()
+        return array_merge(['success' => true], $result);
     }
     
     /**

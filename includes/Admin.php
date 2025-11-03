@@ -11,48 +11,6 @@ class Admin {
         $wallet = $settings['payment_wallet'] ?? '';
         $site_id = get_option('402links_site_id');
         
-        // Show recovery notice if needed
-        if (get_option('402links_needs_recovery')) {
-            $recovery_email = get_option('402links_recovery_email', get_option('admin_email'));
-            ?>
-            <div class="notice notice-warning">
-                <p><strong>🔐 Tolliver - Recovery Required:</strong> Your site was previously registered from a different WordPress installation.</p>
-                <p>For security, please verify your identity to reconnect. We'll send a recovery link to: <strong><?php echo esc_html($recovery_email); ?></strong></p>
-                <p>
-                    <button type="button" class="button button-primary" id="request-recovery-btn">
-                        <span class="dashicons dashicons-email-alt"></span> Send Recovery Email
-                    </button>
-                    <span id="recovery-status" style="margin-left: 10px;"></span>
-                </p>
-            </div>
-            <script>
-            jQuery(document).ready(function($) {
-                $('#request-recovery-btn').on('click', function() {
-                    var btn = $(this);
-                    var status = $('#recovery-status');
-                    
-                    btn.prop('disabled', true);
-                    status.html('<span class="spinner is-active" style="float:none;"></span> Sending...');
-                    
-                    $.post(ajaxurl, {
-                        action: 'request_site_recovery',
-                        nonce: '<?php echo wp_create_nonce('agent_hub_nonce'); ?>'
-                    }, function(response) {
-                        if (response.success) {
-                            status.html('<span style="color: #46b450;">✓ Recovery email sent! Check your inbox.</span>');
-                        } else {
-                            status.html('<span style="color: #dc3232;">✗ ' + (response.data.message || 'Failed to send recovery email') + '</span>');
-                            btn.prop('disabled', false);
-                        }
-                    }).fail(function() {
-                        status.html('<span style="color: #dc3232;">✗ Network error. Please try again.</span>');
-                        btn.prop('disabled', false);
-                    });
-                });
-            });
-            </script>
-            <?php
-        }
         
         // Show success notice
         if (get_option('402links_provisioning_success')) {
@@ -1083,34 +1041,6 @@ class Admin {
         
         $api = new API();
         $result = $api->update_site_bot_policies($site_id, $policies);
-        
-        if ($result['success']) {
-            wp_send_json_success($result);
-        } else {
-            wp_send_json_error($result);
-        }
-    }
-    
-    /**
-     * AJAX: Request site recovery
-     */
-    public static function ajax_request_site_recovery() {
-        check_ajax_referer('agent_hub_nonce', 'nonce');
-        
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(['message' => 'Unauthorized']);
-        }
-        
-        $site_id = get_option('402links_site_id');
-        $admin_email = get_option('402links_recovery_email', get_option('admin_email'));
-        $site_url = get_site_url();
-        
-        if (!$site_id) {
-            wp_send_json_error(['message' => 'Site ID not found']);
-        }
-        
-        $api = new API();
-        $result = $api->request_site_recovery($site_id, $admin_email, $site_url);
         
         if ($result['success']) {
             wp_send_json_success($result);
