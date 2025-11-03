@@ -3,7 +3,7 @@
  * Plugin Name: Tolliver - Ai Agent Pay Collector
  * Plugin URI: https://402links.com
  * Description: Convert any WordPress page into a paid API endpoint using HTTP 402 - requiring payment before AI agents access your content.
- * Version:           3.15.3
+ * Version:           3.15.7
  * Author: Tolliver Team
  * Author URI: https://402links.com
  * License: MIT
@@ -15,12 +15,12 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-// Dynamically extract version from plugin header to maintain single source of truth
-if (!function_exists('get_plugin_data')) {
-    require_once(ABSPATH . 'wp-admin/includes/plugin.php');
+// Use get_file_data instead of get_plugin_data to avoid early translation triggers
+if (!function_exists('get_file_data')) {
+    require_once(ABSPATH . 'wp-includes/functions.php');
 }
-$plugin_data = get_plugin_data(__FILE__);
-define('AGENT_HUB_VERSION', '3.15.3');
+$header = get_file_data(__FILE__, ['Version' => 'Version'], 'plugin');
+define('AGENT_HUB_VERSION', $header['Version'] ?: '3.15.7');
 define('AGENT_HUB_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('AGENT_HUB_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('AGENT_HUB_PLUGIN_FILE', __FILE__);
@@ -43,32 +43,48 @@ spl_autoload_register(function ($class) {
     }
 });
 
-// GitHub Auto-Update Integration
-if (file_exists(AGENT_HUB_PLUGIN_DIR . 'vendor/plugin-update-checker/plugin-update-checker.php')) {
-    require_once AGENT_HUB_PLUGIN_DIR . 'vendor/plugin-update-checker/plugin-update-checker.php';
-    
-    $updateChecker = YahnisElsts\PluginUpdateChecker\v5p6\PucFactory::buildUpdateChecker(
-        'https://github.com/ProBluex/wordpress-plugin-aiagentpaywall',
-        __FILE__,
-        'tolliver-agent'
+// Load text domain at the correct time (WordPress 6.7+ requirement)
+add_action('init', function() {
+    load_plugin_textdomain(
+        'tolliver-agent',
+        false,
+        dirname(plugin_basename(AGENT_HUB_PLUGIN_FILE)) . '/languages'
     );
+}, 10);
+
+// GitHub Auto-Update Integration - deferred to admin_init to avoid early translation triggers
+add_action('admin_init', function () {
+    static $booted = false;
+    if ($booted) return;                 // One-time guard per request
+    if (wp_doing_ajax()) return;         // Skip AJAX requests
+    if (defined('WP_INSTALLING') && WP_INSTALLING) return; // Skip installation
     
-    // Use GitHub Releases for updates (more reliable than branch commits)
-    $updateChecker->getVcsApi()->enableReleaseAssets();
-    
-    // Set branch as fallback if no releases exist
-    $updateChecker->setBranch('main');
-    
-    // Add update check logging for debugging (only in WP_DEBUG mode)
-    if (defined('WP_DEBUG') && WP_DEBUG) {
-        add_action('puc_check_now-tolliver-agent', function() {
-            error_log('Tolliver - Ai Agent Pay Collector: Checking for updates from GitHub...');
-        });
+    // Skip during plugin activation flow
+    $action = isset($_GET['action']) ? sanitize_key($_GET['action']) : '';
+    if (in_array($action, ['activate', 'activate-plugin'], true)) return;
+
+    // Deferred include: load vendor only now, NOT at file scope
+    $puc_path = AGENT_HUB_PLUGIN_DIR . 'vendor/plugin-update-checker/plugin-update-checker.php';
+    if (!class_exists('YahnisElsts\\PluginUpdateChecker\\v5p6\\PucFactory') && file_exists($puc_path)) {
+        require_once $puc_path;
     }
-    
-    // Optional: Uncomment for private repos (requires GitHub Personal Access Token)
-    // $updateChecker->setAuthentication('YOUR_GITHUB_TOKEN_HERE');
-}
+
+    // Instantiate PUC now that WordPress is fully ready
+    if (class_exists('YahnisElsts\\PluginUpdateChecker\\v5p6\\PucFactory')) {
+        $booted = true;
+        $updateChecker = YahnisElsts\PluginUpdateChecker\v5p6\PucFactory::buildUpdateChecker(
+            'https://github.com/ProBluex/wordpress-plugin-aiagentpaywall',
+            AGENT_HUB_PLUGIN_FILE,
+            'tolliver-agent'
+        );
+        $updateChecker->getVcsApi()->enableReleaseAssets();
+        $updateChecker->setBranch('main');
+
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('Tolliver: PUC initialized on admin_init');
+        }
+    }
+}, 12);
 
 // Activation hook - now using Installer class
 register_activation_hook(__FILE__, ['\AgentHub\Installer', 'activate']);
@@ -96,6 +112,16 @@ function agent_hub_activate() {
     
     require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
     dbDelta($sql);
+    
+    // One-time migration: fix typo in meta key (missing 's' after '402link')
+    if (!get_option('402links_block_humans_migrated')) {
+        $wpdb->query("
+            UPDATE {$wpdb->postmeta} 
+            SET meta_key = '_402links_block_humans' 
+            WHERE meta_key = '_402link_block_humans'
+        ");
+        update_option('402links_block_humans_migrated', '1');
+    }
     
     // Set default options
     if (!get_option('402links_settings')) {
@@ -130,8 +156,10 @@ function agent_hub_deactivate() {
     flush_rewrite_rules();
 }
 
-// Initialize plugin
-add_action('plugins_loaded', function() {
-    $core = new AgentHub\Core();
-    $core->init();
-});
+// Initialize plugin core after translations are ready
+add_action('init', function() {
+    if (class_exists('\AgentHub\Core')) {
+        $core = new \AgentHub\Core();
+        $core->init();
+    }
+}, 13); // Priority 13 ensures it runs after textdomain loading and update checker
