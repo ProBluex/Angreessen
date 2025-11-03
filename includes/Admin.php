@@ -141,15 +141,6 @@ class Admin {
             true
         );
         
-        // Recovery modal depends on admin.js
-        wp_enqueue_script(
-            'agent-hub-recovery-modal',
-            AGENT_HUB_PLUGIN_URL . 'assets/js/recovery-modal.js',
-            ['jquery', 'agent-hub-admin'],
-            AGENT_HUB_VERSION,
-            true
-        );
-        
         // Violations depends on admin.js
         wp_enqueue_script(
             'agent-hub-violations',
@@ -1056,80 +1047,5 @@ class Admin {
         } else {
             wp_send_json_error($result);
         }
-    }
-    
-    /**
-     * AJAX handler for account recovery
-     */
-    public static function ajax_recover_site() {
-        check_ajax_referer('agent_hub_nonce', 'nonce');
-        
-        $api_key = sanitize_text_field($_POST['api_key'] ?? '');
-        
-        // Validate API key format
-        if (empty($api_key) || !preg_match('/^4l_(live|test)_[a-zA-Z0-9]+$/', $api_key)) {
-            wp_send_json_error([
-                'message' => 'Invalid API key format. Must start with 4l_live_ or 4l_test_'
-            ]);
-            return;
-        }
-        
-        error_log('402links: Recovery attempt with API key: ' . substr($api_key, 0, 15) . '...');
-        
-        // Get API endpoint from settings
-        $settings = get_option('402links_settings', []);
-        $api_endpoint = $settings['api_endpoint'] ?? 'https://cnionwnknwnzpwfuacse.supabase.co/functions/v1';
-        
-        // Call the validate-api-key-recovery edge function
-        $response = wp_remote_post($api_endpoint . '/validate-api-key-recovery', [
-            'method' => 'POST',
-            'headers' => [
-                'Content-Type' => 'application/json',
-            ],
-            'body' => json_encode(['api_key' => $api_key]),
-            'timeout' => 30,
-        ]);
-        
-        if (is_wp_error($response)) {
-            error_log('402links: Recovery connection error: ' . $response->get_error_message());
-            wp_send_json_error([
-                'message' => 'Connection failed: ' . $response->get_error_message()
-            ]);
-            return;
-        }
-        
-        $status_code = wp_remote_retrieve_response_code($response);
-        $body = json_decode(wp_remote_retrieve_body($response), true);
-        
-        error_log('402links: Recovery response status: ' . $status_code);
-        error_log('402links: Recovery response body: ' . print_r($body, true));
-        
-        // Handle error responses
-        if ($status_code !== 200 || !isset($body['success']) || !$body['success']) {
-            $error_message = $body['error'] ?? 'Invalid API key or site not found';
-            error_log('402links: Recovery failed: ' . $error_message);
-            wp_send_json_error([
-                'message' => $error_message
-            ]);
-            return;
-        }
-        
-        // Save credentials to WordPress options
-        update_option('402links_api_key', $api_key);
-        update_option('402links_site_id', $body['site_id']);
-        update_option('402links_site_name', $body['site_name']);
-        update_option('402links_default_price', $body['default_price']);
-        update_option('402links_default_currency', $body['default_currency']);
-        update_option('402links_default_chain_id', $body['default_chain_id']);
-        
-        error_log('402links: Site reconnected successfully - Site ID: ' . $body['site_id']);
-        
-        wp_send_json_success([
-            'message' => 'Site reconnected successfully!',
-            'site_id' => $body['site_id'],
-            'site_name' => $body['site_name'],
-            'default_price' => $body['default_price'],
-            'default_currency' => $body['default_currency'],
-        ]);
     }
 }

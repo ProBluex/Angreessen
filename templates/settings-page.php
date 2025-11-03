@@ -463,19 +463,9 @@ $is_connected = !empty($api_key) && !empty($site_id);
             </div>
         </div>
         
-        <!-- Contact Header -->
-        <div class="contact-header">
-            <h2>Contact Support</h2>
-            <p class="subtitle">Need help? We're here to assist you.</p>
-        </div>
-        
-        <!-- Two-Column Layout -->
-        <div class="contact-columns">
-            <!-- Left Column: Contact Form -->
-            <div class="contact-form-column">
-                <div class="section-card">
-                    <h3>Send Us a Message</h3>
-                    <form id="contact-form" class="contact-form">
+        <div class="contact-form-wrapper">
+            <h3>Send Us a Message</h3>
+            <form id="contact-form" class="contact-form">
                 <div class="form-row">
                     <div class="form-field">
                         <label for="contact-name">Name <span class="required">*</span></label>
@@ -519,88 +509,6 @@ $is_connected = !empty($api_key) && !empty($site_id);
                 <h3>Thank you - Message sent!</h3>
                 <p>We've received your message and will get back to you as soon as possible.</p>
                 <button class="button" id="send-another">Send Another Message</button>
-            </div>
-                </form>
-                </div>
-            </div>
-            
-            <!-- Right Column: Account Recovery -->
-            <div class="recovery-column">
-                <div class="section-card recovery-card">
-                    <div class="recovery-header">
-                        <span class="recovery-icon">
-                            <span class="dashicons dashicons-admin-network"></span>
-                        </span>
-                        <h3>Account Recovery</h3>
-                    </div>
-                    
-                    <p class="recovery-description">
-                        Reconnect your site using an API key from our support team.
-                    </p>
-                    
-                    <button type="button" class="button-recovery" id="open-recovery-modal">
-                        <span class="dashicons dashicons-admin-network"></span>
-                        Reconnect Site
-                    </button>
-                    
-                    <div class="recovery-note">
-                        <span class="dashicons dashicons-info-outline"></span>
-                        <span>If you've reinstalled the plugin, use this to restore your connection.</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    
-    <!-- Account Recovery Modal -->
-    <div id="recovery-modal" class="batch-modal" style="display: none;">
-        <div class="batch-modal-content recovery-modal-content">
-            <div class="recovery-modal-header">
-                <h2>
-                    <span class="dashicons dashicons-admin-network"></span>
-                    Account Recovery
-                </h2>
-                <button class="modal-close" id="recovery-modal-close">
-                    <span class="dashicons dashicons-no-alt"></span>
-                </button>
-            </div>
-            
-            <div class="recovery-modal-body">
-                <p class="recovery-description">
-                    If you received an API key from support, paste it below to reconnect your WordPress site 
-                    to the 402links network. This will restore your site configuration and allow AI agents 
-                    to resume purchasing content.
-                </p>
-                
-                <div class="form-field">
-                    <label for="recovery-api-key">API Key <span class="required">*</span></label>
-                    <input type="text" 
-                           id="recovery-api-key" 
-                           placeholder="4l_live_xxxxxxxxxxxxx" 
-                           class="regular-text code-input"
-                           autocomplete="off"
-                           spellcheck="false" />
-                    <span class="field-hint">Format: 4l_live_* or 4l_test_*</span>
-                    <span class="field-error" id="recovery-api-key-error"></span>
-                </div>
-                
-                <div id="recovery-result" class="recovery-result"></div>
-                
-                <div id="recovery-success" class="recovery-success" style="display: none;">
-                    <div class="success-icon-large">
-                        <span class="dashicons dashicons-yes-alt"></span>
-                    </div>
-                    <h3>Site Reconnected!</h3>
-                    <div id="recovery-site-info"></div>
-                    <p class="success-message">Your WordPress site is now connected to the 402links network.</p>
-                </div>
-            </div>
-            
-            <div class="recovery-modal-footer">
-                <button type="button" class="button" id="recovery-cancel">Cancel</button>
-                <button type="button" class="button button-primary" id="recovery-submit">
-                    <span class="dashicons dashicons-admin-network"></span>
-                    Reconnect Site
-                </button>
             </div>
         </div>
     </div>
