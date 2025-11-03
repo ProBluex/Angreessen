@@ -13,6 +13,12 @@ $is_connected = !empty($api_key) && !empty($site_id);
         Tolliver - Ai Agent Pay Collector
     </h1>
     
+    <?php if ($site_id): ?>
+        <p style="margin: 8px 0 16px 0; color: #666; font-size: 14px;">
+            Site ID: <code style="background: #f0f0f1; padding: 2px 6px; border-radius: 3px; font-family: monospace;"><?php echo esc_html($site_id); ?></code>
+        </p>
+    <?php endif; ?>
+    
     <div class="agent-hub-connection-status">
         <?php if ($is_connected): ?>
             <span class="status-badge connected">
