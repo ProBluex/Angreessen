@@ -463,28 +463,19 @@ $is_connected = !empty($api_key) && !empty($site_id);
             </div>
         </div>
         
-        <!-- Account Recovery Callout -->
-        <div class="recovery-callout">
-            <div class="recovery-callout-content">
-                <div class="recovery-callout-icon">
-                    <span class="dashicons dashicons-admin-network"></span>
-                </div>
-                <div class="recovery-callout-text">
-                    <h3>Need to Reconnect Your Site?</h3>
-                    <p>If you reinstalled the plugin or received a new API key from support, you can restore your site connection here.</p>
-                </div>
-                <div class="recovery-callout-action">
-                    <button type="button" class="button button-secondary" id="open-recovery-modal">
-                        <span class="dashicons dashicons-admin-network"></span>
-                        Account Recovery
-                    </button>
-                </div>
-            </div>
+        <!-- Contact Header -->
+        <div class="contact-header">
+            <h2>Contact Support</h2>
+            <p class="subtitle">Need help? We're here to assist you.</p>
         </div>
         
-        <div class="contact-form-wrapper">
-            <h3>Send Us a Message</h3>
-            <form id="contact-form" class="contact-form">
+        <!-- Two-Column Layout -->
+        <div class="contact-columns">
+            <!-- Left Column: Contact Form -->
+            <div class="contact-form-column">
+                <div class="section-card">
+                    <h3>Send Us a Message</h3>
+                    <form id="contact-form" class="contact-form">
                 <div class="form-row">
                     <div class="form-field">
                         <label for="contact-name">Name <span class="required">*</span></label>
@@ -529,8 +520,36 @@ $is_connected = !empty($api_key) && !empty($site_id);
                 <p>We've received your message and will get back to you as soon as possible.</p>
                 <button class="button" id="send-another">Send Another Message</button>
             </div>
+                </form>
+                </div>
+            </div>
+            
+            <!-- Right Column: Account Recovery -->
+            <div class="recovery-column">
+                <div class="section-card recovery-card">
+                    <div class="recovery-header">
+                        <span class="recovery-icon">
+                            <span class="dashicons dashicons-admin-network"></span>
+                        </span>
+                        <h3>Account Recovery</h3>
+                    </div>
+                    
+                    <p class="recovery-description">
+                        Reconnect your site using an API key from our support team.
+                    </p>
+                    
+                    <button type="button" class="button-recovery" id="open-recovery-modal">
+                        <span class="dashicons dashicons-admin-network"></span>
+                        Reconnect Site
+                    </button>
+                    
+                    <div class="recovery-note">
+                        <span class="dashicons dashicons-info-outline"></span>
+                        <span>If you've reinstalled the plugin, use this to restore your connection.</span>
+                    </div>
+                </div>
+            </div>
         </div>
-    </div>
     
     <!-- Account Recovery Modal -->
     <div id="recovery-modal" class="batch-modal" style="display: none;">
