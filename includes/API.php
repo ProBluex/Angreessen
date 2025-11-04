@@ -831,6 +831,7 @@ class API {
     
     /**
      * Get all site pages for sync purposes
+     * Uses service_role_key for direct database access (bypasses RLS)
      */
     public function get_site_pages($site_id) {
         $url = $this->supabase_url . '/rest/v1/site_pages?site_id=eq.' . $site_id . '&select=wordpress_post_id,paid_link_id,pricing_override,paid_links(short_id,price)';
@@ -844,12 +845,21 @@ class API {
         ]);
         
         if (is_wp_error($response)) {
+            error_log('[Tolliver v3.18.2] get_site_pages WP_Error: ' . $response->get_error_message());
             return ['success' => false, 'error' => $response->get_error_message()];
+        }
+        
+        $status_code = wp_remote_retrieve_response_code($response);
+        if ($status_code !== 200) {
+            $body = wp_remote_retrieve_body($response);
+            error_log('[Tolliver v3.18.2] get_site_pages HTTP ' . $status_code . ': ' . $body);
+            return ['success' => false, 'error' => 'HTTP ' . $status_code . ': Unable to fetch pages'];
         }
         
         $body = json_decode(wp_remote_retrieve_body($response), true);
         
         if (!is_array($body)) {
+            error_log('[Tolliver v3.18.2] get_site_pages invalid response format');
             return ['success' => false, 'error' => 'Invalid response from backend'];
         }
         
@@ -865,6 +875,7 @@ class API {
             }
         }
         
+        error_log('[Tolliver v3.18.2] get_site_pages success: ' . count($pages) . ' pages retrieved');
         return ['success' => true, 'pages' => $pages];
     }
     

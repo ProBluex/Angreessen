@@ -60,63 +60,7 @@ class Core {
         add_action('wp_ajax_agent_hub_sync_protection_status', [Admin::class, 'ajax_sync_protection_status']);
         add_action('wp_ajax_agent_hub_check_sync_status', [Admin::class, 'ajax_check_sync_status']);
         
-        // Clear protection AJAX handler
-        add_action('wp_ajax_agent_hub_clear_all_protection', [Admin::class, 'ajax_clear_all_protection']);
-        
         // REST API routes
         add_action('rest_api_init', [API::class, 'register_rest_routes']);
-        
-        // Admin notices
-        add_action('admin_notices', [self::class, 'admin_notices']);
-    }
-    
-    /**
-     * Plugin activation hook
-     */
-    public static function activate() {
-        // Check if site is already registered in backend
-        $site_id = get_option('402links_site_id');
-        $api_key = get_option('402links_api_key');
-        
-        if ($site_id && $api_key) {
-            // Site was previously registered - attempt auto-restore
-            error_log('402links: Detected existing site registration, attempting auto-restore...');
-            
-            $api = new API();
-            $result = $api->get_site_pages($site_id);
-            
-            if ($result['success']) {
-                $restored = 0;
-                foreach ($result['pages'] as $page) {
-                    $wp_post_id = $page['wordpress_post_id'];
-                    $post = get_post($wp_post_id);
-                    
-                    if ($post && $post->post_status === 'publish') {
-                        update_post_meta($wp_post_id, '_402links_id', $page['short_id']);
-                        update_post_meta($wp_post_id, '_402links_url', "https://402.so/{$page['short_id']}");
-                        update_post_meta($wp_post_id, '_402links_price', $page['price'] ?? 0.001);
-                        $restored++;
-                    }
-                }
-                
-                error_log("402links: Auto-restored {$restored} protected pages on plugin activation");
-                
-                // Set admin notice
-                set_transient('402links_activation_restored', $restored, 60);
-            }
-        }
-    }
-    
-    /**
-     * Admin notices
-     */
-    public static function admin_notices() {
-        $restored = get_transient('402links_activation_restored');
-        if ($restored !== false) {
-            echo '<div class="notice notice-success is-dismissible">';
-            echo '<p><strong>Tolliver Plugin Restored:</strong> Successfully reconnected ' . $restored . ' protected pages from your backend.</p>';
-            echo '</div>';
-            delete_transient('402links_activation_restored');
-        }
     }
 }

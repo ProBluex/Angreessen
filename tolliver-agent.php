@@ -3,7 +3,7 @@
  * Plugin Name: Tolliver - Ai Agent Pay Collector
  * Plugin URI: https://402links.com
  * Description: Convert any WordPress page into a paid API endpoint using HTTP 402 - requiring payment before AI agents access your content.
- * Version:           3.18.1
+ * Version:           3.18.2
  * Author: Tolliver Team
  * Author URI: https://402links.com
  * License: MIT
@@ -20,7 +20,7 @@ if (!function_exists('get_file_data')) {
     require_once(ABSPATH . 'wp-includes/functions.php');
 }
 $header = get_file_data(__FILE__, ['Version' => 'Version'], 'plugin');
-define('AGENT_HUB_VERSION', $header['Version'] ?: '3.18.0');
+define('AGENT_HUB_VERSION', $header['Version'] ?: '3.18.2');
 define('AGENT_HUB_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('AGENT_HUB_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('AGENT_HUB_PLUGIN_FILE', __FILE__);
@@ -217,7 +217,6 @@ add_action('admin_footer', function() {
 
 // Activation hook - now using Installer class
 register_activation_hook(__FILE__, ['\AgentHub\Installer', 'activate']);
-register_activation_hook(__FILE__, ['\AgentHub\Core', 'activate']);
 register_activation_hook(__FILE__, 'agent_hub_activate');
 function agent_hub_activate() {
     global $wpdb;

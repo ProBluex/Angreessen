@@ -27,6 +27,17 @@ $is_connected = !empty($api_key) && !empty($site_id);
         <?php endif; ?>
     </div>
     
+    <?php
+    // Show sync notice if site was recently reconnected with new API key
+    if (get_transient('402links_show_sync_notice')):
+    ?>
+    <div class="notice notice-warning is-dismissible" id="sync-protection-notice">
+        <p>
+            <strong>⚠️ Site reconnected successfully!</strong> 
+            Click "Sync Protection Status" below to restore your protected pages from the backend.
+        </p>
+    </div>
+    <?php endif; ?>
     
     <div class="agent-hub-tabs">
         <button class="tab-button active" data-tab="overview">
@@ -218,10 +229,6 @@ $is_connected = !empty($api_key) && !empty($site_id);
                 Refresh
             </button>
             <span id="post-count-indicator" style="margin-left: 15px; font-weight: 500; color: #666;"></span>
-            <button id="clear-all-protection" class="button button-secondary" style="margin-left: auto;">
-                <span class="dashicons dashicons-trash"></span>
-                Clear All Protection
-            </button>
         </div>
         
         <table class="wp-list-table widefat fixed striped" id="content-table">
