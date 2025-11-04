@@ -97,6 +97,10 @@
       } else {
         console.error('[admin.js] hub.loadContent is not defined yet');
       }
+      // Check sync status when switching to content tab
+      if (typeof checkSyncStatus === "function") {
+        checkSyncStatus();
+      }
     }
     
     debugLog('[admin.js] Tab activated:', tab);
@@ -182,6 +186,55 @@
       .fail(() => w.showToast("Error", "Network error. Please try again.", "error"))
       .always(() => $btn.prop("disabled", false).html(prev));
   });
+  
+  /* ---------- Sync Protection Status ---------- */
+  
+  // Check sync status when My Content tab is activated
+  function checkSyncStatus() {
+    ajaxPost("agent_hub_check_sync_status")
+      .done((res) => {
+        if (res?.success && res?.data?.needs_sync) {
+          $("#sync-mismatch-banner").show();
+          $("#sync-mismatch-message").text(res.data.message);
+        } else {
+          $("#sync-mismatch-banner").hide();
+        }
+      })
+      .fail(() => {
+        // Silently fail - don't show banner if check fails
+        $("#sync-mismatch-banner").hide();
+      });
+  }
+  
+  // Handle sync button click in My Content tab
+  $(document).on("click", "#sync-protection-status-content", function () {
+    const $btn = $(this);
+    const $banner = $("#sync-mismatch-banner");
+    const prev = $btn.html();
+    
+    $btn.prop("disabled", true).html('<span class="spinner is-active" style="float:none;"></span> Syncing...');
+
+    ajaxPost("agent_hub_sync_protection_status")
+      .done((res) => {
+        if (res?.success) {
+          w.showToast("Success", res?.data?.message || "Protection status synced!", "success");
+          $banner.hide();
+          
+          // Refresh content and overview stats
+          if (typeof hub.loadContent === "function") hub.loadContent();
+          if (w.agentHubOverview?.refreshStats) w.agentHubOverview.refreshStats();
+        } else {
+          w.showToast("Error", res?.data?.message || "Failed to sync protection status.", "error");
+        }
+      })
+      .fail(() => w.showToast("Error", "Network error. Please try again.", "error"))
+      .always(() => $btn.prop("disabled", false).html(prev));
+  });
+  
+  // Add CSS for spinning icon
+  $('<style>')
+    .text('.dashicons.spin { animation: spin 1s linear infinite; } @keyframes spin { 100% { transform: rotate(360deg); } }')
+    .appendTo('head');
 
   /* ---------- Content (list + pagination + toggles) ---------- */
 

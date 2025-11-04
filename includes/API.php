@@ -830,6 +830,45 @@ class API {
     }
     
     /**
+     * Get all site pages for sync purposes
+     */
+    public function get_site_pages($site_id) {
+        $url = $this->supabase_url . '/rest/v1/site_pages?site_id=eq.' . $site_id . '&select=wordpress_post_id,paid_link_id,pricing_override,paid_links(short_id,price)';
+        
+        $response = wp_remote_get($url, [
+            'headers' => [
+                'Authorization' => 'Bearer ' . $this->api_key,
+                'apikey' => $this->api_key,
+                'Content-Type' => 'application/json'
+            ]
+        ]);
+        
+        if (is_wp_error($response)) {
+            return ['success' => false, 'error' => $response->get_error_message()];
+        }
+        
+        $body = json_decode(wp_remote_retrieve_body($response), true);
+        
+        if (!is_array($body)) {
+            return ['success' => false, 'error' => 'Invalid response from backend'];
+        }
+        
+        // Transform response
+        $pages = [];
+        foreach ($body as $page) {
+            if (isset($page['paid_links']) && isset($page['paid_links']['short_id'])) {
+                $pages[] = [
+                    'wordpress_post_id' => $page['wordpress_post_id'],
+                    'short_id' => $page['paid_links']['short_id'],
+                    'price' => $page['pricing_override'] ?? $page['paid_links']['price']
+                ];
+            }
+        }
+        
+        return ['success' => true, 'pages' => $pages];
+    }
+    
+    /**
      * Get violations summary from backend
      */
     public function get_violations_summary() {

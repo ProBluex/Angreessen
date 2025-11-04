@@ -228,7 +228,14 @@ class Admin {
         update_option('402links_settings', $settings);
         
         if (isset($_POST['api_key'])) {
-            update_option('402links_api_key', sanitize_text_field($_POST['api_key']));
+            $old_key = get_option('402links_api_key');
+            $new_key = sanitize_text_field($_POST['api_key']);
+            update_option('402links_api_key', $new_key);
+            
+            // If API key changed, show sync notice
+            if ($old_key !== $new_key && !empty($new_key)) {
+                set_transient('402links_show_sync_notice', true, 300); // 5 minutes
+            }
         }
         
         // Sync default_price and payment_wallet to Supabase registered_sites table
@@ -881,6 +888,159 @@ class Admin {
     }
     
     /**
+     * AJAX: Sync protection status from Supabase to WordPress
+     */
+    public static function ajax_sync_protection_status() {
+        check_ajax_referer('agent_hub_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Unauthorized']);
+        }
+        
+        $site_id = get_option('402links_site_id');
+        if (!$site_id) {
+            wp_send_json_error(['message' => 'Site not registered']);
+        }
+        
+        // Fetch all site_pages for this site from Supabase
+        $api = new API();
+        $result = $api->get_site_pages($site_id);
+        
+        if (!$result['success']) {
+            wp_send_json_error(['message' => 'Failed to fetch site pages from backend']);
+        }
+        
+        $updated = 0;
+        $already_synced = 0;
+        $skipped = 0;
+        $errors = [];
+        
+        foreach ($result['pages'] as $page) {
+            $wp_post_id = $page['wordpress_post_id'];
+            $short_id = $page['short_id'];
+            $price = $page['price'] ?? get_option('402links_settings')['default_price'] ?? 0.10;
+            
+            // Verify post still exists
+            $post = get_post($wp_post_id);
+            if (!$post) {
+                $errors[] = "Post #{$wp_post_id} not found (may have been deleted)";
+                $skipped++;
+                continue;
+            }
+            
+            if ($post->post_status !== 'publish') {
+                $errors[] = "Post #{$wp_post_id} '{$post->post_title}' is {$post->post_status}";
+                $skipped++;
+                continue;
+            }
+            
+            // Check current meta value
+            $current_short_id = get_post_meta($wp_post_id, '_402links_id', true);
+            
+            if ($current_short_id === $short_id) {
+                // Already correctly synced
+                $already_synced++;
+                continue;
+            }
+            
+            // Update WordPress post meta to match Supabase
+            update_post_meta($wp_post_id, '_402links_id', $short_id);
+            update_post_meta($wp_post_id, '_402links_url', "https://402.so/{$short_id}");
+            update_post_meta($wp_post_id, '_402links_price', $price);
+            
+            error_log("402links: Synced Post #{$wp_post_id} '{$post->post_title}': {$current_short_id} → {$short_id}");
+            
+            $updated++;
+        }
+        
+        // Clear protected pages cache
+        delete_transient('agent_hub_protected_pages_count');
+        
+        $message = "Updated {$updated} pages";
+        if ($already_synced > 0) {
+            $message .= ", {$already_synced} already synced";
+        }
+        if ($skipped > 0) {
+            $message .= ", skipped {$skipped}";
+        }
+        
+        wp_send_json_success([
+            'message' => $message,
+            'updated' => $updated,
+            'already_synced' => $already_synced,
+            'skipped' => $skipped,
+            'errors' => $errors,
+            'needs_attention' => count($errors) > 0
+        ]);
+    }
+    
+    /**
+     * AJAX: Check sync status - detect if WordPress meta differs from Supabase
+     */
+    public static function ajax_check_sync_status() {
+        check_ajax_referer('agent_hub_nonce', 'nonce');
+        
+        $site_id = get_option('402links_site_id');
+        if (!$site_id) {
+            wp_send_json_error(['message' => 'Site not registered']);
+        }
+        
+        $api = new API();
+        $result = $api->get_site_pages($site_id);
+        
+        if (!$result['success']) {
+            wp_send_json_error(['message' => 'Failed to check sync status']);
+        }
+        
+        // Check for mismatches OR orphaned meta (posts with meta but no Supabase link)
+        $needs_sync = false;
+        $mismatch_count = 0;
+        
+        // Get all published posts with _402links_id meta
+        $posts_with_meta = get_posts([
+            'post_type' => 'post',
+            'post_status' => 'publish',
+            'posts_per_page' => -1,
+            'meta_query' => [
+                [
+                    'key' => '_402links_id',
+                    'compare' => 'EXISTS'
+                ]
+            ],
+            'fields' => 'ids'
+        ]);
+        
+        // Build lookup of Supabase pages
+        $supabase_lookup = [];
+        foreach ($result['pages'] as $page) {
+            $supabase_lookup[$page['wordpress_post_id']] = $page['short_id'];
+        }
+        
+        // Check each post with meta
+        foreach ($posts_with_meta as $wp_post_id) {
+            $current_short_id = get_post_meta($wp_post_id, '_402links_id', true);
+            
+            if (!isset($supabase_lookup[$wp_post_id])) {
+                // Post has meta but NO link in Supabase - needs regeneration
+                $needs_sync = true;
+                $mismatch_count++;
+            } elseif ($current_short_id !== $supabase_lookup[$wp_post_id]) {
+                // Mismatch between WordPress and Supabase
+                $needs_sync = true;
+                $mismatch_count++;
+            }
+        }
+        
+        wp_send_json_success([
+            'needs_sync' => $needs_sync,
+            'mismatch_count' => $mismatch_count,
+            'message' => $needs_sync 
+                ? "{$mismatch_count} page(s) need protection status update"
+                : "All pages synced correctly"
+        ]);
+    }
+    
+    /**
      * AJAX: Get violations summary
      */
     public static function ajax_get_violations_summary() {
@@ -1073,6 +1233,9 @@ class Admin {
         
         // Save to WordPress options
         update_option('402links_api_key', $api_key);
+        
+        // Show sync notice after API key recovery
+        set_transient('402links_show_sync_notice', true, 300); // 5 minutes
         
         // Log recovery event
         error_log('[Tolliver] API key recovered successfully');

@@ -27,6 +27,18 @@ $is_connected = !empty($api_key) && !empty($site_id);
         <?php endif; ?>
     </div>
     
+    <?php
+    // Show sync notice if site was recently reconnected with new API key
+    if (get_transient('402links_show_sync_notice')):
+    ?>
+    <div class="notice notice-warning is-dismissible" id="sync-protection-notice">
+        <p>
+            <strong>⚠️ Site reconnected successfully!</strong> 
+            Click "Sync Protection Status" below to restore your protected pages from the backend.
+        </p>
+    </div>
+    <?php endif; ?>
+    
     <div class="agent-hub-tabs">
         <button class="tab-button active" data-tab="overview">
             <span class="dashicons dashicons-dashboard"></span>
@@ -192,6 +204,21 @@ $is_connected = !empty($api_key) && !empty($site_id);
     
     <!-- Content Tab -->
     <div id="tab-content" class="tab-content">
+        <!-- Sync Mismatch Banner (conditional) -->
+        <div id="sync-mismatch-banner" class="notice notice-warning inline" style="display: none; margin: 0 0 15px 0;">
+            <p>
+                <span class="dashicons dashicons-warning" style="color: #f0b429;"></span>
+                <strong>Protection Status Mismatch:</strong>
+                <span id="sync-mismatch-message"></span>
+            </p>
+            <p>
+                <button type="button" id="sync-protection-status-content" class="button button-secondary">
+                    <span class="dashicons dashicons-update"></span>
+                    Sync Now
+                </button>
+            </p>
+        </div>
+        
         <div class="content-toolbar">
             <button id="bulk-generate-links" class="button button-primary">
                 <span class="dashicons dashicons-update"></span>

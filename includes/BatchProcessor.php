@@ -141,15 +141,13 @@ class BatchProcessor {
      * Get count of posts (POSTS ONLY)
      */
     private static function get_pending_post_count() {
-        global $wpdb;
+        $posts = get_posts([
+            'post_type' => 'post',
+            'post_status' => 'publish',
+            'posts_per_page' => -1,
+            'fields' => 'ids'
+        ]);
         
-        $count = $wpdb->get_var("
-            SELECT COUNT(DISTINCT p.ID)
-            FROM {$wpdb->posts} p
-            WHERE p.post_type = 'post'
-            AND p.post_status = 'publish'
-        ");
-        
-        return intval($count);
+        return count($posts);
     }
 }
