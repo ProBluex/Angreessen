@@ -134,6 +134,17 @@
       if (firstTab) activateTab(firstTab);
     }
     
+    // CRITICAL: Also check sync status on initial page load if on content tab
+    const currentTab = $(".tab-button.active").data("tab");
+    if (currentTab === "content") {
+      // Wait for DOM to be ready and checkSyncStatus to be defined
+      setTimeout(() => {
+        if (typeof checkSyncStatus === "function") {
+          checkSyncStatus();
+        }
+      }, 100);
+    }
+    
     debugLog('[admin.js] Tabs initialized');
   });
 
