@@ -79,6 +79,62 @@
   const hub = (w.agentHub = w.agentHub || {});
   debugLog('[admin.js] Hub namespace initialized');
 
+  /* ---------- Sync Protection Status (MUST BE BEFORE TABS) ---------- */
+  
+  // Check sync status when My Content tab is activated
+  function checkSyncStatus() {
+    debugLog('[admin.js] Checking sync status...');
+    ajaxPost("agent_hub_check_sync_status")
+      .done((res) => {
+        debugLog('[admin.js] Sync check response:', res);
+        if (res?.success && res?.data?.needs_sync) {
+          debugLog('[admin.js] Sync needed - showing banner');
+          $("#sync-mismatch-banner").show();
+          $("#sync-mismatch-message").text(res.data.message);
+        } else {
+          debugLog('[admin.js] No sync needed - hiding banner');
+          $("#sync-mismatch-banner").hide();
+        }
+      })
+      .fail((xhr, status, error) => {
+        debugWarn('[admin.js] Sync check failed:', status, error);
+        $("#sync-mismatch-banner").hide();
+      });
+  }
+  
+  // Expose to hub namespace for external access
+  hub.checkSyncStatus = checkSyncStatus;
+  
+  // Handle sync button click in My Content tab
+  $(document).on("click", "#sync-protection-status-content", function () {
+    const $btn = $(this);
+    const $banner = $("#sync-mismatch-banner");
+    const prev = $btn.html();
+    
+    $btn.prop("disabled", true).html('<span class="spinner is-active" style="float:none;"></span> Syncing...');
+
+    ajaxPost("agent_hub_sync_protection_status")
+      .done((res) => {
+        if (res?.success) {
+          w.showToast("Success", res?.data?.message || "Protection status synced!", "success");
+          $banner.hide();
+          
+          // Refresh content and overview stats
+          if (typeof hub.loadContent === "function") hub.loadContent();
+          if (w.agentHubOverview?.refreshStats) w.agentHubOverview.refreshStats();
+        } else {
+          w.showToast("Error", res?.data?.message || "Failed to sync protection status.", "error");
+        }
+      })
+      .fail(() => w.showToast("Error", "Network error. Please try again.", "error"))
+      .always(() => $btn.prop("disabled", false).html(prev));
+  });
+  
+  // Add CSS for spinning icon
+  $('<style>')
+    .text('.dashicons.spin { animation: spin 1s linear infinite; } @keyframes spin { 100% { transform: rotate(360deg); } }')
+    .appendTo('head');
+
   /* ---------- Tabs (hash-aware) ---------- */
 
   function activateTab(tab) {
@@ -98,9 +154,7 @@
         console.error('[admin.js] hub.loadContent is not defined yet');
       }
       // Check sync status when switching to content tab
-      if (typeof checkSyncStatus === "function") {
-        checkSyncStatus();
-      }
+      hub.checkSyncStatus();
     }
     
     debugLog('[admin.js] Tab activated:', tab);
@@ -136,13 +190,10 @@
     
     // CRITICAL: Also check sync status on initial page load if on content tab
     const currentTab = $(".tab-button.active").data("tab");
+    debugLog('[admin.js] Initial tab:', currentTab);
     if (currentTab === "content") {
-      // Wait for DOM to be ready and checkSyncStatus to be defined
-      setTimeout(() => {
-        if (typeof checkSyncStatus === "function") {
-          checkSyncStatus();
-        }
-      }, 100);
+      debugLog('[admin.js] Content tab active on load - checking sync status');
+      hub.checkSyncStatus();
     }
     
     debugLog('[admin.js] Tabs initialized');
@@ -198,54 +249,6 @@
       .always(() => $btn.prop("disabled", false).html(prev));
   });
   
-  /* ---------- Sync Protection Status ---------- */
-  
-  // Check sync status when My Content tab is activated
-  function checkSyncStatus() {
-    ajaxPost("agent_hub_check_sync_status")
-      .done((res) => {
-        if (res?.success && res?.data?.needs_sync) {
-          $("#sync-mismatch-banner").show();
-          $("#sync-mismatch-message").text(res.data.message);
-        } else {
-          $("#sync-mismatch-banner").hide();
-        }
-      })
-      .fail(() => {
-        // Silently fail - don't show banner if check fails
-        $("#sync-mismatch-banner").hide();
-      });
-  }
-  
-  // Handle sync button click in My Content tab
-  $(document).on("click", "#sync-protection-status-content", function () {
-    const $btn = $(this);
-    const $banner = $("#sync-mismatch-banner");
-    const prev = $btn.html();
-    
-    $btn.prop("disabled", true).html('<span class="spinner is-active" style="float:none;"></span> Syncing...');
-
-    ajaxPost("agent_hub_sync_protection_status")
-      .done((res) => {
-        if (res?.success) {
-          w.showToast("Success", res?.data?.message || "Protection status synced!", "success");
-          $banner.hide();
-          
-          // Refresh content and overview stats
-          if (typeof hub.loadContent === "function") hub.loadContent();
-          if (w.agentHubOverview?.refreshStats) w.agentHubOverview.refreshStats();
-        } else {
-          w.showToast("Error", res?.data?.message || "Failed to sync protection status.", "error");
-        }
-      })
-      .fail(() => w.showToast("Error", "Network error. Please try again.", "error"))
-      .always(() => $btn.prop("disabled", false).html(prev));
-  });
-  
-  // Add CSS for spinning icon
-  $('<style>')
-    .text('.dashicons.spin { animation: spin 1s linear infinite; } @keyframes spin { 100% { transform: rotate(360deg); } }')
-    .appendTo('head');
 
   /* ---------- Content (list + pagination + toggles) ---------- */
 
