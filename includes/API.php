@@ -837,8 +837,8 @@ class API {
         
         $response = wp_remote_get($url, [
             'headers' => [
-                'Authorization' => 'Bearer ' . $this->api_key,
-                'apikey' => $this->api_key,
+                'Authorization' => 'Bearer ' . $this->service_role_key,
+                'apikey' => $this->service_role_key,
                 'Content-Type' => 'application/json'
             ]
         ]);

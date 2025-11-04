@@ -1321,6 +1321,9 @@ class Admin {
         $api = new API();
         $result = $api->get_site_pages($site_id);
         
+        error_log('[Tolliver] get_site_pages result: ' . json_encode($result));
+        error_log('[Tolliver] Pages count: ' . (isset($result['pages']) ? count($result['pages']) : 0));
+        
         if (!$result['success']) {
             // API key saved but sync failed - still a success, just warn
             wp_send_json_success([
@@ -1329,6 +1332,19 @@ class Admin {
                 'sync_failed' => true,
                 'sync_error' => $result['error'] ?? 'Unknown error'
             ]);
+        }
+        
+        // Check if pages array is empty
+        if (empty($result['pages'])) {
+            error_log('[Tolliver] WARNING: No pages returned from Supabase - check RLS permissions');
+            wp_send_json_success([
+                'message' => 'API key saved but no protected pages found in backend.',
+                'api_key_prefix' => substr($api_key, 0, 10) . '...',
+                'sync_completed' => true,
+                'added' => 0,
+                'pages_found' => 0
+            ]);
+            return;
         }
         
         // Perform sync
