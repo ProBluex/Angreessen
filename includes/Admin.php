@@ -1307,16 +1307,90 @@ class Admin {
         
         // Save to WordPress options
         update_option('402links_api_key', $api_key);
-        
-        // Show sync notice after API key recovery
-        set_transient('402links_show_sync_notice', true, 300); // 5 minutes
-        
-        // Log recovery event
         error_log('[Tolliver] API key recovered successfully');
         
+        // AUTO-SYNC: Immediately restore protection status
+        $site_id = get_option('402links_site_id');
+        if (!$site_id) {
+            wp_send_json_error([
+                'message' => 'API key saved but site not registered. Please re-register.',
+                'api_key_saved' => true
+            ]);
+        }
+        
+        $api = new API();
+        $result = $api->get_site_pages($site_id);
+        
+        if (!$result['success']) {
+            // API key saved but sync failed - still a success, just warn
+            wp_send_json_success([
+                'message' => 'API key saved but could not sync posts. Please try manual sync.',
+                'api_key_prefix' => substr($api_key, 0, 10) . '...',
+                'sync_failed' => true,
+                'sync_error' => $result['error'] ?? 'Unknown error'
+            ]);
+        }
+        
+        // Perform sync
+        $added = 0;
+        $updated = 0;
+        $already_synced = 0;
+        $skipped = 0;
+        
+        foreach ($result['pages'] as $page) {
+            $wp_post_id = $page['wordpress_post_id'];
+            $short_id = $page['short_id'];
+            $price = $page['price'] ?? 0.001;
+            
+            $post = get_post($wp_post_id);
+            if (!$post || $post->post_status !== 'publish') {
+                $skipped++;
+                continue;
+            }
+            
+            $current_short_id = get_post_meta($wp_post_id, '_402links_id', true);
+            
+            if (empty($current_short_id)) {
+                // Missing - restore it
+                update_post_meta($wp_post_id, '_402links_id', $short_id);
+                update_post_meta($wp_post_id, '_402links_url', "https://402.so/{$short_id}");
+                update_post_meta($wp_post_id, '_402links_price', $price);
+                error_log("402links: Restored Post #{$wp_post_id} '{$post->post_title}' → {$short_id}");
+                $added++;
+            } elseif ($current_short_id !== $short_id) {
+                // Mismatch - update it
+                update_post_meta($wp_post_id, '_402links_id', $short_id);
+                update_post_meta($wp_post_id, '_402links_url', "https://402.so/{$short_id}");
+                update_post_meta($wp_post_id, '_402links_price', $price);
+                error_log("402links: Updated Post #{$wp_post_id} '{$post->post_title}': {$current_short_id} → {$short_id}");
+                $updated++;
+            } else {
+                $already_synced++;
+            }
+        }
+        
+        delete_transient('agent_hub_protected_pages_count');
+        
+        // Build detailed success message
+        $sync_parts = [];
+        if ($added > 0) $sync_parts[] = "restored {$added} post(s)";
+        if ($updated > 0) $sync_parts[] = "updated {$updated}";
+        if ($already_synced > 0) $sync_parts[] = "{$already_synced} already synced";
+        
+        $sync_message = !empty($sync_parts) 
+            ? "Account recovered and " . implode(', ', $sync_parts)
+            : "Account recovered (all posts already synced)";
+        
+        error_log("[Tolliver] Auto-sync completed: added={$added}, updated={$updated}, already_synced={$already_synced}");
+        
         wp_send_json_success([
-            'message' => 'API key saved successfully',
-            'api_key_prefix' => substr($api_key, 0, 10) . '...'
+            'message' => $sync_message,
+            'api_key_prefix' => substr($api_key, 0, 10) . '...',
+            'sync_completed' => true,
+            'added' => $added,
+            'updated' => $updated,
+            'already_synced' => $already_synced,
+            'skipped' => $skipped
         ]);
     }
 }

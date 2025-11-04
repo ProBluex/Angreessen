@@ -244,15 +244,25 @@
             },
             function (saveResult) {
               if (saveResult.success) {
-                // Show success message
-                $recoveryStatus
-                  .html(
-                    '<div class="notice notice-success">' +
-                      "<p><strong>✅ Site reconnected successfully!</strong></p>" +
-                      "<p>Your API key has been recovered. Reloading dashboard...</p>" +
-                      "</div>"
-                  )
-                  .show();
+                // Build success message with sync details
+                const data = saveResult.data || {};
+                let statusHtml = '<div class="notice notice-success">' +
+                  "<p><strong>✅ " + escapeHtml(data.message || "Site reconnected successfully!") + "</strong></p>";
+                
+                // Show sync details if available
+                if (data.sync_completed) {
+                  const details = [];
+                  if (data.added > 0) details.push(data.added + " restored");
+                  if (data.updated > 0) details.push(data.updated + " updated");
+                  if (data.already_synced > 0) details.push(data.already_synced + " already synced");
+                  if (details.length > 0) {
+                    statusHtml += "<p>📄 Protection status: " + escapeHtml(details.join(", ")) + "</p>";
+                  }
+                }
+                
+                statusHtml += "<p>Reloading dashboard...</p></div>";
+                
+                $recoveryStatus.html(statusHtml).show();
 
                 // Reload page after 2 seconds to show updated dashboard
                 setTimeout(function () {
