@@ -165,7 +165,8 @@ class Admin {
             'siteUrl' => get_site_url(),
             'siteName' => get_bloginfo('name'),
             'siteId' => get_option('402links_site_id'),  // Add site_id for contact form validation
-            'pluginUrl' => AGENT_HUB_PLUGIN_URL  // Add plugin URL for direct ecosystem data endpoint
+            'pluginUrl' => AGENT_HUB_PLUGIN_URL,  // Add plugin URL for direct ecosystem data endpoint
+            'contactEndpoint' => 'https://cnionwnknwnzpwfuacse.supabase.co/functions/v1/submit-contact-message'
         ]);
     }
     
@@ -1047,5 +1048,38 @@ class Admin {
         } else {
             wp_send_json_error($result);
         }
+    }
+    
+    /**
+     * AJAX: Save recovered API key
+     */
+    public static function ajax_save_recovered_key() {
+        check_ajax_referer('agent_hub_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Unauthorized']);
+        }
+        
+        $api_key = sanitize_text_field($_POST['api_key'] ?? '');
+        
+        if (empty($api_key)) {
+            wp_send_json_error(['message' => 'Invalid API key']);
+        }
+        
+        // Validate API key format
+        if (!preg_match('/^402l_[a-zA-Z0-9]+$/', $api_key)) {
+            wp_send_json_error(['message' => 'Invalid API key format']);
+        }
+        
+        // Save to WordPress options
+        update_option('402links_api_key', $api_key);
+        
+        // Log recovery event
+        error_log('[Tolliver] API key recovered successfully');
+        
+        wp_send_json_success([
+            'message' => 'API key saved successfully',
+            'api_key_prefix' => substr($api_key, 0, 10) . '...'
+        ]);
     }
 }

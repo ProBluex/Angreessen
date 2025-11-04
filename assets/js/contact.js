@@ -188,4 +188,122 @@
   $(w).on("beforeunload", function () {
     if (inflight && inflight.abort) inflight.abort();
   });
+
+  // ============= RECOVERY FUNCTIONALITY =============
+  // One-click API key recovery for reinstalled WordPress sites
+  const $recoverySidebar = $("#recovery-sidebar");
+  const $reconnectBtn = $("#reconnect-site-btn");
+  const $recoveryStatus = $("#recovery-status");
+  const $recoverySiteId = $("#recovery-site-id");
+  const $recoverySiteUrl = $("#recovery-site-url");
+
+  const siteId = cfg.siteId || "";
+  const siteUrl = cfg.siteUrl || "";
+
+  // Check if this is a recovery scenario (site_id exists but api_key missing)
+  const isRecoveryScenario = siteId && !$("body").hasClass("api-key-exists");
+
+  if (isRecoveryScenario && $recoverySidebar.length) {
+    $recoverySidebar.show();
+    $recoverySiteId.text(siteId);
+    $recoverySiteUrl.text(siteUrl);
+  }
+
+  // Recovery button click handler
+  $reconnectBtn.on("click", function (e) {
+    e.preventDefault();
+
+    const $btn = $(this);
+    const originalHtml = $btn.html();
+
+    // Disable button and show loading
+    $btn.prop("disabled", true).html('<span class="spinner is-active"></span> Reconnecting...');
+    $recoveryStatus.hide().html("");
+
+    // Call edge function for recovery
+    $.ajax({
+      url: "https://cnionwnknwnzpwfuacse.supabase.co/functions/v1/recover-wordpress-api-key",
+      type: "POST",
+      contentType: "application/json",
+      dataType: "json",
+      timeout: 15000,
+      data: JSON.stringify({
+        site_id: siteId,
+        site_url: siteUrl,
+      }),
+    })
+      .done(function (response) {
+        if (response && response.success) {
+          // Save recovered API key via WordPress AJAX
+          $.post(
+            cfg.ajaxUrl || "/wp-admin/admin-ajax.php",
+            {
+              action: "agent_hub_save_recovered_key",
+              nonce: cfg.nonce,
+              api_key: response.api_key,
+            },
+            function (saveResult) {
+              if (saveResult.success) {
+                // Show success message
+                $recoveryStatus
+                  .html(
+                    '<div class="notice notice-success">' +
+                      "<p><strong>✅ Site reconnected successfully!</strong></p>" +
+                      "<p>Your API key has been recovered. Reloading dashboard...</p>" +
+                      "</div>"
+                  )
+                  .show();
+
+                // Reload page after 2 seconds to show updated dashboard
+                setTimeout(function () {
+                  window.location.reload();
+                }, 2000);
+              } else {
+                showRecoveryError(saveResult.data?.message || "Failed to save API key. Please try again.");
+              }
+            }
+          ).fail(function () {
+            showRecoveryError("Failed to save API key. Please try again.");
+          });
+        } else {
+          showRecoveryError(response?.message || "Recovery failed. Please contact support.");
+        }
+      })
+      .fail(function (xhr) {
+        let message = "Network error during recovery. Please try again.";
+        if (xhr.status === 429) {
+          message = "Too many recovery attempts. Please wait an hour or contact support.";
+        } else if (xhr.status === 404) {
+          message = "Site not found in our system. Please contact support.";
+        } else if (xhr.status === 403) {
+          message = "Site URL verification failed. Please contact support.";
+        } else if (xhr.responseJSON?.message) {
+          message = xhr.responseJSON.message;
+        }
+        showRecoveryError(message);
+      })
+      .always(function () {
+        $btn.prop("disabled", false).html(originalHtml);
+      });
+  });
+
+  function showRecoveryError(message) {
+    $recoveryStatus
+      .html(
+        '<div class="notice notice-error">' +
+          "<p><strong>⚠️ Recovery Failed</strong></p>" +
+          "<p>" +
+          escapeHtml(message) +
+          "</p>" +
+          "<p><small>If this persists, please contact support with your Site ID.</small></p>" +
+          "</div>"
+      )
+      .show();
+  }
+
+  function escapeHtml(text) {
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
+  }
 })(window, document, jQuery);

@@ -53,6 +53,9 @@ class Core {
         add_action('wp_ajax_agent_hub_get_site_bot_policies', [Admin::class, 'ajax_get_site_bot_policies']);
         add_action('wp_ajax_agent_hub_update_site_bot_policies', [Admin::class, 'ajax_update_site_bot_policies']);
         
+        // Recovery AJAX handler
+        add_action('wp_ajax_agent_hub_save_recovered_key', [Admin::class, 'ajax_save_recovered_key']);
+        
         // REST API routes
         add_action('rest_api_init', [API::class, 'register_rest_routes']);
     }

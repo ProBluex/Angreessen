@@ -6,6 +6,17 @@ class Installer {
      * Plugin activation hook - auto-provision the site
      */
     public static function activate() {
+        $site_id = get_option('402links_site_id');
+        $api_key = get_option('402links_api_key');
+        
+        // Recovery scenario: site_id exists but api_key missing
+        if (!empty($site_id) && empty($api_key)) {
+            // Set flag to show recovery notice
+            update_option('402links_recovery_needed', true);
+            error_log('[Tolliver] Recovery scenario detected on activation - site_id exists but api_key missing');
+            return;
+        }
+        
         // Check if already provisioned
         $existing_key = get_option('402links_api_key');
         $existing_site_id = get_option('402links_site_id');
