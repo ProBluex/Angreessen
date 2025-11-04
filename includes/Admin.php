@@ -1066,8 +1066,8 @@ class Admin {
             wp_send_json_error(['message' => 'Invalid API key']);
         }
         
-        // Validate API key format
-        if (!preg_match('/^402l_[a-zA-Z0-9]+$/', $api_key)) {
+        // Validate API key format (matches platform standard: 4l_live_ or 4l_test_)
+        if (!preg_match('/^4l_(live|test)_[a-z0-9]+$/', $api_key)) {
             wp_send_json_error(['message' => 'Invalid API key format']);
         }
         
