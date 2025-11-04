@@ -15,9 +15,6 @@ class API {
         // Initialize Supabase credentials
         $this->supabase_url = 'https://cnionwnknwnzpwfuacse.supabase.co';
         $this->service_role_key = get_option('402links_supabase_service_key');
-        
-        error_log('🟦 [API Constructor] Supabase URL: ' . ($this->supabase_url ?: 'NOT SET'));
-        error_log('🟦 [API Constructor] Service key: ' . ($this->service_role_key ? 'SET (length: ' . strlen($this->service_role_key) . ')' : 'NOT SET'));
     }
     
     // Public getters for parallel requests
@@ -772,6 +769,44 @@ class API {
     }
     
     /**
+     * Get all site pages for sync purposes
+     * Returns site_pages with paid_links joined to get short_id and price
+     */
+    public function get_site_pages($site_id) {
+        $url = $this->supabase_url . '/rest/v1/site_pages?site_id=eq.' . $site_id . '&select=wordpress_post_id,pricing_override,paid_links(short_id,price)';
+        
+        $response = wp_remote_get($url, [
+            'headers' => [
+                'Authorization' => 'Bearer ' . $this->api_key,
+                'apikey' => $this->api_key,
+                'Content-Type' => 'application/json'
+            ]
+        ]);
+        
+        if (is_wp_error($response)) {
+            return ['success' => false, 'error' => $response->get_error_message()];
+        }
+        
+        $body = json_decode(wp_remote_retrieve_body($response), true);
+        
+        // Transform response
+        $pages = [];
+        foreach ($body as $page) {
+            if (!isset($page['paid_links']) || !isset($page['wordpress_post_id'])) {
+                continue;
+            }
+            
+            $pages[] = [
+                'wordpress_post_id' => $page['wordpress_post_id'],
+                'short_id' => $page['paid_links']['short_id'],
+                'price' => $page['pricing_override'] ?? $page['paid_links']['price']
+            ];
+        }
+        
+        return ['success' => true, 'pages' => $pages];
+    }
+    
+    /**
      * Bulk sync meta for all existing links from Supabase
      */
     public function bulk_sync_meta() {
@@ -931,8 +966,8 @@ class API {
         ]));
         
         if ($method === 'POST' || $method === 'PUT') {
-            $args['body'] = json_encode($data);
-            error_log('[API.php] 🚀 Request body: ' . json_encode($data));
+            $args['body'] = json_encode($data, JSON_PRESERVE_ZERO_FRACTION);
+            error_log('[API.php] 🚀 Request body: ' . json_encode($data, JSON_PRESERVE_ZERO_FRACTION));
         }
         
         error_log('[API.php] 🚀 Making request...');
