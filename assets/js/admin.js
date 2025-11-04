@@ -399,6 +399,29 @@
   */
 
   $DOM.refreshContentBtn.on("click", () => hub.loadContent());
+  
+  /* ---------- Clear All Protection ---------- */
+  $(document).on("click", "#clear-all-protection", function () {
+    if (!confirm("This will remove protection from ALL posts. You can re-protect them by clicking 'Generate Paid Links'. Continue?")) {
+      return;
+    }
+    
+    const $btn = $(this);
+    const prev = $btn.html();
+    $btn.prop("disabled", true).html('<span class="spinner is-active" style="float:none;"></span> Clearing...');
+    
+    ajaxPost("agent_hub_clear_all_protection")
+      .done((res) => {
+        if (res?.success) {
+          w.showToast("Success", res.data.message, "success");
+          hub.loadContent();
+        } else {
+          w.showToast("Error", res.data.message || "Failed to clear protection", "error");
+        }
+      })
+      .fail(() => w.showToast("Error", "Request failed", "error"))
+      .always(() => $btn.prop("disabled", false).html(prev));
+  });
 
   /* ---------- Analytics ---------- */
   hub.loadAnalytics = function () {

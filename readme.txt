@@ -3,7 +3,7 @@ Contributors: 402links, ProBluex
 Tags: payment, ai, agent, monetization, x402, paywall
 Requires at least: 5.0
 Tested up to: 6.7
-Stable tag: 3.17.0
+Stable tag: 3.17.1
 License: Proprietary
 License URI: https://402links.com
 

@@ -138,16 +138,28 @@ class BatchProcessor {
     }
     
     /**
-     * Get count of posts (POSTS ONLY)
+     * Get count of posts (POSTS ONLY) that need links
      */
     private static function get_pending_post_count() {
-        $posts = get_posts([
-            'post_type' => 'post',
-            'post_status' => 'publish',
-            'posts_per_page' => -1,
-            'fields' => 'ids'
-        ]);
+        global $wpdb;
         
-        return count($posts);
+        // Count posts that either:
+        // 1. Have NO _402links_id meta at all
+        // 2. Have empty _402links_id meta value
+        
+        $query = "
+            SELECT COUNT(DISTINCT p.ID)
+            FROM {$wpdb->posts} p
+            LEFT JOIN {$wpdb->postmeta} pm ON (
+                p.ID = pm.post_id 
+                AND pm.meta_key = '_402links_id'
+                AND pm.meta_value != ''
+            )
+            WHERE p.post_type = 'post'
+            AND p.post_status = 'publish'
+            AND pm.post_id IS NULL
+        ";
+        
+        return (int) $wpdb->get_var($query);
     }
 }

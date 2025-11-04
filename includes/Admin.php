@@ -902,7 +902,6 @@ class Admin {
             wp_send_json_error(['message' => 'Site not registered']);
         }
         
-        // Fetch all site_pages for this site from Supabase
         $api = new API();
         $result = $api->get_site_pages($site_id);
         
@@ -910,6 +909,7 @@ class Admin {
             wp_send_json_error(['message' => 'Failed to fetch site pages from backend']);
         }
         
+        $added = 0;      // NEW: Count restored missing links
         $updated = 0;
         $already_synced = 0;
         $skipped = 0;
@@ -918,54 +918,61 @@ class Admin {
         foreach ($result['pages'] as $page) {
             $wp_post_id = $page['wordpress_post_id'];
             $short_id = $page['short_id'];
-            $price = $page['price'] ?? get_option('402links_settings')['default_price'] ?? 0.10;
+            $price = $page['price'] ?? 0.001;
             
-            // Verify post still exists
             $post = get_post($wp_post_id);
             if (!$post) {
-                $errors[] = "Post #{$wp_post_id} not found (may have been deleted)";
+                $errors[] = "Post #{$wp_post_id} not found";
                 $skipped++;
                 continue;
             }
             
             if ($post->post_status !== 'publish') {
-                $errors[] = "Post #{$wp_post_id} '{$post->post_title}' is {$post->post_status}";
+                $errors[] = "Post #{$wp_post_id} is {$post->post_status}";
                 $skipped++;
                 continue;
             }
             
-            // Check current meta value
             $current_short_id = get_post_meta($wp_post_id, '_402links_id', true);
             
-            if ($current_short_id === $short_id) {
-                // Already correctly synced
+            if (empty($current_short_id)) {
+                // Missing link - add it
+                update_post_meta($wp_post_id, '_402links_id', $short_id);
+                update_post_meta($wp_post_id, '_402links_url', "https://402.so/{$short_id}");
+                update_post_meta($wp_post_id, '_402links_price', $price);
+                
+                error_log("402links: Restored Post #{$wp_post_id} '{$post->post_title}': → {$short_id}");
+                $added++;
+                
+            } elseif ($current_short_id === $short_id) {
+                // Already correct
                 $already_synced++;
-                continue;
+                
+            } else {
+                // Mismatch - update it
+                update_post_meta($wp_post_id, '_402links_id', $short_id);
+                update_post_meta($wp_post_id, '_402links_url', "https://402.so/{$short_id}");
+                update_post_meta($wp_post_id, '_402links_price', $price);
+                
+                error_log("402links: Updated Post #{$wp_post_id} '{$post->post_title}': {$current_short_id} → {$short_id}");
+                $updated++;
             }
-            
-            // Update WordPress post meta to match Supabase
-            update_post_meta($wp_post_id, '_402links_id', $short_id);
-            update_post_meta($wp_post_id, '_402links_url', "https://402.so/{$short_id}");
-            update_post_meta($wp_post_id, '_402links_price', $price);
-            
-            error_log("402links: Synced Post #{$wp_post_id} '{$post->post_title}': {$current_short_id} → {$short_id}");
-            
-            $updated++;
         }
         
-        // Clear protected pages cache
         delete_transient('agent_hub_protected_pages_count');
         
-        $message = "Updated {$updated} pages";
-        if ($already_synced > 0) {
-            $message .= ", {$already_synced} already synced";
-        }
-        if ($skipped > 0) {
-            $message .= ", skipped {$skipped}";
-        }
+        // Build success message
+        $parts = [];
+        if ($added > 0) $parts[] = "Restored {$added} missing link(s)";
+        if ($updated > 0) $parts[] = "Updated {$updated} mismatch(es)";
+        if ($already_synced > 0) $parts[] = "{$already_synced} already synced";
+        if ($skipped > 0) $parts[] = "Skipped {$skipped}";
+        
+        $message = !empty($parts) ? implode(', ', $parts) : "No changes needed";
         
         wp_send_json_success([
             'message' => $message,
+            'added' => $added,
             'updated' => $updated,
             'already_synced' => $already_synced,
             'skipped' => $skipped,
@@ -992,51 +999,118 @@ class Admin {
             wp_send_json_error(['message' => 'Failed to check sync status']);
         }
         
-        // Check for mismatches OR orphaned meta (posts with meta but no Supabase link)
         $needs_sync = false;
         $mismatch_count = 0;
-        
-        // Get all published posts with _402links_id meta
-        $posts_with_meta = get_posts([
-            'post_type' => 'post',
-            'post_status' => 'publish',
-            'posts_per_page' => -1,
-            'meta_query' => [
-                [
-                    'key' => '_402links_id',
-                    'compare' => 'EXISTS'
-                ]
-            ],
-            'fields' => 'ids'
-        ]);
+        $missing_count = 0;
+        $orphaned_count = 0;
         
         // Build lookup of Supabase pages
         $supabase_lookup = [];
         foreach ($result['pages'] as $page) {
-            $supabase_lookup[$page['wordpress_post_id']] = $page['short_id'];
+            $supabase_lookup[$page['wordpress_post_id']] = [
+                'short_id' => $page['short_id'],
+                'price' => $page['price']
+            ];
         }
         
-        // Check each post with meta
-        foreach ($posts_with_meta as $wp_post_id) {
+        // Check 1: Find posts in Supabase but missing WordPress meta
+        foreach ($supabase_lookup as $wp_post_id => $supabase_data) {
+            $post = get_post($wp_post_id);
+            if (!$post || $post->post_status !== 'publish') {
+                continue;
+            }
+            
             $current_short_id = get_post_meta($wp_post_id, '_402links_id', true);
             
-            if (!isset($supabase_lookup[$wp_post_id])) {
-                // Post has meta but NO link in Supabase - needs regeneration
+            if (empty($current_short_id)) {
+                // Missing link - Supabase has it but WordPress doesn't
                 $needs_sync = true;
-                $mismatch_count++;
-            } elseif ($current_short_id !== $supabase_lookup[$wp_post_id]) {
-                // Mismatch between WordPress and Supabase
+                $missing_count++;
+            } elseif ($current_short_id !== $supabase_data['short_id']) {
+                // Mismatch - different values
                 $needs_sync = true;
                 $mismatch_count++;
             }
         }
         
+        // Check 2: Find orphaned WordPress meta (not in Supabase)
+        $posts_with_meta = get_posts([
+            'post_type' => 'post',
+            'post_status' => 'publish',
+            'posts_per_page' => -1,
+            'meta_query' => [
+                ['key' => '_402links_id', 'compare' => 'EXISTS']
+            ],
+            'fields' => 'ids'
+        ]);
+        
+        foreach ($posts_with_meta as $wp_post_id) {
+            if (!isset($supabase_lookup[$wp_post_id])) {
+                $needs_sync = true;
+                $orphaned_count++;
+            }
+        }
+        
+        // Build descriptive message
+        $details = [];
+        if ($missing_count > 0) {
+            $details[] = "{$missing_count} post(s) missing protection meta";
+        }
+        if ($mismatch_count > 0) {
+            $details[] = "{$mismatch_count} post(s) with mismatched values";
+        }
+        if ($orphaned_count > 0) {
+            $details[] = "{$orphaned_count} post(s) with orphaned meta";
+        }
+        
+        $message = $needs_sync 
+            ? implode(', ', $details) . ' - Click "Sync Now" to restore'
+            : "All pages synced correctly";
+        
         wp_send_json_success([
             'needs_sync' => $needs_sync,
+            'missing_count' => $missing_count,
             'mismatch_count' => $mismatch_count,
-            'message' => $needs_sync 
-                ? "{$mismatch_count} page(s) need protection status update"
-                : "All pages synced correctly"
+            'orphaned_count' => $orphaned_count,
+            'total_issues' => $missing_count + $mismatch_count + $orphaned_count,
+            'message' => $message
+        ]);
+    }
+    
+    /**
+     * AJAX: Clear all protection from posts
+     */
+    public static function ajax_clear_all_protection() {
+        check_ajax_referer('agent_hub_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Unauthorized']);
+        }
+        
+        $posts = get_posts([
+            'post_type' => 'post',
+            'post_status' => 'publish',
+            'posts_per_page' => -1,
+            'meta_query' => [
+                ['key' => '_402links_id', 'compare' => 'EXISTS']
+            ],
+            'fields' => 'ids'
+        ]);
+        
+        $cleared = 0;
+        foreach ($posts as $post_id) {
+            delete_post_meta($post_id, '_402links_id');
+            delete_post_meta($post_id, '_402links_url');
+            delete_post_meta($post_id, '_402links_price');
+            delete_post_meta($post_id, '_402links_block_humans');
+            $cleared++;
+        }
+        
+        delete_transient('agent_hub_protected_pages_count');
+        
+        wp_send_json_success([
+            'message' => "Cleared protection from {$cleared} posts",
+            'cleared' => $cleared
         ]);
     }
     

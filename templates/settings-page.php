@@ -229,6 +229,10 @@ $is_connected = !empty($api_key) && !empty($site_id);
                 Refresh
             </button>
             <span id="post-count-indicator" style="margin-left: 15px; font-weight: 500; color: #666;"></span>
+            <button id="clear-all-protection" class="button button-secondary" style="margin-left: auto;">
+                <span class="dashicons dashicons-trash"></span>
+                Clear All Protection
+            </button>
         </div>
         
         <table class="wp-list-table widefat fixed striped" id="content-table">
