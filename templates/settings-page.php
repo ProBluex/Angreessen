@@ -27,22 +27,6 @@ $is_connected = !empty($api_key) && !empty($site_id);
         <?php endif; ?>
     </div>
     
-    <?php
-    // Show reconnection notice if site was recently reconnected with new API key
-    // This can be triggered when API key is saved via recovery or new registration
-    $show_sync_notice = get_transient('402links_show_sync_notice');
-    if ($show_sync_notice && $is_connected):
-    ?>
-    <div class="notice notice-warning is-dismissible" id="reconnection-notice" style="margin: 15px 0;">
-        <p>
-            <strong>⚠️ Site reconnected successfully!</strong> 
-            Your protected pages may need to be re-synced. Click "Sync Protection Status" below to restore your content protection.
-        </p>
-    </div>
-    <?php
-    endif;
-    ?>
-    
     <div class="agent-hub-tabs">
         <button class="tab-button active" data-tab="overview">
             <span class="dashicons dashicons-dashboard"></span>
@@ -184,16 +168,6 @@ $is_connected = !empty($api_key) && !empty($site_id);
                         <span class="dashicons dashicons-saved"></span>
                         Save Configuration
                     </button>
-                    
-                    <?php if ($is_connected): ?>
-                    <button type="button" id="sync-protection-status" class="button button-secondary" style="margin-left: 10px;">
-                        <span class="dashicons dashicons-update"></span>
-                        Sync Protection Status
-                    </button>
-                    <p class="description" style="margin-top: 8px; font-style: italic;">
-                        Use this to restore protected pages after reconnecting your site or recovering your API key.
-                    </p>
-                    <?php endif; ?>
                 </div>
             </div>
         </div>

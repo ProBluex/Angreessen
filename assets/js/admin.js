@@ -163,51 +163,6 @@
       .always(() => $btn.prop("disabled", false).html(prev));
   });
 
-  /* ---------- Sync Protection Status ---------- */
-
-  $("#sync-protection-status").on("click", function () {
-    const $btn = $(this);
-    const origText = $btn.html();
-    
-    $btn.prop("disabled", true).html('<span class="spinner is-active" style="float:none;margin:0 5px 0 0;"></span> Syncing...');
-    
-    ajaxPost("agent_hub_sync_protection_status")
-      .done((res) => {
-        if (res?.success) {
-          const data = res.data || {};
-          const synced = data.synced || 0;
-          const skipped = data.skipped || 0;
-          const message = data.message || `Synced ${synced} pages`;
-          
-          w.showToast("Sync Complete", message, "success");
-          
-          // Dismiss reconnection notice if present
-          $("#reconnection-notice").fadeOut();
-          
-          // Refresh content table if on content tab
-          if ($('.tab-button[data-tab="content"]').hasClass("active")) {
-            if (typeof hub.loadContent === "function") {
-              hub.loadContent(1);
-            }
-          }
-          
-          // Refresh overview stats
-          if (typeof hub.loadOverviewStats === "function") {
-            hub.loadOverviewStats();
-          }
-        } else {
-          w.showToast("Sync Failed", res?.data?.message || "Unknown error", "error");
-        }
-      })
-      .fail((xhr) => {
-        const msg = xhr?.responseJSON?.data?.message || "Request failed";
-        w.showToast("Error", msg, "error");
-      })
-      .always(() => {
-        $btn.prop("disabled", false).html(origText);
-      });
-  });
-
   /* ---------- Register/Sync Site ---------- */
 
   $("#register-site-button, #sync-site-button").on("click", function () {

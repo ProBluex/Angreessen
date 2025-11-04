@@ -93,12 +93,8 @@ if ($should_init_puc) {
             $updateChecker->setBranch('main');
             
             if (defined('WP_DEBUG') && WP_DEBUG) {
-                static $puc_logged = false;
-                if (!$puc_logged) {
-                    $context = wp_doing_cron() ? 'wp-cron' : (is_admin() ? 'admin' : 'other');
-                    error_log("Tolliver PUC: Initialized at file scope (context: {$context})");
-                    $puc_logged = true;
-                }
+                $context = wp_doing_cron() ? 'wp-cron' : (is_admin() ? 'admin' : 'other');
+                error_log("Tolliver PUC: Initialized at file scope (context: {$context})");
             }
         }
     }

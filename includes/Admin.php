@@ -432,14 +432,15 @@ class Admin {
         error_log('[Admin.php] 📊 site_result success: ' . ($site_result['success'] ? 'true' : 'false'));
         error_log('[Admin.php] 🌍 ecosystem_result success: ' . ($ecosystem_result['success'] ? 'true' : 'false'));
         
-        // Add cache-busting headers
-        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-        header('Pragma: no-cache');
-        header('Expires: 0');
-        
-        // Use partial data with safe fallbacks
-        $site_data = $has_site_data ? ($site_result['data'] ?? $site_result ?? []) : [];
-        $ecosystem_data = $has_ecosystem_data ? ($ecosystem_result['data'] ?? $ecosystem_result ?? []) : [];
+        if (($site_result['success'] ?? false) || ($ecosystem_result['success'] ?? false)) {
+            // Add cache-busting headers
+            header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+            header('Pragma: no-cache');
+            header('Expires: 0');
+            
+            // Normalize shapes to avoid collisions (note key names!)
+            $site_data = $site_result['data'] ?? $site_result ?? [];
+            $ecosystem_data = $ecosystem_result['data'] ?? $ecosystem_result ?? [];
             
             // Extract metrics safely - tolerate both nested and flat structures
             $site_metrics = $site_data['metrics'] ?? $site_data;
@@ -512,24 +513,12 @@ class Admin {
             wp_send_json_success($final_response);
         }
         
-        // Allow partial success - ecosystem data is independent of site data
-        $has_site_data = $site_result['success'];
-        $has_ecosystem_data = $ecosystem_result['success'];
-        
-        if (!$has_site_data && !$has_ecosystem_data) {
-            // Total failure - return error
-            delete_transient($lock_key);
-            $site_err = $site_result['error'] ?? 'unknown';
-            $eco_err  = $ecosystem_result['error'] ?? 'unknown';
-            error_log('[Admin.php] ❌ Both analytics requests failed');
-            wp_send_json_error(['message' => "Site analytics: $site_err | Ecosystem stats: $eco_err"]);
-        }
-        
-        // Proceed with partial data - warn but don't fail
-        if (!$has_site_data || !$has_ecosystem_data) {
-            $missing = !$has_site_data ? 'site' : 'ecosystem';
-            error_log("[Admin.php] ⚠️ Partial analytics: missing {$missing} data");
-        }
+        // If both failed, release lock
+        delete_transient($lock_key);
+        $site_err = $site_result['error'] ?? $site_result['message'] ?? 'unknown';
+        $eco_err  = $ecosystem_result['error'] ?? $ecosystem_result['message'] ?? 'unknown';
+        error_log('[Admin.php] ❌ Analytics request failed');
+        wp_send_json_error(['message' => "Site analytics: $site_err | Ecosystem stats: $eco_err"]);
     }
     
     /**
@@ -1085,72 +1074,12 @@ class Admin {
         // Save to WordPress options
         update_option('402links_api_key', $api_key);
         
-        // Set transient to show sync notice on next dashboard load
-        set_transient('402links_show_sync_notice', true, 300); // 5 minutes
-        
         // Log recovery event
         error_log('[Tolliver] API key recovered successfully');
         
         wp_send_json_success([
             'message' => 'API key saved successfully',
             'api_key_prefix' => substr($api_key, 0, 10) . '...'
-        ]);
-    }
-    
-    /**
-     * AJAX: Sync protection status from Supabase to WordPress
-     * Restores postmeta for protected pages after site reconnection with new API key
-     */
-    public static function ajax_sync_protection_status() {
-        check_ajax_referer('agent_hub_nonce', 'nonce');
-        
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(['message' => 'Unauthorized']);
-        }
-        
-        $site_id = get_option('402links_site_id');
-        if (!$site_id) {
-            wp_send_json_error(['message' => 'Site not registered']);
-        }
-        
-        // Fetch all site_pages for this site from Supabase
-        $api = new API();
-        $result = $api->get_site_pages($site_id);
-        
-        if (!$result['success']) {
-            wp_send_json_error(['message' => 'Failed to fetch site pages from backend']);
-        }
-        
-        $synced = 0;
-        $skipped = 0;
-        
-        foreach ($result['pages'] as $page) {
-            $wp_post_id = $page['wordpress_post_id'];
-            $short_id = $page['short_id'];
-            $price = $page['price'] ?? get_option('402links_settings')['default_price'] ?? 0.10;
-            
-            // Verify post still exists
-            $post = get_post($wp_post_id);
-            if (!$post || $post->post_status !== 'publish') {
-                $skipped++;
-                continue;
-            }
-            
-            // Update WordPress post meta
-            update_post_meta($wp_post_id, '_402links_id', $short_id);
-            update_post_meta($wp_post_id, '_402links_url', "https://402.so/{$short_id}");
-            update_post_meta($wp_post_id, '_402links_price', $price);
-            
-            $synced++;
-        }
-        
-        // Clear protected pages cache
-        delete_transient('agent_hub_protected_pages_count');
-        
-        wp_send_json_success([
-            'message' => "Synced {$synced} protected pages, skipped {$skipped}",
-            'synced' => $synced,
-            'skipped' => $skipped
         ]);
     }
 }

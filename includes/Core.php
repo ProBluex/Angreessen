@@ -38,7 +38,6 @@ class Core {
         add_action('wp_ajax_agent_hub_toggle_human_access', [Admin::class, 'ajax_toggle_human_access']);
         add_action('wp_ajax_agent_hub_get_content', [Admin::class, 'ajax_get_content']);
         add_action('wp_ajax_agent_hub_bulk_generate', [Admin::class, 'ajax_bulk_generate']);
-        add_action('wp_ajax_agent_hub_sync_protection_status', [Admin::class, 'ajax_sync_protection_status']);
         
         // Batch processing AJAX handlers
         add_action('wp_ajax_agent_hub_start_batch_generation', [Admin::class, 'ajax_start_batch_generation']);
