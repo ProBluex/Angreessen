@@ -1085,6 +1085,9 @@ class Admin {
         // Save to WordPress options
         update_option('402links_api_key', $api_key);
         
+        // Set transient to show sync notice on next dashboard load
+        set_transient('402links_show_sync_notice', true, 300); // 5 minutes
+        
         // Log recovery event
         error_log('[Tolliver] API key recovered successfully');
         
