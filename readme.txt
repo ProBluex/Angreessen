@@ -3,7 +3,7 @@ Contributors: 402links, ProBluex
 Tags: payment, ai, agent, monetization, x402, paywall
 Requires at least: 5.0
 Tested up to: 6.7
-Stable tag: 3.18.6
+Stable tag: 3.18.7
 License: Proprietary
 License URI: https://402links.com
 
@@ -64,6 +64,13 @@ The plugin automatically exposes payment metadata through the x402 protocol that
 4. Agent access logs
 
 == Changelog ==
+
+= 3.18.7 =
+* 🔧 CRITICAL FIX: Edge function now updates existing site_pages without paid_link_id (eliminates duplicate key errors)
+* 🔧 CRITICAL FIX: Service key migration now calls correct Supabase endpoint
+* ✅ IMPROVEMENT: Enhanced batch processor error logging with detailed diagnostics
+* ✅ IMPROVEMENT: Upsert logic prevents "Not Protected" status for existing pages
+* 🚀 FEATURE: Automatic page record updates when creating paid links
 
 = 3.18.5 =
 * CRITICAL FIX: BatchProcessor now extracts short_id from all success responses (not just 409)
