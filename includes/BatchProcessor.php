@@ -125,8 +125,23 @@ class BatchProcessor {
                     }
                 } else {
                     $progress['failed']++;
-                    $progress['errors'][] = "Post #{$post_id}: {$result['error']}";
-                    error_log("[402links] ❌ Failed for post #{$post_id}: {$result['error']}");
+                    $error_msg = $result['error'] ?? 'Unknown error';
+                    $status_code = $result['status_code'] ?? '';
+                    
+                    // Provide detailed error message
+                    if ($status_code === 409) {
+                        $error_msg = "Link creation conflict (duplicate page)";
+                    } elseif (strpos($error_msg, 'duplicate key') !== false) {
+                        $error_msg = "Page already exists - attempting to fix";
+                        error_log("[402links] ⚠️ Duplicate page detected for post #{$post_id} - edge function will upsert");
+                    } elseif (strpos($error_msg, 'SERVICE KEY NOT SET') !== false) {
+                        $error_msg = "Service key not configured - check plugin settings";
+                    } elseif (empty($error_msg)) {
+                        $error_msg = "Network error or timeout";
+                    }
+                    
+                    $progress['errors'][] = "Post #{$post_id}: {$error_msg}";
+                    error_log("[402links] ❌ Failed for post #{$post_id}: {$error_msg}" . ($status_code ? " (HTTP {$status_code})" : ""));
                 }
             }
             

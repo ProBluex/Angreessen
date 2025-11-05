@@ -157,8 +157,8 @@ class Installer {
             $settings = get_option('402links_settings', []);
             $api_endpoint = $settings['api_endpoint'] ?? 'https://api.402links.com/v1';
             
-            // Call backend to get the global service key
-            $response = wp_remote_get($api_endpoint . '/get-service-key', [
+            // Call Supabase edge function to get the service key
+            $response = wp_remote_get('https://cnionwnknwnzpwfuacse.supabase.co/functions/v1/get-service-key', [
                 'headers' => [
                     'Authorization' => 'Bearer ' . $api_key,
                     'Content-Type' => 'application/json'
