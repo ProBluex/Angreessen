@@ -59,6 +59,9 @@
         // Filter by link status
         $(document).on('change', '#content-link-filter', handleLinkFilter);
         
+        // Sync all links button
+        $(document).on('click', '#sync-all-links', handleSyncAllLinks);
+        
         debugLog('[ContentManager] Event handlers registered');
     });
     
@@ -266,6 +269,53 @@
         if (action === 'generate') {
             bulkGenerateLinks(selectedIds);
         }
+    }
+    
+    /**
+     * Handle sync all links
+     */
+    function handleSyncAllLinks(e) {
+        e.preventDefault();
+        const $btn = $(e.currentTarget);
+        
+        if ($btn.hasClass('syncing')) {
+            return;
+        }
+        
+        if (!confirm('Sync all post protection metadata from the backend? This will update local WordPress data with the latest from 402links.com.')) {
+            return;
+        }
+        
+        debugLog('[ContentManager] Starting sync all links');
+        
+        $.ajax({
+            url: agentHubData.ajaxUrl,
+            type: 'POST',
+            data: {
+                action: 'agent_hub_sync_all_links',
+                nonce: agentHubData.nonce
+            },
+            beforeSend: function() {
+                $btn.addClass('syncing').prop('disabled', true);
+                $btn.html('<span class="dashicons dashicons-update" style="animation: spin 1s linear infinite;"></span> Syncing...');
+            },
+            success: function(response) {
+                if (response.success) {
+                    showToast('Sync Complete', response.data.message, 'success');
+                    loadContent(); // Reload table to show updated statuses
+                } else {
+                    showToast('Sync Failed', response.data.message || 'Unknown error', 'error');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('[ContentManager] Sync error:', error);
+                showToast('Network Error', 'Failed to sync links: ' + error, 'error');
+            },
+            complete: function() {
+                $btn.removeClass('syncing').prop('disabled', false);
+                $btn.html('<span class="dashicons dashicons-cloud-upload"></span> Sync All Links');
+            }
+        });
     }
     
     /**

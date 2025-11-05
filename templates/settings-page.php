@@ -224,6 +224,10 @@ $is_connected = !empty($api_key) && !empty($site_id);
                 <span class="dashicons dashicons-update"></span>
                 Generate Paid Links (Posts Only)
             </button>
+            <button id="sync-all-links" class="button button-secondary" style="margin-left: 10px;">
+                <span class="dashicons dashicons-cloud-upload"></span>
+                Sync All Links
+            </button>
             <button id="refresh-content" class="button">
                 <span class="dashicons dashicons-update-alt"></span>
                 Reload Table

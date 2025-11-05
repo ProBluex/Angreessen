@@ -1254,4 +1254,52 @@ class Admin {
             'api_key_prefix' => substr($api_key, 0, 10) . '...'
         ]);
     }
+    
+    /**
+     * AJAX: Sync all links from backend
+     */
+    public static function ajax_sync_all_links() {
+        check_ajax_referer('agent_hub_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Unauthorized']);
+        }
+        
+        $site_id = get_option('402links_site_id');
+        if (!$site_id) {
+            wp_send_json_error(['message' => 'Site not provisioned']);
+        }
+        
+        $api = new API();
+        $sync_result = $api->get_site_pages($site_id);
+        
+        if (!$sync_result['success']) {
+            wp_send_json_error(['message' => $sync_result['error'] ?? 'Sync failed']);
+        }
+        
+        $synced = 0;
+        $not_found = 0;
+        
+        foreach ($sync_result['pages'] as $page) {
+            $wp_post_id = $page['wordpress_post_id'] ?? null;
+            $short_id = $page['short_id'] ?? null;
+            
+            if (!$short_id || !$wp_post_id || !get_post($wp_post_id)) {
+                $not_found++;
+                continue;
+            }
+            
+            update_post_meta($wp_post_id, '_402links_id', $short_id);
+            update_post_meta($wp_post_id, '_402links_url', "https://402.so/{$short_id}");
+            update_post_meta($wp_post_id, '_402links_price', $page['price'] ?? 0.10);
+            update_post_meta($wp_post_id, '_402links_force_agent_payment', true);
+            $synced++;
+        }
+        
+        wp_send_json_success([
+            'message' => "Synced {$synced} posts successfully" . ($not_found > 0 ? " ({$not_found} not found)" : ""),
+            'synced' => $synced,
+            'not_found' => $not_found
+        ]);
+    }
 }

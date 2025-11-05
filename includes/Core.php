@@ -59,6 +59,7 @@ class Core {
         // Sync protection status AJAX handlers
         add_action('wp_ajax_agent_hub_sync_protection_status', [Admin::class, 'ajax_sync_protection_status']);
         add_action('wp_ajax_agent_hub_check_sync_status', [Admin::class, 'ajax_check_sync_status']);
+        add_action('wp_ajax_agent_hub_sync_all_links', [Admin::class, 'ajax_sync_all_links']);
         
         // REST API routes
         add_action('rest_api_init', [API::class, 'register_rest_routes']);

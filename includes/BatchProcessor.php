@@ -100,27 +100,33 @@ class BatchProcessor {
                 $result = $api->create_link($post_id);
                 
                 if ($result['success']) {
-                    $progress['created']++;
-                    error_log("[402links] ✅ Created link for post #{$post->ID}");
-                } elseif (isset($result['status_code']) && $result['status_code'] === 409) {
-                    // Link already exists in backend - extract short_id and sync to WP
-                    $existing_short_id = $result['existing_short_id'] ?? null;
+                    // ALWAYS extract short_id from successful responses
+                    $short_id = $result['short_id'] ?? null;
                     
-                    if ($existing_short_id) {
-                        update_post_meta($post_id, '_402links_id', $existing_short_id);
-                        update_post_meta($post_id, '_402links_url', "https://402.so/{$existing_short_id}");
+                    if ($short_id) {
+                        update_post_meta($post_id, '_402links_id', $short_id);
+                        update_post_meta($post_id, '_402links_url', "https://402.so/{$short_id}");
                         update_post_meta($post_id, '_402links_price', $post_data['price']);
+                        update_post_meta($post_id, '_402links_force_agent_payment', true);
                         
-                        $progress['updated']++;
-                        error_log("[402links] ✅ Synced existing link for post #{$post->ID}: {$existing_short_id}");
+                        // Distinguish between created vs synced
+                        $message = $result['message'] ?? '';
+                        if (stripos($message, 'already exists') !== false) {
+                            $progress['updated']++;
+                            error_log("[402links] ✅ Synced existing link for post #{$post_id}: {$short_id}");
+                        } else {
+                            $progress['created']++;
+                            error_log("[402links] ✅ Created link for post #{$post_id}: {$short_id}");
+                        }
                     } else {
                         $progress['failed']++;
-                        $progress['errors'][] = "Post #{$post->ID}: Link exists but short_id not returned";
+                        $progress['errors'][] = "Post #{$post_id}: Success but no short_id returned";
+                        error_log("[402links] ❌ No short_id for post #{$post_id}");
                     }
                 } else {
                     $progress['failed']++;
-                    $progress['errors'][] = "Post #{$post->ID}: {$result['error']}";
-                    error_log("[402links] ❌ Failed for post #{$post->ID}: {$result['error']}");
+                    $progress['errors'][] = "Post #{$post_id}: {$result['error']}";
+                    error_log("[402links] ❌ Failed for post #{$post_id}: {$result['error']}");
                 }
             }
             
