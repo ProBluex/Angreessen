@@ -141,4 +141,43 @@ class Installer {
     private static function generate_site_fingerprint() {
         return hash('sha256', get_site_url() . ABSPATH . (defined('AUTH_KEY') ? AUTH_KEY : ''));
     }
+    
+    /**
+     * One-time migration: Populate missing service keys for recovered sites
+     */
+    public static function migrate_service_key() {
+        $service_key = get_option('402links_supabase_service_key');
+        $site_id = get_option('402links_site_id');
+        $api_key = get_option('402links_api_key');
+        
+        // Only run if site is provisioned but service key is missing
+        if ($site_id && $api_key && !$service_key) {
+            error_log('[402links] Migration: Fetching missing service key for site ' . $site_id);
+            
+            $settings = get_option('402links_settings', []);
+            $api_endpoint = $settings['api_endpoint'] ?? 'https://api.402links.com/v1';
+            
+            // Call backend to get the global service key
+            $response = wp_remote_get($api_endpoint . '/get-service-key', [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $api_key,
+                    'Content-Type' => 'application/json'
+                ],
+                'timeout' => 10
+            ]);
+            
+            if (!is_wp_error($response) && wp_remote_retrieve_response_code($response) === 200) {
+                $body = json_decode(wp_remote_retrieve_body($response), true);
+                if (isset($body['service_role_key'])) {
+                    update_option('402links_supabase_service_key', $body['service_role_key']);
+                    error_log('[402links] Service key migrated successfully');
+                } else {
+                    error_log('[402links] Migration failed: No service_role_key in response');
+                }
+            } else {
+                $error = is_wp_error($response) ? $response->get_error_message() : 'HTTP ' . wp_remote_retrieve_response_code($response);
+                error_log('[402links] Migration failed: ' . $error);
+            }
+        }
+    }
 }

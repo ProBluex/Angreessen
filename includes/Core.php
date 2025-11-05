@@ -3,6 +3,9 @@ namespace AgentHub;
 
 class Core {
     public function init() {
+        // One-time migration for service key (for recovered sites)
+        Installer::migrate_service_key();
+        
         // Agent interception (BEFORE WordPress serves content)
         add_action('template_redirect', [PaymentGate::class, 'intercept_request'], 1);
         

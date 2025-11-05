@@ -42,13 +42,6 @@ class ContentSync {
             return;
         }
         
-        // Check if auto-generate is enabled
-        $settings = get_option('402links_settings');
-        if (!isset($settings['auto_generate']) || !$settings['auto_generate']) {
-            error_log('402links: Auto-generate is disabled for post ' . $post_id);
-            return;
-        }
-        
         // Check if API key is set
         $api_key = get_option('402links_api_key');
         if (empty($api_key)) {

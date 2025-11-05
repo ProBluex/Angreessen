@@ -219,7 +219,6 @@ class Admin {
         
         $settings = [
             'default_price' => floatval($_POST['default_price'] ?? 0.10),
-            'auto_generate' => isset($_POST['auto_generate']) && $_POST['auto_generate'] === 'true',
             'payment_wallet' => sanitize_text_field($_POST['payment_wallet'] ?? ''),
             'network' => sanitize_text_field($_POST['network'] ?? 'base'),
             'api_endpoint' => sanitize_text_field($_POST['api_endpoint'] ?? 'https://api.402links.com/v1')
