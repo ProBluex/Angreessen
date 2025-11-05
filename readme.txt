@@ -3,7 +3,7 @@ Contributors: 402links, ProBluex
 Tags: payment, ai, agent, monetization, x402, paywall
 Requires at least: 5.0
 Tested up to: 6.7
-Stable tag: 3.18.7
+Stable tag: 3.16.6
 License: Proprietary
 License URI: https://402links.com
 
@@ -64,27 +64,6 @@ The plugin automatically exposes payment metadata through the x402 protocol that
 4. Agent access logs
 
 == Changelog ==
-
-= 3.18.7 =
-* 🔧 CRITICAL FIX: Edge function now updates existing site_pages without paid_link_id (eliminates duplicate key errors)
-* 🔧 CRITICAL FIX: Service key migration now calls correct Supabase endpoint
-* ✅ IMPROVEMENT: Enhanced batch processor error logging with detailed diagnostics
-* ✅ IMPROVEMENT: Upsert logic prevents "Not Protected" status for existing pages
-* 🚀 FEATURE: Automatic page record updates when creating paid links
-
-= 3.18.5 =
-* CRITICAL FIX: BatchProcessor now extracts short_id from all success responses (not just 409)
-* Added "Sync All Links" button in My Content tab for manual recovery after API key reset
-* Fixed "Not Protected" status display issue for existing links
-* Improved sync logic to distinguish between created vs synced links
-* Enhanced batch processing to handle backend 200 responses with "already exists" message
-
-= 3.18.4 =
-* 🔧 CRITICAL FIX: Service role key now stored during site provisioning (fixes "Not Set" display)
-* 🔧 CRITICAL FIX: Batch processor now syncs existing links instead of treating 409 conflicts as failures
-* ✅ IMPROVEMENT: API.php returns existing_short_id in 409 responses for proper sync
-* ✅ IMPROVEMENT: Auto-sync protection status after API key recovery
-* 🚀 ENHANCEMENT: Seamless handling of already-provisioned sites
 
 = 3.16.2 =
 * Fixed: Plugin update checker cache causing "already at latest version" errors

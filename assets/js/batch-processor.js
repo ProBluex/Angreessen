@@ -122,9 +122,7 @@
   function updateProgressUI(progress) {
     const total = parseInt(progress.total, 10) || 0;
     const processed = parseInt(progress.processed, 10) || 0;
-    const created = parseInt(progress.created, 10) || 0;
-    const updated = parseInt(progress.updated, 10) || 0;
-    const successful = created + updated;
+    const successful = parseInt(progress.successful, 10) || 0;
     const failed = parseInt(progress.failed, 10) || 0;
     const percent = total > 0 ? Math.round((processed / total) * 100) : 0;
 
@@ -173,11 +171,7 @@
           pollTimer = setTimeout(pollBatchProgress, POLL_INTERVAL);
         } else if (progress.status === "completed") {
           if (w.showToast) {
-            const created = parseInt(progress.created, 10) || 0;
-            const updated = parseInt(progress.updated, 10) || 0;
-            const successful = created + updated;
-            const failed = parseInt(progress.failed, 10) || 0;
-            const msg = `Generated ${successful} links successfully. ${failed} failed.`;
+            const msg = `Generated ${progress.successful || 0} links successfully. ${progress.failed || 0} failed.`;
             w.showToast("Batch Complete", msg, "success");
           }
 

@@ -15,7 +15,7 @@ class BatchProcessor {
         
         // Initialize progress tracking
         $progress = [
-            'status' => 'processing',
+            'status' => 'running',
             'total' => $total_posts,
             'processed' => 0,
             'created' => 0,
@@ -38,7 +38,7 @@ class BatchProcessor {
     public static function process_next_batch() {
         $progress = get_transient(self::PROGRESS_KEY);
         
-        if (!$progress || $progress['status'] !== 'processing') {
+        if (!$progress || $progress['status'] !== 'running') {
             return ['success' => false, 'error' => 'No active batch process'];
         }
         
@@ -82,66 +82,12 @@ class BatchProcessor {
                     $progress['errors'][] = "Post {$post_id}: " . ($result['error'] ?? 'Unknown');
                 }
             } else {
-                $post = get_post($post_id);
-                $settings = get_option('402links_settings');
-                
-                $price = get_post_meta($post_id, '_402links_price', true);
-                if (empty($price)) {
-                    $price = $settings['default_price'] ?? 0.10;
-                }
-                
-                $post_data = [
-                    'post_id' => $post_id,
-                    'title' => get_the_title($post_id),
-                    'url' => get_permalink($post_id),
-                    'price' => floatval($price)
-                ];
-                
-                $result = $api->create_link($post_id);
-                
+                $result = ContentSync::create_link($post_id);
                 if ($result['success']) {
-                    // ALWAYS extract short_id from successful responses
-                    $short_id = $result['short_id'] ?? null;
-                    
-                    if ($short_id) {
-                        update_post_meta($post_id, '_402links_id', $short_id);
-                        update_post_meta($post_id, '_402links_url', "https://402.so/{$short_id}");
-                        update_post_meta($post_id, '_402links_price', $post_data['price']);
-                        update_post_meta($post_id, '_402links_force_agent_payment', true);
-                        
-                        // Distinguish between created vs synced
-                        $message = $result['message'] ?? '';
-                        if (stripos($message, 'already exists') !== false) {
-                            $progress['updated']++;
-                            error_log("[402links] ✅ Synced existing link for post #{$post_id}: {$short_id}");
-                        } else {
-                            $progress['created']++;
-                            error_log("[402links] ✅ Created link for post #{$post_id}: {$short_id}");
-                        }
-                    } else {
-                        $progress['failed']++;
-                        $progress['errors'][] = "Post #{$post_id}: Success but no short_id returned";
-                        error_log("[402links] ❌ No short_id for post #{$post_id}");
-                    }
+                    $progress['created']++;
                 } else {
                     $progress['failed']++;
-                    $error_msg = $result['error'] ?? 'Unknown error';
-                    $status_code = $result['status_code'] ?? '';
-                    
-                    // Provide detailed error message
-                    if ($status_code === 409) {
-                        $error_msg = "Link creation conflict (duplicate page)";
-                    } elseif (strpos($error_msg, 'duplicate key') !== false) {
-                        $error_msg = "Page already exists - attempting to fix";
-                        error_log("[402links] ⚠️ Duplicate page detected for post #{$post_id} - edge function will upsert");
-                    } elseif (strpos($error_msg, 'SERVICE KEY NOT SET') !== false) {
-                        $error_msg = "Service key not configured - check plugin settings";
-                    } elseif (empty($error_msg)) {
-                        $error_msg = "Network error or timeout";
-                    }
-                    
-                    $progress['errors'][] = "Post #{$post_id}: {$error_msg}";
-                    error_log("[402links] ❌ Failed for post #{$post_id}: {$error_msg}" . ($status_code ? " (HTTP {$status_code})" : ""));
+                    $progress['errors'][] = "Post {$post_id}: " . ($result['error'] ?? 'Unknown');
                 }
             }
             

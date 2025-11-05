@@ -3,9 +3,6 @@ namespace AgentHub;
 
 class Core {
     public function init() {
-        // One-time migration for service key (for recovered sites)
-        Installer::migrate_service_key();
-        
         // Agent interception (BEFORE WordPress serves content)
         add_action('template_redirect', [PaymentGate::class, 'intercept_request'], 1);
         
@@ -55,14 +52,6 @@ class Core {
         // Bot policy AJAX handlers
         add_action('wp_ajax_agent_hub_get_site_bot_policies', [Admin::class, 'ajax_get_site_bot_policies']);
         add_action('wp_ajax_agent_hub_update_site_bot_policies', [Admin::class, 'ajax_update_site_bot_policies']);
-        
-        // Recovery AJAX handler
-        add_action('wp_ajax_agent_hub_save_recovered_key', [Admin::class, 'ajax_save_recovered_key']);
-        
-        // Sync protection status AJAX handlers
-        add_action('wp_ajax_agent_hub_sync_protection_status', [Admin::class, 'ajax_sync_protection_status']);
-        add_action('wp_ajax_agent_hub_check_sync_status', [Admin::class, 'ajax_check_sync_status']);
-        add_action('wp_ajax_agent_hub_sync_all_links', [Admin::class, 'ajax_sync_all_links']);
         
         // REST API routes
         add_action('rest_api_init', [API::class, 'register_rest_routes']);

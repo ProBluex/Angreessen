@@ -27,18 +27,6 @@ $is_connected = !empty($api_key) && !empty($site_id);
         <?php endif; ?>
     </div>
     
-    <?php
-    // Show sync notice if site was recently reconnected with new API key
-    if (get_transient('402links_show_sync_notice')):
-    ?>
-    <div class="notice notice-warning is-dismissible" id="sync-protection-notice">
-        <p>
-            <strong>⚠️ Site reconnected successfully!</strong> 
-            Click "Sync Protection Status" below to restore your protected pages from the backend.
-        </p>
-    </div>
-    <?php endif; ?>
-    
     <div class="agent-hub-tabs">
         <button class="tab-button active" data-tab="overview">
             <span class="dashicons dashicons-dashboard"></span>
@@ -204,33 +192,14 @@ $is_connected = !empty($api_key) && !empty($site_id);
     
     <!-- Content Tab -->
     <div id="tab-content" class="tab-content">
-        <!-- Sync Mismatch Banner (hidden by default) -->
-        <div id="sync-mismatch-banner" class="notice notice-warning" style="display: none; margin: 15px 0; padding: 12px 15px; border-left: 4px solid #f56e28;">
-            <div style="display: flex; align-items: center; justify-content: space-between;">
-                <div style="flex: 1;">
-                    <span class="dashicons dashicons-warning" style="color: #f56e28; margin-right: 8px; vertical-align: middle;"></span>
-                    <strong>Sync Required:</strong>
-                    <span id="sync-mismatch-message">Your content protection status needs to be synced with the backend.</span>
-                </div>
-                <button id="sync-protection-status-banner" class="button button-primary" style="margin-left: 15px;">
-                    <span class="dashicons dashicons-update"></span>
-                    Sync Now
-                </button>
-            </div>
-        </div>
-        
         <div class="content-toolbar">
             <button id="bulk-generate-links" class="button button-primary">
                 <span class="dashicons dashicons-update"></span>
                 Generate Paid Links (Posts Only)
             </button>
-            <button id="sync-all-links" class="button button-secondary" style="margin-left: 10px;">
-                <span class="dashicons dashicons-cloud-upload"></span>
-                Sync All Links
-            </button>
             <button id="refresh-content" class="button">
                 <span class="dashicons dashicons-update-alt"></span>
-                Reload Table
+                Refresh
             </button>
             <span id="post-count-indicator" style="margin-left: 15px; font-weight: 500; color: #666;"></span>
         </div>
@@ -465,45 +434,38 @@ $is_connected = !empty($api_key) && !empty($site_id);
     
     <!-- Contact Us Tab -->
     <div id="tab-contact" class="tab-content">
-        <?php
-        // Check if this is a recovery scenario (site_id exists but api_key missing)
-        $is_recovery_scenario = !empty($site_id) && empty($api_key);
-        ?>
-        
-        <div class="contact-us-layout <?php echo $is_recovery_scenario ? 'with-recovery' : ''; ?>">
-            <div class="contact-main">
-                <div class="contact-intro">
-                    <h2>About Tolliver Plugin</h2>
-                    <div class="contact-description">
-                        <p>This plugin is developed by the team at <a href="https://402links.com" target="_blank">402links.com</a> by using the emerging "HTTP 402 Payment Required" standard. Leveraging novel advancements in agentic payment technologies, the plugin enables websites to convert any page or endpoint into a monetizable digital SKU. This means that both humans and AI agents can seamlessly pay for access, data, or functionality - directly through standard web requests - with instant settlement in stablecoins on the Base blockchain.</p>
-                        
-                        <p>The 402 Links project is experimental and open to collaboration. We're continuously refining the protocol and invite feedback, suggestions, and partnership ideas from early adopters and developers.</p>
-                        
-                        <p>If you have questions, encounter issues, or wish to contribute, please reach out using the form below. Your feedback helps shape the next generation of web-native payments.</p>
-                        
-                <div class="contact-links">
-                    <p>
-                        🔗 <a href="https://402links.com/details" target="_blank">Learn more about the technology</a>
-                    </p>
-                    <p>
-                        🧠 <a href="https://402links.com/developers" target="_blank">For developers & integration docs</a>
-                    </p>
-                    <p style="margin-left: 20px; margin-top: 8px;">
-                        <strong>Open Source Protocol Implementations:</strong>
-                    </p>
-                    <p style="margin-left: 20px;">
-                        📦 <a href="https://github.com/coinbase/x402" target="_blank">x402 Protocol (Coinbase)</a> - The core HTTP 402 payment protocol implementation that enables AI agents to make payments through standard HTTP headers. This is the foundation of our agent payment system.
-                    </p>
-                    <p style="margin-left: 20px;">
-                        📦 <a href="https://github.com/google-agentic-commerce/AP2" target="_blank">AP2 Protocol (Google Agentic Commerce)</a> - Google's Agent Payment Protocol 2 specification that defines how AI agents discover and interact with paywall-protected content. We've integrated this to ensure broad agent compatibility.
-                    </p>
-                </div>
-                    </div>
-                </div>
+        <div class="contact-intro">
+            <h2>About Tolliver Plugin</h2>
+            <div class="contact-description">
+                <p>This plugin is developed by the team at <a href="https://402links.com" target="_blank">402links.com</a> by using the emerging "HTTP 402 Payment Required" standard. Leveraging novel advancements in agentic payment technologies, the plugin enables websites to convert any page or endpoint into a monetizable digital SKU. This means that both humans and AI agents can seamlessly pay for access, data, or functionality - directly through standard web requests - with instant settlement in stablecoins on the Base blockchain.</p>
                 
-                <div class="contact-form-wrapper">
-                    <h3>Send Us a Message</h3>
-                    <form id="contact-form" class="contact-form">
+                <p>The 402 Links project is experimental and open to collaboration. We're continuously refining the protocol and invite feedback, suggestions, and partnership ideas from early adopters and developers.</p>
+                
+                <p>If you have questions, encounter issues, or wish to contribute, please reach out using the form below. Your feedback helps shape the next generation of web-native payments.</p>
+                
+        <div class="contact-links">
+            <p>
+                🔗 <a href="https://402links.com/details" target="_blank">Learn more about the technology</a>
+            </p>
+            <p>
+                🧠 <a href="https://402links.com/developers" target="_blank">For developers & integration docs</a>
+            </p>
+            <p style="margin-left: 20px; margin-top: 8px;">
+                <strong>Open Source Protocol Implementations:</strong>
+            </p>
+            <p style="margin-left: 20px;">
+                📦 <a href="https://github.com/coinbase/x402" target="_blank">x402 Protocol (Coinbase)</a> - The core HTTP 402 payment protocol implementation that enables AI agents to make payments through standard HTTP headers. This is the foundation of our agent payment system.
+            </p>
+            <p style="margin-left: 20px;">
+                📦 <a href="https://github.com/google-agentic-commerce/AP2" target="_blank">AP2 Protocol (Google Agentic Commerce)</a> - Google's Agent Payment Protocol 2 specification that defines how AI agents discover and interact with paywall-protected content. We've integrated this to ensure broad agent compatibility.
+            </p>
+        </div>
+            </div>
+        </div>
+        
+        <div class="contact-form-wrapper">
+            <h3>Send Us a Message</h3>
+            <form id="contact-form" class="contact-form">
                 <div class="form-row">
                     <div class="form-field">
                         <label for="contact-name">Name <span class="required">*</span></label>
@@ -546,52 +508,9 @@ $is_connected = !empty($api_key) && !empty($site_id);
                 </div>
                 <h3>Thank you - Message sent!</h3>
                 <p>We've received your message and will get back to you as soon as possible.</p>
-                    <button class="button" id="send-another">Send Another Message</button>
-                </div>
+                <button class="button" id="send-another">Send Another Message</button>
             </div>
         </div>
-        
-        <?php if ($is_recovery_scenario): ?>
-        <!-- Recovery Sidebar -->
-        <div class="recovery-sidebar" id="recovery-sidebar">
-            <div class="recovery-header">
-                <span class="dashicons dashicons-admin-network"></span>
-                <h3>Account Recovery</h3>
-            </div>
-            
-            <div class="recovery-content">
-                <p class="recovery-description">
-                    Reconnect your site instantly if you've reinstalled the plugin.
-                </p>
-                
-                <div class="recovery-info">
-                    <div class="info-row">
-                        <span class="label">Site ID:</span>
-                        <code id="recovery-site-id"><?php echo esc_html($site_id); ?></code>
-                    </div>
-                    <div class="info-row">
-                        <span class="label">Site URL:</span>
-                        <span id="recovery-site-url"><?php echo esc_html(get_site_url()); ?></span>
-                    </div>
-                </div>
-                
-                <button type="button" id="reconnect-site-btn" class="button button-primary button-recovery">
-                    <span class="dashicons dashicons-admin-network"></span>
-                    Reconnect Site
-                </button>
-                
-                <div id="recovery-status" class="recovery-status" style="display:none;"></div>
-                
-                <div class="recovery-help">
-                    <p class="help-text">
-                        <span class="dashicons dashicons-info"></span>
-                        If you've reinstalled the plugin, use this to restore your connection instantly.
-                    </p>
-                </div>
-            </div>
-        </div>
-        <?php endif; ?>
-    </div>
     </div>
     
     <div id="agent-hub-toast" class="agent-hub-toast"></div>

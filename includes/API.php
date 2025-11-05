@@ -830,56 +830,6 @@ class API {
     }
     
     /**
-     * Get all site pages for sync purposes
-     * Uses service_role_key for direct database access (bypasses RLS)
-     */
-    public function get_site_pages($site_id) {
-        $url = $this->supabase_url . '/rest/v1/site_pages?site_id=eq.' . $site_id . '&select=wordpress_post_id,paid_link_id,pricing_override,paid_links(short_id,price)';
-        
-        $response = wp_remote_get($url, [
-            'headers' => [
-                'Authorization' => 'Bearer ' . $this->service_role_key,
-                'apikey' => $this->service_role_key,
-                'Content-Type' => 'application/json'
-            ]
-        ]);
-        
-        if (is_wp_error($response)) {
-            error_log('[Tolliver v3.18.2] get_site_pages WP_Error: ' . $response->get_error_message());
-            return ['success' => false, 'error' => $response->get_error_message()];
-        }
-        
-        $status_code = wp_remote_retrieve_response_code($response);
-        if ($status_code !== 200) {
-            $body = wp_remote_retrieve_body($response);
-            error_log('[Tolliver v3.18.2] get_site_pages HTTP ' . $status_code . ': ' . $body);
-            return ['success' => false, 'error' => 'HTTP ' . $status_code . ': Unable to fetch pages'];
-        }
-        
-        $body = json_decode(wp_remote_retrieve_body($response), true);
-        
-        if (!is_array($body)) {
-            error_log('[Tolliver v3.18.2] get_site_pages invalid response format');
-            return ['success' => false, 'error' => 'Invalid response from backend'];
-        }
-        
-        // Transform response
-        $pages = [];
-        foreach ($body as $page) {
-            if (isset($page['paid_links']) && isset($page['paid_links']['short_id'])) {
-                $pages[] = [
-                    'wordpress_post_id' => $page['wordpress_post_id'],
-                    'short_id' => $page['paid_links']['short_id'],
-                    'price' => $page['pricing_override'] ?? $page['paid_links']['price']
-                ];
-            }
-        }
-        
-        error_log('[Tolliver v3.18.2] get_site_pages success: ' . count($pages) . ' pages retrieved');
-        return ['success' => true, 'pages' => $pages];
-    }
-    
-    /**
      * Get violations summary from backend
      */
     public function get_violations_summary() {
@@ -1012,17 +962,6 @@ class API {
             error_log('[API.php] ❌ HTTP ERROR ' . $status_code . ': ' . ($result['error'] ?? 'Unknown error'));
             error_log('[API.php] ❌ Full error response: ' . json_encode($result));
             error_log('[API.php] ❌ ==================== REQUEST FAILED ====================');
-            
-            // Special handling for 409 Conflict - extract existing_short_id
-            if ($status_code === 409) {
-                return [
-                    'success' => false,
-                    'error' => $result['error'] ?? 'Link already exists for this post',
-                    'status_code' => 409,
-                    'existing_short_id' => $result['existing_short_id'] ?? null
-                ];
-            }
-            
             return [
                 'success' => false,
                 'error' => $result['error'] ?? 'API request failed',
