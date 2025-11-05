@@ -3,7 +3,7 @@ Contributors: 402links, ProBluex
 Tags: payment, ai, agent, monetization, x402, paywall
 Requires at least: 5.0
 Tested up to: 6.7
-Stable tag: 3.18.2
+Stable tag: 3.18.4
 License: Proprietary
 License URI: https://402links.com
 
@@ -64,6 +64,13 @@ The plugin automatically exposes payment metadata through the x402 protocol that
 4. Agent access logs
 
 == Changelog ==
+
+= 3.18.4 =
+* 🔧 CRITICAL FIX: Service role key now stored during site provisioning (fixes "Not Set" display)
+* 🔧 CRITICAL FIX: Batch processor now syncs existing links instead of treating 409 conflicts as failures
+* ✅ IMPROVEMENT: API.php returns existing_short_id in 409 responses for proper sync
+* ✅ IMPROVEMENT: Auto-sync protection status after API key recovery
+* 🚀 ENHANCEMENT: Seamless handling of already-provisioned sites
 
 = 3.16.2 =
 * Fixed: Plugin update checker cache causing "already at latest version" errors

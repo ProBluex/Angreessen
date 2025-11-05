@@ -50,6 +50,12 @@ class Installer {
                     update_option('402links_site_id', $result['site_id']);
                     update_option('402links_provisioned_url', get_site_url());
                     
+                    // NEW: Store service role key if provided
+                    if (isset($result['service_role_key'])) {
+                        update_option('402links_supabase_service_key', $result['service_role_key']);
+                        error_log('[402links] Service role key stored successfully');
+                    }
+                    
                     error_log('402links: Auto-provisioning successful! Site ID: ' . $result['site_id']);
                     update_option('402links_provisioning_success', true);
                     return;
@@ -57,6 +63,12 @@ class Installer {
                     // Site was already provisioned
                     update_option('402links_site_id', $result['site_id']);
                     update_option('402links_api_key_id', $result['api_key_id']);
+                    
+                    // NEW: Store service role key if provided
+                    if (isset($result['service_role_key'])) {
+                        update_option('402links_supabase_service_key', $result['service_role_key']);
+                        error_log('[402links] Service role key stored successfully (already provisioned)');
+                    }
                     
                     error_log('402links: Site already provisioned: ' . $result['site_id']);
                     update_option('402links_provisioning_info', 'Site was already registered. Please contact support if you need your API key.');

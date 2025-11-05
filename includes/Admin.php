@@ -902,11 +902,17 @@ class Admin {
             wp_send_json_error(['message' => 'Site not registered']);
         }
         
+        error_log('[402links] === SYNC PROTECTION STATUS STARTED ===');
+        error_log('[402links] Site ID: ' . $site_id);
+        
         // Fetch all site_pages for this site from Supabase
         $api = new API();
         $result = $api->get_site_pages($site_id);
         
+        error_log('[402links] get_site_pages response: ' . ($result['success'] ? 'SUCCESS' : 'FAILED'));
+        
         if (!$result['success']) {
+            error_log('[402links] ❌ Failed to fetch site pages: ' . ($result['error'] ?? 'Unknown error'));
             wp_send_json_error(['message' => 'Failed to fetch site pages from backend']);
         }
         
@@ -915,22 +921,28 @@ class Admin {
         $skipped = 0;
         $errors = [];
         
+        error_log('[402links] Processing ' . count($result['pages']) . ' pages from backend');
+        
         foreach ($result['pages'] as $page) {
             $wp_post_id = $page['wordpress_post_id'];
             $short_id = $page['short_id'];
             $price = $page['price'] ?? get_option('402links_settings')['default_price'] ?? 0.10;
+            
+            error_log("[402links] Processing Post #{$wp_post_id}: short_id={$short_id}, price={$price}");
             
             // Verify post still exists
             $post = get_post($wp_post_id);
             if (!$post) {
                 $errors[] = "Post #{$wp_post_id} not found (may have been deleted)";
                 $skipped++;
+                error_log("[402links] ⚠️  Post #{$wp_post_id} not found");
                 continue;
             }
             
             if ($post->post_status !== 'publish') {
                 $errors[] = "Post #{$wp_post_id} '{$post->post_title}' is {$post->post_status}";
                 $skipped++;
+                error_log("[402links] ⚠️  Post #{$wp_post_id} is {$post->post_status}");
                 continue;
             }
             
@@ -940,6 +952,7 @@ class Admin {
             if ($current_short_id === $short_id) {
                 // Already correctly synced
                 $already_synced++;
+                error_log("[402links] ✓ Post #{$wp_post_id} already synced");
                 continue;
             }
             
@@ -948,7 +961,7 @@ class Admin {
             update_post_meta($wp_post_id, '_402links_url', "https://402.so/{$short_id}");
             update_post_meta($wp_post_id, '_402links_price', $price);
             
-            error_log("402links: Synced Post #{$wp_post_id} '{$post->post_title}': {$current_short_id} → {$short_id}");
+            error_log("[402links] ✅ Synced Post #{$wp_post_id} '{$post->post_title}': {$current_short_id} → {$short_id}");
             
             $updated++;
         }
@@ -963,6 +976,8 @@ class Admin {
         if ($skipped > 0) {
             $message .= ", skipped {$skipped}";
         }
+        
+        error_log("[402links] === SYNC COMPLETE: {$message} ===");
         
         wp_send_json_success([
             'message' => $message,
@@ -1203,26 +1218,39 @@ class Admin {
         
         $api_key = sanitize_text_field($_POST['api_key'] ?? '');
         
-        if (empty($api_key)) {
+        if (empty($api_key) || strlen($api_key) < 20) {
             wp_send_json_error(['message' => 'Invalid API key']);
         }
         
-        // Validate API key format (matches platform standard: 4l_live_ or 4l_test_)
-        if (!preg_match('/^4l_(live|test)_[a-z0-9]+$/', $api_key)) {
-            wp_send_json_error(['message' => 'Invalid API key format']);
+        update_option('402links_api_key', $api_key);
+        delete_option('402links_recovery_needed');
+        error_log('[402links] Recovered API key saved');
+        
+        // NEW: Auto-trigger sync after recovery
+        $site_id = get_option('402links_site_id');
+        if ($site_id) {
+            $api = new API();
+            $sync_result = $api->get_site_pages($site_id);
+            
+            if ($sync_result['success'] && !empty($sync_result['pages'])) {
+                $synced = 0;
+                foreach ($sync_result['pages'] as $page) {
+                    $wp_post_id = $page['wordpress_post_id'];
+                    $short_id = $page['short_id'] ?? null;
+                    
+                    if ($short_id && get_post($wp_post_id)) {
+                        update_post_meta($wp_post_id, '_402links_id', $short_id);
+                        update_post_meta($wp_post_id, '_402links_url', "https://402.so/{$short_id}");
+                        update_post_meta($wp_post_id, '_402links_price', $page['price'] ?? 0.10);
+                        $synced++;
+                    }
+                }
+                error_log("[402links] Auto-synced {$synced} pages after recovery");
+            }
         }
         
-        // Save to WordPress options
-        update_option('402links_api_key', $api_key);
-        
-        // Show sync notice after API key recovery
-        set_transient('402links_show_sync_notice', true, 300); // 5 minutes
-        
-        // Log recovery event
-        error_log('[Tolliver] API key recovered successfully');
-        
         wp_send_json_success([
-            'message' => 'API key saved successfully',
+            'message' => 'API key saved and protection status synced',
             'api_key_prefix' => substr($api_key, 0, 10) . '...'
         ]);
     }

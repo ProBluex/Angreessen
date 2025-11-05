@@ -1012,6 +1012,17 @@ class API {
             error_log('[API.php] ❌ HTTP ERROR ' . $status_code . ': ' . ($result['error'] ?? 'Unknown error'));
             error_log('[API.php] ❌ Full error response: ' . json_encode($result));
             error_log('[API.php] ❌ ==================== REQUEST FAILED ====================');
+            
+            // Special handling for 409 Conflict - extract existing_short_id
+            if ($status_code === 409) {
+                return [
+                    'success' => false,
+                    'error' => $result['error'] ?? 'Link already exists for this post',
+                    'status_code' => 409,
+                    'existing_short_id' => $result['existing_short_id'] ?? null
+                ];
+            }
+            
             return [
                 'success' => false,
                 'error' => $result['error'] ?? 'API request failed',

@@ -204,19 +204,19 @@ $is_connected = !empty($api_key) && !empty($site_id);
     
     <!-- Content Tab -->
     <div id="tab-content" class="tab-content">
-        <!-- Sync Mismatch Banner (conditional) -->
-        <div id="sync-mismatch-banner" class="notice notice-warning inline" style="display: none; margin: 0 0 15px 0;">
-            <p>
-                <span class="dashicons dashicons-warning" style="color: #f0b429;"></span>
-                <strong>Protection Status Mismatch:</strong>
-                <span id="sync-mismatch-message"></span>
-            </p>
-            <p>
-                <button type="button" id="sync-protection-status-content" class="button button-secondary">
+        <!-- Sync Mismatch Banner (hidden by default) -->
+        <div id="sync-mismatch-banner" class="notice notice-warning" style="display: none; margin: 15px 0; padding: 12px 15px; border-left: 4px solid #f56e28;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                <div style="flex: 1;">
+                    <span class="dashicons dashicons-warning" style="color: #f56e28; margin-right: 8px; vertical-align: middle;"></span>
+                    <strong>Sync Required:</strong>
+                    <span id="sync-mismatch-message">Your content protection status needs to be synced with the backend.</span>
+                </div>
+                <button id="sync-protection-status-banner" class="button button-primary" style="margin-left: 15px;">
                     <span class="dashicons dashicons-update"></span>
                     Sync Now
                 </button>
-            </p>
+            </div>
         </div>
         
         <div class="content-toolbar">
@@ -226,7 +226,7 @@ $is_connected = !empty($api_key) && !empty($site_id);
             </button>
             <button id="refresh-content" class="button">
                 <span class="dashicons dashicons-update-alt"></span>
-                Refresh
+                Reload Table
             </button>
             <span id="post-count-indicator" style="margin-left: 15px; font-weight: 500; color: #666;"></span>
         </div>

@@ -15,7 +15,7 @@ class BatchProcessor {
         
         // Initialize progress tracking
         $progress = [
-            'status' => 'running',
+            'status' => 'processing',
             'total' => $total_posts,
             'processed' => 0,
             'created' => 0,
@@ -38,7 +38,7 @@ class BatchProcessor {
     public static function process_next_batch() {
         $progress = get_transient(self::PROGRESS_KEY);
         
-        if (!$progress || $progress['status'] !== 'running') {
+        if (!$progress || $progress['status'] !== 'processing') {
             return ['success' => false, 'error' => 'No active batch process'];
         }
         
@@ -82,12 +82,45 @@ class BatchProcessor {
                     $progress['errors'][] = "Post {$post_id}: " . ($result['error'] ?? 'Unknown');
                 }
             } else {
-                $result = ContentSync::create_link($post_id);
+                $post = get_post($post_id);
+                $settings = get_option('402links_settings');
+                
+                $price = get_post_meta($post_id, '_402links_price', true);
+                if (empty($price)) {
+                    $price = $settings['default_price'] ?? 0.10;
+                }
+                
+                $post_data = [
+                    'post_id' => $post_id,
+                    'title' => get_the_title($post_id),
+                    'url' => get_permalink($post_id),
+                    'price' => floatval($price)
+                ];
+                
+                $result = $api->create_link($post_id);
+                
                 if ($result['success']) {
                     $progress['created']++;
+                    error_log("[402links] ✅ Created link for post #{$post->ID}");
+                } elseif (isset($result['status_code']) && $result['status_code'] === 409) {
+                    // Link already exists in backend - extract short_id and sync to WP
+                    $existing_short_id = $result['existing_short_id'] ?? null;
+                    
+                    if ($existing_short_id) {
+                        update_post_meta($post_id, '_402links_id', $existing_short_id);
+                        update_post_meta($post_id, '_402links_url', "https://402.so/{$existing_short_id}");
+                        update_post_meta($post_id, '_402links_price', $post_data['price']);
+                        
+                        $progress['updated']++;
+                        error_log("[402links] ✅ Synced existing link for post #{$post->ID}: {$existing_short_id}");
+                    } else {
+                        $progress['failed']++;
+                        $progress['errors'][] = "Post #{$post->ID}: Link exists but short_id not returned";
+                    }
                 } else {
                     $progress['failed']++;
-                    $progress['errors'][] = "Post {$post_id}: " . ($result['error'] ?? 'Unknown');
+                    $progress['errors'][] = "Post #{$post->ID}: {$result['error']}";
+                    error_log("[402links] ❌ Failed for post #{$post->ID}: {$result['error']}");
                 }
             }
             
