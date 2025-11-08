@@ -8,12 +8,34 @@ class Admin {
     public static function show_provisioning_notice() {
         // Check if wallet is configured
         $settings = get_option('402links_settings', []);
+        DevLogger::log('DB', 'get_option', [
+            'key' => '402links_settings',
+            'value_keys' => array_keys($settings),
+            'found' => !empty($settings)
+        ]);
+        
+        DevLogger::log('DB', 'get_option', [
+            'key' => '402links_settings',
+            'value_keys' => array_keys($settings),
+            'found' => !empty($settings)
+        ]);
+        
         $wallet = $settings['payment_wallet'] ?? '';
         $site_id = get_option('402links_site_id');
+        DevLogger::log('DB', 'get_option', [
+            'key' => '402links_site_id',
+            'value' => $site_id,
+            'found' => !empty($site_id)
+        ]);
         
         
         // Show success notice
         if (get_option('402links_provisioning_success')) {
+            DevLogger::log('DB', 'get_option', [
+                'key' => '402links_provisioning_success',
+                'found' => true
+            ]);
+            
             $site_id = get_option('402links_site_id');
             ?>
             <div class="notice notice-success is-dismissible">
@@ -23,10 +45,19 @@ class Admin {
             </div>
             <?php
             delete_option('402links_provisioning_success');
+            DevLogger::log('DB', 'delete_option', [
+                'key' => '402links_provisioning_success',
+                'success' => true
+            ]);
         }
         
         // Show info notice (for already provisioned sites)
         $info = get_option('402links_provisioning_info');
+        DevLogger::log('DB', 'get_option', [
+            'key' => '402links_provisioning_info',
+            'found' => !empty($info)
+        ]);
+        
         if ($info) {
             ?>
             <div class="notice notice-info is-dismissible">
@@ -34,10 +65,19 @@ class Admin {
             </div>
             <?php
             delete_option('402links_provisioning_info');
+            DevLogger::log('DB', 'delete_option', [
+                'key' => '402links_provisioning_info',
+                'success' => true
+            ]);
         }
         
         // Show error notice
         $error = get_option('402links_provisioning_error');
+        DevLogger::log('DB', 'get_option', [
+            'key' => '402links_provisioning_error',
+            'found' => !empty($error)
+        ]);
+        
         if ($error) {
             ?>
             <div class="notice notice-error is-dismissible">
@@ -46,6 +86,10 @@ class Admin {
             </div>
             <?php
             delete_option('402links_provisioning_error');
+            DevLogger::log('DB', 'delete_option', [
+                'key' => '402links_provisioning_error',
+                'success' => true
+            ]);
         }
     }
     
@@ -228,9 +272,19 @@ class Admin {
      * AJAX: Save settings
      */
     public static function ajax_save_settings() {
+        DevLogger::log('AJAX', 'handler_start', [
+            'action' => 'ajax_save_settings',
+            'user_id' => get_current_user_id(),
+            'payload' => $_POST
+        ]);
+        
         check_ajax_referer('agent_hub_nonce', 'nonce');
         
         if (!current_user_can('manage_options')) {
+            DevLogger::log('ERROR', 'ajax_error', [
+                'action' => 'ajax_save_settings',
+                'error' => 'Unauthorized'
+            ]);
             wp_send_json_error(['message' => 'Unauthorized']);
         }
         
@@ -242,14 +296,28 @@ class Admin {
             'api_endpoint' => sanitize_text_field($_POST['api_endpoint'] ?? 'https://api.402links.com/v1')
         ];
         
-        update_option('402links_settings', $settings);
+        $result = update_option('402links_settings', $settings);
+        DevLogger::log('DB', 'update_option', [
+            'key' => '402links_settings',
+            'value' => $settings,
+            'success' => $result !== false
+        ]);
         
         if (isset($_POST['api_key'])) {
-            update_option('402links_api_key', sanitize_text_field($_POST['api_key']));
+            $result = update_option('402links_api_key', sanitize_text_field($_POST['api_key']));
+            DevLogger::log('DB', 'update_option', [
+                'key' => '402links_api_key',
+                'success' => $result !== false
+            ]);
         }
         
         // Sync default_price and payment_wallet to Supabase registered_sites table
         $site_id = get_option('402links_site_id');
+        DevLogger::log('DB', 'get_option', [
+            'key' => '402links_site_id',
+            'value' => $site_id,
+            'found' => !empty($site_id)
+        ]);
         if ($site_id) {
             $api = new API();
             $sync_result = $api->sync_site_settings([
@@ -260,6 +328,12 @@ class Admin {
             error_log('🟦 [Admin] Synced settings to Supabase: ' . json_encode($sync_result));
         }
         
+        DevLogger::log('AJAX', 'handler_success', [
+            'action' => 'ajax_save_settings',
+            'settings_saved' => true,
+            'sync_result' => $sync_result ?? null
+        ]);
+        
         wp_send_json_success(['message' => 'Settings saved successfully']);
     }
     
@@ -267,13 +341,27 @@ class Admin {
      * AJAX: Check if existing links exist
      */
     public static function ajax_check_existing_links() {
+        DevLogger::log('AJAX', 'handler_start', [
+            'action' => 'ajax_check_existing_links',
+            'user_id' => get_current_user_id()
+        ]);
+        
         check_ajax_referer('agent_hub_nonce', 'nonce');
         
         if (!current_user_can('manage_options')) {
+            DevLogger::log('ERROR', 'ajax_error', [
+                'action' => 'ajax_check_existing_links',
+                'error' => 'Unauthorized'
+            ]);
             wp_send_json_error(['message' => 'Unauthorized']);
         }
         
         $site_id = get_option('402links_site_id');
+        DevLogger::log('DB', 'get_option', [
+            'key' => '402links_site_id',
+            'value' => $site_id,
+            'found' => !empty($site_id)
+        ]);
         
         if (!$site_id) {
             wp_send_json_success([
@@ -286,6 +374,12 @@ class Admin {
         $api = new API();
         $result = $api->check_existing_links_count();
         
+        DevLogger::log('AJAX', 'handler_success', [
+            'action' => 'ajax_check_existing_links',
+            'has_links' => $result['count'] > 0,
+            'link_count' => $result['count']
+        ]);
+        
         wp_send_json_success([
             'has_links' => $result['count'] > 0,
             'link_count' => $result['count']
@@ -296,9 +390,18 @@ class Admin {
      * AJAX: Register site
      */
     public static function ajax_register_site() {
+        DevLogger::log('AJAX', 'handler_start', [
+            'action' => 'ajax_register_site',
+            'user_id' => get_current_user_id()
+        ]);
+        
         check_ajax_referer('agent_hub_nonce', 'nonce');
         
         if (!current_user_can('manage_options')) {
+            DevLogger::log('ERROR', 'ajax_error', [
+                'action' => 'ajax_register_site',
+                'error' => 'Unauthorized'
+            ]);
             wp_send_json_error(['message' => 'Unauthorized']);
         }
         
@@ -308,6 +411,11 @@ class Admin {
         if ($result['success']) {
             if (isset($result['site_id'])) {
                 update_option('402links_site_id', $result['site_id']);
+                DevLogger::log('DB', 'update_option', [
+                    'key' => '402links_site_id',
+                    'value' => $result['site_id'],
+                    'success' => true
+                ]);
             }
             
             // Auto-generate 402links for all published content
@@ -318,12 +426,22 @@ class Admin {
                 $bulk_result['created']
             );
             
+            DevLogger::log('AJAX', 'handler_success', [
+                'action' => 'ajax_register_site',
+                'site_id' => $result['site_id'],
+                'links_created' => $bulk_result['created']
+            ]);
+            
             wp_send_json_success([
                 'message' => $message,
                 'site_id' => $result['site_id'],
                 'auto_generated' => $bulk_result
             ]);
         } else {
+            DevLogger::log('ERROR', 'ajax_error', [
+                'action' => 'ajax_register_site',
+                'error' => $result['error'] ?? 'Registration failed'
+            ]);
             wp_send_json_error($result);
         }
     }
@@ -332,22 +450,46 @@ class Admin {
      * AJAX: Generate link for post
      */
     public static function ajax_generate_link() {
+        DevLogger::log('AJAX', 'handler_start', [
+            'action' => 'ajax_generate_link',
+            'user_id' => get_current_user_id(),
+            'payload' => $_POST
+        ]);
+        
         check_ajax_referer('agent_hub_nonce', 'nonce');
         
         if (!current_user_can('edit_posts')) {
+            DevLogger::log('ERROR', 'ajax_error', [
+                'action' => 'ajax_generate_link',
+                'error' => 'Unauthorized'
+            ]);
             wp_send_json_error(['message' => 'Unauthorized']);
         }
         
         $post_id = intval($_POST['post_id'] ?? 0);
         if (!$post_id) {
+            DevLogger::log('ERROR', 'ajax_error', [
+                'action' => 'ajax_generate_link',
+                'error' => 'Invalid post ID'
+            ]);
             wp_send_json_error(['message' => 'Invalid post ID']);
         }
         
         $result = ContentSync::create_link($post_id);
         
         if ($result['success']) {
+            DevLogger::log('AJAX', 'handler_success', [
+                'action' => 'ajax_generate_link',
+                'post_id' => $post_id,
+                'link_id' => $result['link_id'] ?? null
+            ]);
             wp_send_json_success($result);
         } else {
+            DevLogger::log('ERROR', 'ajax_error', [
+                'action' => 'ajax_generate_link',
+                'post_id' => $post_id,
+                'error' => $result['error'] ?? 'Link generation failed'
+            ]);
             wp_send_json_error($result);
         }
     }
@@ -356,9 +498,19 @@ class Admin {
      * AJAX: Get analytics
      */
     public static function ajax_get_analytics() {
+        DevLogger::log('AJAX', 'handler_start', [
+            'action' => 'ajax_get_analytics',
+            'user_id' => get_current_user_id(),
+            'timeframe' => $_POST['timeframe'] ?? '30d'
+        ]);
+        
         check_ajax_referer('agent_hub_nonce', 'nonce');
         
         if (!current_user_can('manage_options')) {
+            DevLogger::log('ERROR', 'ajax_error', [
+                'action' => 'ajax_get_analytics',
+                'error' => 'Unauthorized'
+            ]);
             wp_send_json_error(['message' => 'Unauthorized']);
         }
         
@@ -367,20 +519,42 @@ class Admin {
         // Check cache first (30 second TTL for better real-time experience)
         $cache_key = 'agent_hub_analytics_' . $timeframe;
         $cached = get_transient($cache_key);
+        DevLogger::log('CACHE', 'get_transient', [
+            'key' => $cache_key,
+            'hit' => $cached !== false,
+            'value' => $cached !== false ? 'cached' : 'miss'
+        ]);
         
         if ($cached !== false) {
             error_log('[Admin.php] 📦 Returning cached analytics for timeframe: ' . $timeframe);
+            DevLogger::log('AJAX', 'handler_success', [
+                'action' => 'ajax_get_analytics',
+                'source' => 'cache',
+                'timeframe' => $timeframe
+            ]);
             wp_send_json_success($cached);
             return;
         }
         
         // Check for in-flight request (deduplication)
         $lock_key = 'agent_hub_api_lock_' . $timeframe;
-        if (get_transient($lock_key)) {
+        $lock_exists = get_transient($lock_key);
+        DevLogger::log('CACHE', 'get_transient', [
+            'key' => $lock_key,
+            'hit' => $lock_exists !== false,
+            'purpose' => 'deduplication_lock'
+        ]);
+        
+        if ($lock_exists) {
             usleep(500000); // Wait 0.5s for in-flight request
             $cached = get_transient($cache_key);
             if ($cached !== false) {
                 error_log('[Admin.php] 📦 Returning cached data after lock wait');
+                DevLogger::log('AJAX', 'handler_success', [
+                    'action' => 'ajax_get_analytics',
+                    'source' => 'cache_after_lock',
+                    'timeframe' => $timeframe
+                ]);
                 wp_send_json_success($cached);
                 return;
             }
@@ -388,6 +562,12 @@ class Admin {
         
         // Set lock to prevent duplicate requests
         set_transient($lock_key, true, 5);
+        DevLogger::log('CACHE', 'set_transient', [
+            'key' => $lock_key,
+            'value' => true,
+            'expiration' => 5,
+            'purpose' => 'deduplication_lock'
+        ]);
         
         $api = new API();
         
@@ -468,19 +648,37 @@ class Admin {
             // Count protected pages with 5-minute cache
             $pages_cache_key = 'agent_hub_protected_pages_count';
             $protected_pages_count = get_transient($pages_cache_key);
+            DevLogger::log('CACHE', 'get_transient', [
+                'key' => $pages_cache_key,
+                'hit' => $protected_pages_count !== false,
+                'value' => $protected_pages_count !== false ? $protected_pages_count : 'miss'
+            ]);
             
             if ($protected_pages_count === false) {
                 global $wpdb;
-                $protected_pages_count = $wpdb->get_var("
+                $query = "
                     SELECT COUNT(DISTINCT p.ID) 
                     FROM {$wpdb->posts} p
                     INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
                     WHERE p.post_status = 'publish'
                     AND p.post_type IN ('post', 'page')
                     AND pm.meta_key = '_402links_id'
-                ");
+                ";
+                $protected_pages_count = $wpdb->get_var($query);
+                DevLogger::log('DB', 'wpdb_query', [
+                    'query_type' => 'SELECT COUNT',
+                    'tables' => ['posts', 'postmeta'],
+                    'result' => $protected_pages_count,
+                    'error' => $wpdb->last_error
+                ]);
+                
                 $protected_pages_count = intval($protected_pages_count);
                 set_transient($pages_cache_key, $protected_pages_count, 300); // 5 min cache
+                DevLogger::log('CACHE', 'set_transient', [
+                    'key' => $pages_cache_key,
+                    'value' => $protected_pages_count,
+                    'expiration' => 300
+                ]);
                 error_log('[Admin.php] 📄 Protected pages count (SQL): ' . $protected_pages_count);
             } else {
                 error_log('[Admin.php] 📦 Protected pages count (CACHED): ' . $protected_pages_count);
@@ -523,9 +721,25 @@ class Admin {
             
             // Cache the response for 30 seconds (better real-time experience)
             set_transient($cache_key, $final_response, 30);
+            DevLogger::log('CACHE', 'set_transient', [
+                'key' => $cache_key,
+                'expiration' => 30,
+                'data_size' => strlen(json_encode($final_response))
+            ]);
             
             // Release lock
             delete_transient($lock_key);
+            DevLogger::log('CACHE', 'delete_transient', [
+                'key' => $lock_key,
+                'purpose' => 'release_lock'
+            ]);
+            
+            DevLogger::log('AJAX', 'handler_success', [
+                'action' => 'ajax_get_analytics',
+                'source' => 'api',
+                'timeframe' => $timeframe,
+                'total_crawls' => $final_response['site']['total_crawls']
+            ]);
             
             wp_send_json_success($final_response);
         }
@@ -535,6 +749,13 @@ class Admin {
         $site_err = $site_result['error'] ?? $site_result['message'] ?? 'unknown';
         $eco_err  = $ecosystem_result['error'] ?? $ecosystem_result['message'] ?? 'unknown';
         error_log('[Admin.php] ❌ Analytics request failed');
+        
+        DevLogger::log('ERROR', 'ajax_error', [
+            'action' => 'ajax_get_analytics',
+            'site_error' => $site_err,
+            'ecosystem_error' => $eco_err
+        ]);
+        
         wp_send_json_error(['message' => "Site analytics: $site_err | Ecosystem stats: $eco_err"]);
     }
     
@@ -542,9 +763,19 @@ class Admin {
      * AJAX: Get content list with pagination
      */
     public static function ajax_get_content() {
+        DevLogger::log('AJAX', 'handler_start', [
+            'action' => 'ajax_get_content',
+            'user_id' => get_current_user_id(),
+            'payload' => $_POST
+        ]);
+        
         check_ajax_referer('agent_hub_nonce', 'nonce');
         
         if (!current_user_can('edit_posts')) {
+            DevLogger::log('ERROR', 'ajax_error', [
+                'action' => 'ajax_get_content',
+                'error' => 'Unauthorized'
+            ]);
             wp_send_json_error(['message' => 'Unauthorized']);
         }
         
@@ -558,6 +789,11 @@ class Admin {
         
         // Get site_id
         $site_id = get_option('402links_site_id');
+        DevLogger::log('DB', 'get_option', [
+            'key' => '402links_site_id',
+            'value' => $site_id,
+            'found' => !empty($site_id)
+        ]);
         
         // Fetch page analytics from backend API
         $api = new API();
@@ -637,6 +873,13 @@ class Admin {
             ];
         }
         
+        DevLogger::log('AJAX', 'handler_success', [
+            'action' => 'ajax_get_content',
+            'total_posts' => $total_posts,
+            'page' => $page,
+            'per_page' => $per_page
+        ]);
+        
         wp_send_json_success([
             'content' => $content_list,
             'pagination' => [
@@ -652,9 +895,19 @@ class Admin {
      * AJAX: Save wallet address
      */
     public static function ajax_save_wallet() {
+        DevLogger::log('AJAX', 'handler_start', [
+            'action' => 'ajax_save_wallet',
+            'user_id' => get_current_user_id(),
+            'has_wallet' => !empty($_POST['wallet'] ?? '')
+        ]);
+        
         check_ajax_referer('agent_hub_nonce', 'nonce');
         
         if (!current_user_can('manage_options')) {
+            DevLogger::log('ERROR', 'ajax_error', [
+                'action' => 'ajax_save_wallet',
+                'error' => 'Unauthorized'
+            ]);
             wp_send_json_error(['message' => 'Unauthorized']);
         }
         
@@ -679,9 +932,20 @@ class Admin {
         
         // Save locally first
         $settings = get_option('402links_settings', []);
+        DevLogger::log('DB', 'get_option', [
+            'key' => '402links_settings',
+            'found' => !empty($settings)
+        ]);
+        
         $settings['payment_wallet'] = $wallet;
         $settings['default_price'] = $default_price;
-        update_option('402links_settings', $settings);
+        $result = update_option('402links_settings', $settings);
+        DevLogger::log('DB', 'update_option', [
+            'key' => '402links_settings',
+            'wallet' => substr($wallet, 0, 10) . '...',
+            'default_price' => $default_price,
+            'success' => $result !== false
+        ]);
         
         // CHECK IF SITE IS PROVISIONED
         $site_id = get_option('402links_site_id');
@@ -738,6 +1002,12 @@ class Admin {
         error_log('402links: Sync wallet API result: ' . json_encode($result));
         
         if ($result['success']) {
+            DevLogger::log('AJAX', 'handler_success', [
+                'action' => 'ajax_save_wallet',
+                'sync_success' => true,
+                'site_id' => $site_id
+            ]);
+            
             wp_send_json_success([
                 'message' => 'Configuration saved and synced successfully',
                 'sync_success' => true,
@@ -746,6 +1016,12 @@ class Admin {
         } else {
             $sync_error = $result['error'] ?? 'Unknown sync error';
             error_log('402links: Failed to sync wallet: ' . $sync_error);
+            
+            DevLogger::log('ERROR', 'ajax_error', [
+                'action' => 'ajax_save_wallet',
+                'error' => $sync_error,
+                'site_id' => $site_id
+            ]);
             
             wp_send_json_success([
                 'message' => 'Configuration saved locally',
@@ -760,9 +1036,19 @@ class Admin {
      * AJAX: Toggle human access for a post
      */
     public static function ajax_toggle_human_access() {
+        DevLogger::log('AJAX', 'handler_start', [
+            'action' => 'ajax_toggle_human_access',
+            'user_id' => get_current_user_id(),
+            'post_id' => $_POST['post_id'] ?? null
+        ]);
+        
         check_ajax_referer('agent_hub_nonce', 'nonce');
         
         if (!current_user_can('edit_posts')) {
+            DevLogger::log('ERROR', 'ajax_error', [
+                'action' => 'ajax_toggle_human_access',
+                'error' => 'Unauthorized'
+            ]);
             wp_send_json_error(['message' => 'Unauthorized']);
         }
         
@@ -770,10 +1056,26 @@ class Admin {
         $block_humans = isset($_POST['block_humans']) && $_POST['block_humans'] === 'true';
         
         if (!$post_id) {
+            DevLogger::log('ERROR', 'ajax_error', [
+                'action' => 'ajax_toggle_human_access',
+                'error' => 'Invalid post ID'
+            ]);
             wp_send_json_error(['message' => 'Invalid post ID']);
         }
         
-        update_post_meta($post_id, '_402links_block_humans', $block_humans);
+        $result = update_post_meta($post_id, '_402links_block_humans', $block_humans);
+        DevLogger::log('DB', 'update_post_meta', [
+            'post_id' => $post_id,
+            'meta_key' => '_402links_block_humans',
+            'value' => $block_humans,
+            'success' => $result !== false
+        ]);
+        
+        DevLogger::log('AJAX', 'handler_success', [
+            'action' => 'ajax_toggle_human_access',
+            'post_id' => $post_id,
+            'block_humans' => $block_humans
+        ]);
         
         wp_send_json_success([
             'message' => 'Human access updated',
@@ -785,6 +1087,12 @@ class Admin {
      * AJAX: Get top performing pages
      */
     public static function ajax_get_top_pages() {
+        DevLogger::log('AJAX', 'handler_start', [
+            'action' => 'ajax_get_top_pages',
+            'user_id' => get_current_user_id(),
+            'payload' => $_POST
+        ]);
+        
         error_log('🟦 [Admin] === AJAX GET TOP PAGES START ===');
         error_log('🟦 [Admin] POST data: ' . print_r($_POST, true));
         
@@ -792,6 +1100,10 @@ class Admin {
         
         if (!current_user_can('manage_options')) {
             error_log('🔴 [Admin] ERROR: Unauthorized user');
+            DevLogger::log('ERROR', 'ajax_error', [
+                'action' => 'ajax_get_top_pages',
+                'error' => 'Unauthorized'
+            ]);
             wp_send_json_error(['message' => 'Unauthorized']);
         }
         
@@ -811,9 +1123,18 @@ class Admin {
         
         if ($result['success']) {
             error_log('🟢 [Admin] Sending success response with ' . count($result['pages'] ?? []) . ' pages');
+            DevLogger::log('AJAX', 'handler_success', [
+                'action' => 'ajax_get_top_pages',
+                'page_count' => count($result['pages'] ?? []),
+                'timeframe' => $timeframe
+            ]);
             wp_send_json_success($result);
         } else {
             error_log('🔴 [Admin] Sending error response: ' . ($result['error'] ?? 'Unknown error'));
+            DevLogger::log('ERROR', 'ajax_error', [
+                'action' => 'ajax_get_top_pages',
+                'error' => $result['error'] ?? 'Unknown error'
+            ]);
             wp_send_json_error($result);
         }
     }
@@ -822,9 +1143,18 @@ class Admin {
      * AJAX: Bulk generate links
      */
     public static function ajax_bulk_generate() {
+        DevLogger::log('AJAX', 'handler_start', [
+            'action' => 'ajax_bulk_generate',
+            'user_id' => get_current_user_id()
+        ]);
+        
         check_ajax_referer('agent_hub_nonce', 'nonce');
         
         if (!current_user_can('edit_posts')) {
+            DevLogger::log('ERROR', 'ajax_error', [
+                'action' => 'ajax_bulk_generate',
+                'error' => 'Unauthorized'
+            ]);
             wp_send_json_error(['message' => 'Unauthorized']);
         }
         
@@ -842,11 +1172,24 @@ class Admin {
                 $message .= sprintf(' %d failed.', $result['failed']);
             }
             
+            DevLogger::log('AJAX', 'handler_success', [
+                'action' => 'ajax_bulk_generate',
+                'created' => $result['created'],
+                'updated' => $result['updated'],
+                'failed' => $result['failed']
+            ]);
+            
             wp_send_json_success([
                 'message' => $message,
                 'stats' => $result
             ]);
         } else {
+            DevLogger::log('ERROR', 'ajax_error', [
+                'action' => 'ajax_bulk_generate',
+                'error' => 'No links generated',
+                'errors' => $result['errors'] ?? []
+            ]);
+            
             wp_send_json_error([
                 'message' => 'No links were generated. Please check your content.',
                 'errors' => $result['errors'] ?? []
@@ -858,13 +1201,29 @@ class Admin {
      * AJAX: Start batch generation
      */
     public static function ajax_start_batch_generation() {
+        DevLogger::log('AJAX', 'handler_start', [
+            'action' => 'ajax_start_batch_generation',
+            'user_id' => get_current_user_id()
+        ]);
+        
         check_ajax_referer('agent_hub_nonce', 'nonce');
         
         if (!current_user_can('edit_posts')) {
+            DevLogger::log('ERROR', 'ajax_error', [
+                'action' => 'ajax_start_batch_generation',
+                'error' => 'Unauthorized'
+            ]);
             wp_send_json_error(['message' => 'Unauthorized']);
         }
         
         $progress = BatchProcessor::start_batch();
+        
+        DevLogger::log('AJAX', 'handler_success', [
+            'action' => 'ajax_start_batch_generation',
+            'total_posts' => $progress['total'],
+            'status' => $progress['status']
+        ]);
+        
         wp_send_json_success($progress);
     }
     
@@ -872,17 +1231,35 @@ class Admin {
      * AJAX: Process next batch
      */
     public static function ajax_process_batch() {
+        DevLogger::log('AJAX', 'handler_start', [
+            'action' => 'ajax_process_batch',
+            'user_id' => get_current_user_id()
+        ]);
+        
         check_ajax_referer('agent_hub_nonce', 'nonce');
         
         if (!current_user_can('edit_posts')) {
+            DevLogger::log('ERROR', 'ajax_error', [
+                'action' => 'ajax_process_batch',
+                'error' => 'Unauthorized'
+            ]);
             wp_send_json_error(['message' => 'Unauthorized']);
         }
         
         $result = BatchProcessor::process_next_batch();
         
         if ($result['success']) {
+            DevLogger::log('AJAX', 'handler_success', [
+                'action' => 'ajax_process_batch',
+                'completed' => $result['completed'] ?? false,
+                'processed' => $result['progress']['processed'] ?? 0
+            ]);
             wp_send_json_success($result);
         } else {
+            DevLogger::log('ERROR', 'ajax_error', [
+                'action' => 'ajax_process_batch',
+                'error' => $result['error'] ?? 'Batch processing failed'
+            ]);
             wp_send_json_error($result);
         }
     }
@@ -891,9 +1268,21 @@ class Admin {
      * AJAX: Get batch status
      */
     public static function ajax_get_batch_status() {
+        DevLogger::log('AJAX', 'handler_start', [
+            'action' => 'ajax_get_batch_status',
+            'user_id' => get_current_user_id()
+        ]);
+        
         check_ajax_referer('agent_hub_nonce', 'nonce');
         
         $status = BatchProcessor::get_status();
+        
+        DevLogger::log('AJAX', 'handler_success', [
+            'action' => 'ajax_get_batch_status',
+            'status' => $status['status'] ?? 'unknown',
+            'processed' => $status['processed'] ?? 0
+        ]);
+        
         wp_send_json_success($status);
     }
     
@@ -901,9 +1290,18 @@ class Admin {
      * AJAX: Get violations summary
      */
     public static function ajax_get_violations_summary() {
+        DevLogger::log('AJAX', 'handler_start', [
+            'action' => 'ajax_get_violations_summary',
+            'user_id' => get_current_user_id()
+        ]);
+        
         check_ajax_referer('agent_hub_nonce', 'nonce');
         
         if (!current_user_can('manage_options')) {
+            DevLogger::log('ERROR', 'ajax_error', [
+                'action' => 'ajax_get_violations_summary',
+                'error' => 'Unauthorized'
+            ]);
             wp_send_json_error(['message' => 'Unauthorized']);
             return;
         }
@@ -921,9 +1319,21 @@ class Admin {
             ];
             
             error_log('402links: Violations AJAX handler - Sending response: ' . print_r($response_data, true));
+            
+            DevLogger::log('AJAX', 'handler_success', [
+                'action' => 'ajax_get_violations_summary',
+                'agent_count' => count($response_data['agents'] ?? [])
+            ]);
+            
             wp_send_json_success($response_data);
         } else {
             error_log('402links: Violations AJAX handler - Error: ' . ($result['error'] ?? 'Unknown error'));
+            
+            DevLogger::log('ERROR', 'ajax_error', [
+                'action' => 'ajax_get_violations_summary',
+                'error' => $result['error'] ?? 'Failed to fetch violations data'
+            ]);
+            
             wp_send_json_error([
                 'message' => $result['error'] ?? 'Failed to fetch violations data'
             ]);
@@ -934,9 +1344,20 @@ class Admin {
      * AJAX: Cancel batch
      */
     public static function ajax_cancel_batch() {
+        DevLogger::log('AJAX', 'handler_start', [
+            'action' => 'ajax_cancel_batch',
+            'user_id' => get_current_user_id()
+        ]);
+        
         check_ajax_referer('agent_hub_nonce', 'nonce');
         
         $result = BatchProcessor::cancel_batch();
+        
+        DevLogger::log('AJAX', 'handler_success', [
+            'action' => 'ajax_cancel_batch',
+            'cancelled' => true
+        ]);
+        
         wp_send_json_success($result);
     }
     
@@ -945,9 +1366,18 @@ class Admin {
      * Returns whether the current wallet is already synced to Supabase
      */
     public static function ajax_check_wallet_sync_status() {
+        DevLogger::log('AJAX', 'handler_start', [
+            'action' => 'ajax_check_wallet_sync_status',
+            'user_id' => get_current_user_id()
+        ]);
+        
         check_ajax_referer('agent_hub_nonce', 'nonce');
         
         if (!current_user_can('manage_options')) {
+            DevLogger::log('ERROR', 'ajax_error', [
+                'action' => 'ajax_check_wallet_sync_status',
+                'error' => 'Unauthorized'
+            ]);
             wp_send_json_error(['message' => 'Unauthorized']);
         }
         
@@ -972,12 +1402,24 @@ class Admin {
             $remote_wallet = strtolower($result['data']['agent_payment_wallet'] ?? '');
             $is_synced = (strtolower($local_wallet) === $remote_wallet);
             
+            DevLogger::log('AJAX', 'handler_success', [
+                'action' => 'ajax_check_wallet_sync_status',
+                'synced' => $is_synced,
+                'site_id' => $site_id
+            ]);
+            
             wp_send_json_success([
                 'synced' => $is_synced,
                 'wallet' => $local_wallet,
                 'remote_wallet' => $result['data']['agent_payment_wallet']
             ]);
         } else {
+            DevLogger::log('AJAX', 'handler_success', [
+                'action' => 'ajax_check_wallet_sync_status',
+                'synced' => false,
+                'reason' => 'api_error'
+            ]);
+            
             wp_send_json_success([
                 'synced' => false,
                 'wallet' => $local_wallet,
@@ -990,14 +1432,27 @@ class Admin {
      * AJAX: Get agent violations
      */
     public static function ajax_get_violations() {
+        DevLogger::log('AJAX', 'handler_start', [
+            'action' => 'ajax_get_violations',
+            'user_id' => get_current_user_id()
+        ]);
+        
         check_ajax_referer('agent_hub_nonce', 'nonce');
         
         if (!current_user_can('manage_options')) {
+            DevLogger::log('ERROR', 'ajax_error', [
+                'action' => 'ajax_get_violations',
+                'error' => 'Unauthorized'
+            ]);
             wp_send_json_error(['message' => 'Unauthorized']);
         }
         
         $site_id = get_option('402links_site_id');
         if (!$site_id) {
+            DevLogger::log('ERROR', 'ajax_error', [
+                'action' => 'ajax_get_violations',
+                'error' => 'Site not registered'
+            ]);
             wp_send_json_error(['message' => 'Site not registered']);
         }
         
@@ -1005,8 +1460,16 @@ class Admin {
         $result = $api->get_violations($site_id);
         
         if ($result['success']) {
+            DevLogger::log('AJAX', 'handler_success', [
+                'action' => 'ajax_get_violations',
+                'violation_count' => count($result['violations'] ?? [])
+            ]);
             wp_send_json_success($result);
         } else {
+            DevLogger::log('ERROR', 'ajax_error', [
+                'action' => 'ajax_get_violations',
+                'error' => $result['error'] ?? 'Failed to fetch violations'
+            ]);
             wp_send_json_error($result);
         }
     }
@@ -1015,14 +1478,27 @@ class Admin {
      * AJAX: Get site bot policies
      */
     public static function ajax_get_site_bot_policies() {
+        DevLogger::log('AJAX', 'handler_start', [
+            'action' => 'ajax_get_site_bot_policies',
+            'user_id' => get_current_user_id()
+        ]);
+        
         check_ajax_referer('agent_hub_nonce', 'nonce');
         
         if (!current_user_can('manage_options')) {
+            DevLogger::log('ERROR', 'ajax_error', [
+                'action' => 'ajax_get_site_bot_policies',
+                'error' => 'Unauthorized'
+            ]);
             wp_send_json_error(['message' => 'Unauthorized']);
         }
         
         $site_id = get_option('402links_site_id');
         if (!$site_id) {
+            DevLogger::log('ERROR', 'ajax_error', [
+                'action' => 'ajax_get_site_bot_policies',
+                'error' => 'Site not registered'
+            ]);
             wp_send_json_error(['message' => 'Site not registered']);
         }
         
@@ -1030,8 +1506,16 @@ class Admin {
         $result = $api->get_site_bot_policies($site_id);
         
         if ($result['success']) {
+            DevLogger::log('AJAX', 'handler_success', [
+                'action' => 'ajax_get_site_bot_policies',
+                'policy_count' => count($result['policies'] ?? [])
+            ]);
             wp_send_json_success($result);
         } else {
+            DevLogger::log('ERROR', 'ajax_error', [
+                'action' => 'ajax_get_site_bot_policies',
+                'error' => $result['error'] ?? 'Failed to fetch policies'
+            ]);
             wp_send_json_error($result);
         }
     }
@@ -1040,20 +1524,38 @@ class Admin {
      * AJAX: Update site bot policies
      */
     public static function ajax_update_site_bot_policies() {
+        DevLogger::log('AJAX', 'handler_start', [
+            'action' => 'ajax_update_site_bot_policies',
+            'user_id' => get_current_user_id(),
+            'policy_count' => count($_POST['policies'] ?? [])
+        ]);
+        
         check_ajax_referer('agent_hub_nonce', 'nonce');
         
         if (!current_user_can('manage_options')) {
+            DevLogger::log('ERROR', 'ajax_error', [
+                'action' => 'ajax_update_site_bot_policies',
+                'error' => 'Unauthorized'
+            ]);
             wp_send_json_error(['message' => 'Unauthorized']);
         }
         
         $site_id = get_option('402links_site_id');
         if (!$site_id) {
+            DevLogger::log('ERROR', 'ajax_error', [
+                'action' => 'ajax_update_site_bot_policies',
+                'error' => 'Site not registered'
+            ]);
             wp_send_json_error(['message' => 'Site not registered']);
         }
         
         $policies = $_POST['policies'] ?? [];
         
         if (empty($policies)) {
+            DevLogger::log('ERROR', 'ajax_error', [
+                'action' => 'ajax_update_site_bot_policies',
+                'error' => 'No policies provided'
+            ]);
             wp_send_json_error(['message' => 'No policies provided']);
         }
         
@@ -1061,8 +1563,16 @@ class Admin {
         $result = $api->update_site_bot_policies($site_id, $policies);
         
         if ($result['success']) {
+            DevLogger::log('AJAX', 'handler_success', [
+                'action' => 'ajax_update_site_bot_policies',
+                'policies_updated' => count($policies)
+            ]);
             wp_send_json_success($result);
         } else {
+            DevLogger::log('ERROR', 'ajax_error', [
+                'action' => 'ajax_update_site_bot_policies',
+                'error' => $result['error'] ?? 'Failed to update policies'
+            ]);
             wp_send_json_error($result);
         }
     }

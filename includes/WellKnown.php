@@ -36,7 +36,17 @@ class WellKnown {
      */
     public static function serve_402_json() {
         if (get_query_var('402_discovery')) {
+            DevLogger::log('WELL_KNOWN', '402_json_request', [
+                'endpoint' => '/.well-known/402.json',
+                'request_uri' => $_SERVER['REQUEST_URI'] ?? ''
+            ]);
+            
             $settings = get_option('402links_settings');
+            DevLogger::log('DB', 'get_option', [
+                'key' => '402links_settings',
+                'found' => !empty($settings)
+            ]);
+            
             $site_url = get_site_url();
             
             // Get USDC contract address based on network
@@ -48,6 +58,11 @@ class WellKnown {
             // Build resources array (x402 spec format)
             $resources = [];
             $pages = self::get_all_402_pages();
+            
+            DevLogger::log('WELL_KNOWN', '402_pages_fetched', [
+                'page_count' => count($pages),
+                'network' => $network
+            ]);
             
             foreach ($pages as $page) {
                 $price_atomic = (int)($page['price'] * 1000000); // Convert to 6 decimal USDC
@@ -88,6 +103,13 @@ class WellKnown {
             header('Access-Control-Allow-Origin: *');
             header('X-402-Version: 1');
             header('X-402-Resources: ' . count($resources));
+            
+            DevLogger::log('WELL_KNOWN', '402_json_served', [
+                'total_resources' => count($resources),
+                'network' => $network,
+                'payment_wallet' => substr($settings['payment_wallet'] ?? '', 0, 10) . '...'
+            ]);
+            
             echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
             exit;
         }
@@ -135,12 +157,23 @@ class WellKnown {
      */
     public static function serve_agent_card() {
         if (get_query_var('agent_card')) {
+            DevLogger::log('WELL_KNOWN', 'agent_card_request', [
+                'endpoint' => '/.well-known/agent-card.json',
+                'request_uri' => $_SERVER['REQUEST_URI'] ?? ''
+            ]);
+            
             $settings = get_option('402links_settings');
             $site_url = get_site_url();
             
             // Call Supabase edge function to generate agent-card
             $supabase_url = defined('SUPABASE_URL') ? SUPABASE_URL : '';
             $api_endpoint = $supabase_url . '/functions/v1/generate-agent-card';
+            
+            DevLogger::log('EDGE_FUNCTION', 'edge_function_call', [
+                'function' => 'generate-agent-card',
+                'endpoint' => $api_endpoint,
+                'site_url' => $site_url
+            ]);
             
             $args = [
                 'headers' => [
@@ -153,6 +186,10 @@ class WellKnown {
             $response = wp_remote_get($api_endpoint . '?site_url=' . urlencode($site_url), $args);
             
             if (is_wp_error($response)) {
+                DevLogger::log('ERROR', 'edge_function_error', [
+                    'function' => 'generate-agent-card',
+                    'error' => $response->get_error_message()
+                ]);
                 // Fallback: Generate basic agent-card locally
                 $agent_card = self::generate_fallback_agent_card();
             } else {
@@ -161,12 +198,27 @@ class WellKnown {
                 
                 // If edge function failed, use fallback
                 if (empty($agent_card) || isset($agent_card['error'])) {
+                    DevLogger::log('WELL_KNOWN', 'edge_function_fallback', [
+                        'reason' => 'empty_or_error_response',
+                        'error' => $agent_card['error'] ?? 'empty'
+                    ]);
                     $agent_card = self::generate_fallback_agent_card();
+                } else {
+                    DevLogger::log('WELL_KNOWN', 'edge_function_success', [
+                        'function' => 'generate-agent-card',
+                        'offers_count' => count($agent_card['offers'] ?? [])
+                    ]);
                 }
             }
             
             header('Content-Type: application/json');
             header('Access-Control-Allow-Origin: *');
+            
+            DevLogger::log('WELL_KNOWN', 'agent_card_served', [
+                'source' => isset($body) && !empty($agent_card) ? 'edge_function' : 'fallback',
+                'offers_count' => count($agent_card['offers'] ?? [])
+            ]);
+            
             echo json_encode($agent_card, JSON_PRETTY_PRINT);
             exit;
         }
@@ -201,7 +253,17 @@ class WellKnown {
      */
     public static function inject_robots_txt($output, $public) {
         if ($public) {
+            DevLogger::log('WELL_KNOWN', 'robots_txt_injection_start', [
+                'public' => $public,
+                'site_url' => get_site_url()
+            ]);
+            
             $settings = get_option('402links_settings');
+            DevLogger::log('DB', 'get_option', [
+                'key' => '402links_settings',
+                'found' => !empty($settings)
+            ]);
+            
             $site_url = get_site_url();
             
             $output .= "\n# AI Agent Payment Protocol\n";
@@ -226,6 +288,12 @@ class WellKnown {
             $output .= "\n";
             $output .= "# AP2 Agent Discovery\n";
             $output .= "X-Agent-Card: {$site_url}/.well-known/agent-card.json\n";
+            
+            DevLogger::log('WELL_KNOWN', 'robots_txt_injected', [
+                'directives_added' => true,
+                'default_price' => $settings['default_price'] ?? '0.10',
+                'network' => $settings['network'] ?? 'base'
+            ]);
         }
         
         return $output;
