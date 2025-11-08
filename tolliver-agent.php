@@ -243,6 +243,11 @@ function agent_hub_activate() {
     require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
     dbDelta($sql);
     
+    \AgentHub\DevLogger::log('INSTALLER', 'agent_logs_table_created', [
+        'table_name' => $table_name,
+        'charset_collate' => $charset_collate
+    ]);
+    
     // One-time migration: fix typo in meta key (missing 's' after '402link')
     if (!get_option('402links_block_humans_migrated')) {
         $wpdb->query("
@@ -251,6 +256,12 @@ function agent_hub_activate() {
             WHERE meta_key = '_402link_block_humans'
         ");
         update_option('402links_block_humans_migrated', '1');
+        
+        \AgentHub\DevLogger::log('INSTALLER', 'meta_key_migration_completed', [
+            'old_key' => '_402link_block_humans',
+            'new_key' => '_402links_block_humans',
+            'rows_affected' => $wpdb->rows_affected
+        ]);
     }
     
     // Set default options

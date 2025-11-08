@@ -612,6 +612,13 @@ class PaymentGate {
         if (self::is_browser_request()) {
             require_once plugin_dir_path(__FILE__) . 'PaywallTemplate.php';
             header('Content-Type: text/html; charset=UTF-8');
+            
+            DevLogger::log('PAYMENT_GATE', 'paywall_html_rendered', [
+                'amount' => $requirements['maxAmountRequired'] ?? 0,
+                'network' => $requirements['network'] ?? 'base',
+                'resource' => $requirements['resource'] ?? 'unknown'
+            ]);
+            
             echo PaywallTemplate::render($x402_response, $requirements);
         } else {
             header('Content-Type: application/json');
