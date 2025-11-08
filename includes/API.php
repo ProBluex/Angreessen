@@ -8,12 +8,17 @@ class API {
     private $service_role_key;
     
     public function __construct() {
+        DevLogger::log('DB', 'get_option:402links_api_key', null);
         $this->api_key = get_option('402links_api_key');
+        
+        DevLogger::log('DB', 'get_option:402links_settings', null);
         $settings = get_option('402links_settings');
         $this->api_endpoint = $settings['api_endpoint'] ?? 'https://api.402links.com/v1';
         
         // Initialize Supabase credentials
         $this->supabase_url = 'https://cnionwnknwnzpwfuacse.supabase.co';
+        
+        DevLogger::log('DB', 'get_option:402links_supabase_service_key', null);
         $this->service_role_key = get_option('402links_supabase_service_key');
         
         error_log('🟦 [API Constructor] Supabase URL: ' . ($this->supabase_url ?: 'NOT SET'));
@@ -84,6 +89,7 @@ class API {
      * Now uses edge function instead of direct REST API call
      */
     public function sync_site_settings($settings) {
+        DevLogger::log('DB', 'get_option:402links_site_id', null);
         $site_id = get_option('402links_site_id');
         
         if (!$site_id) {
@@ -125,6 +131,7 @@ class API {
      * Now uses edge function instead of direct REST API call
      */
     public function check_existing_links_count() {
+        DevLogger::log('DB', 'get_option:402links_site_id', null);
         $site_id = get_option('402links_site_id');
         
         if (!$site_id) {
@@ -185,8 +192,11 @@ class API {
      */
     public function create_link($post_id) {
         $post = get_post($post_id);
+        
+        DevLogger::log('DB', 'get_option:402links_settings', ['context' => 'create_link']);
         $settings = get_option('402links_settings');
         
+        DevLogger::log('DB', 'get_post_meta:_402links_price', ['post_id' => $post_id]);
         $price = get_post_meta($post_id, '_402links_price', true);
         if (empty($price)) {
             $price = $settings['default_price'] ?? 0.10;
@@ -282,8 +292,11 @@ class API {
      */
     public function update_link($post_id, $link_id) {
         $post = get_post($post_id);
+        
+        DevLogger::log('DB', 'get_option:402links_settings', ['context' => 'update_link']);
         $settings = get_option('402links_settings');
         
+        DevLogger::log('DB', 'get_post_meta:_402links_price', ['post_id' => $post_id]);
         $price = get_post_meta($post_id, '_402links_price', true);
         if (empty($price)) {
             $price = $settings['default_price'] ?? 0.10;
@@ -385,6 +398,7 @@ class API {
      * Used for: Overview tab cards
      */
     public function get_site_analytics($period = '30d') {
+        DevLogger::log('DB', 'get_option:402links_site_id', ['context' => 'get_site_analytics']);
         $site_id = get_option('402links_site_id');
         if (!$site_id) {
             error_log('[API.php] ⚠️ get_site_analytics() - No site_id found');
@@ -504,6 +518,7 @@ class API {
      */
     public function check_blacklist($user_agent, $site_id = null) {
         if (!$site_id) {
+            DevLogger::log('DB', 'get_option:402links_site_id', ['context' => 'check_blacklist']);
             $site_id = get_option('402links_site_id');
         }
         
@@ -528,6 +543,7 @@ class API {
      * Get all links for this site
      */
     public function get_links($page = 1, $per_page = 20) {
+        DevLogger::log('DB', 'get_option:402links_site_id', ['context' => 'get_links']);
         $site_id = get_option('402links_site_id');
         DevLogger::log('EDGE_FUNCTION', 'get_links_start', [
             'site_id' => $site_id,
@@ -629,6 +645,7 @@ class API {
      * @return array Response from backend
      */
     public function report_violation($violation_data) {
+        DevLogger::log('DB', 'get_option:402links_site_id', ['context' => 'report_violation']);
         $site_id = get_option('402links_site_id');
         if (!$site_id) {
             error_log('402links: Cannot report violation - site not registered');
@@ -689,6 +706,7 @@ class API {
     public function get_top_pages($timeframe = '30d', $limit = 10, $offset = 0) {
         error_log('🟦 [API] === GET TOP PAGES START ===');
         
+        DevLogger::log('DB', 'get_option:402links_site_id', ['context' => 'get_top_pages']);
         $site_id = get_option('402links_site_id');
         error_log('🟦 [API] Site ID: ' . ($site_id ?: 'NOT SET'));
         
@@ -714,6 +732,7 @@ class API {
                 $body = json_decode(wp_remote_retrieve_body($fetch_response), true);
                 if (!empty($body) && isset($body[0]['id'])) {
                     $site_id = $body[0]['id'];
+                    DevLogger::log('DB', 'update_option:402links_site_id', ['site_id' => $site_id, 'context' => 'get_top_pages_auto_fetch']);
                     update_option('402links_site_id', $site_id);
                     error_log('🟢 [API] Site ID fetched and stored: ' . $site_id);
                 }
@@ -829,6 +848,7 @@ class API {
         
         // Extract Bearer token
         $api_key = str_replace('Bearer ', '', $auth_header);
+        DevLogger::log('DB', 'get_option:402links_api_key', ['context' => 'rest_permission_check']);
         $stored_key = get_option('402links_api_key');
         
         if ($api_key !== $stored_key) {
@@ -863,10 +883,19 @@ class API {
         error_log('402links: force_human_payment = ' . ($force_human ? 'true' : 'false'));
         
         // Update post meta to enable PaymentGate blocking
+        DevLogger::log('DB', 'update_post_meta:_402links_id', ['post_id' => $post_id, 'link_id' => $link_id, 'context' => 'rest_sync']);
         update_post_meta($post_id, '_402links_id', $link_id);
+        
+        DevLogger::log('DB', 'update_post_meta:_402links_short_id', ['post_id' => $post_id, 'short_id' => $short_id, 'context' => 'rest_sync']);
         update_post_meta($post_id, '_402links_short_id', $short_id);
+        
+        DevLogger::log('DB', 'update_post_meta:_402links_url', ['post_id' => $post_id, 'link_url' => $link_url, 'context' => 'rest_sync']);
         update_post_meta($post_id, '_402links_url', $link_url);
+        
+        DevLogger::log('DB', 'update_post_meta:_402links_synced_at', ['post_id' => $post_id, 'timestamp' => current_time('mysql'), 'context' => 'rest_sync']);
         update_post_meta($post_id, '_402links_synced_at', current_time('mysql'));
+        
+        DevLogger::log('DB', 'update_post_meta:_402links_block_humans', ['post_id' => $post_id, 'value' => $force_human ? '1' : '0', 'context' => 'rest_sync']);
         update_post_meta($post_id, '_402links_block_humans', $force_human ? '1' : '0');
         
         error_log('402links: SYNC SUCCESS - Post meta updated for post ' . $post_id);
@@ -883,6 +912,7 @@ class API {
      * Bulk sync meta for all existing links from Supabase
      */
     public function bulk_sync_meta() {
+        DevLogger::log('DB', 'get_option:402links_site_id', ['context' => 'bulk_sync_meta']);
         $site_id = get_option('402links_site_id');
         if (!$site_id) {
             return [
@@ -921,10 +951,19 @@ class API {
             $link_url = 'https://api.402links.com/p/' . $paid_link['short_id'];
             
             // Update post meta
+            DevLogger::log('DB', 'update_post_meta:_402links_id', ['post_id' => $post_id, 'link_id' => $page['paid_link_id'], 'context' => 'bulk_sync_meta']);
             update_post_meta($post_id, '_402links_id', $page['paid_link_id']);
+            
+            DevLogger::log('DB', 'update_post_meta:_402links_short_id', ['post_id' => $post_id, 'short_id' => $paid_link['short_id'], 'context' => 'bulk_sync_meta']);
             update_post_meta($post_id, '_402links_short_id', $paid_link['short_id']);
+            
+            DevLogger::log('DB', 'update_post_meta:_402links_url', ['post_id' => $post_id, 'link_url' => $link_url, 'context' => 'bulk_sync_meta']);
             update_post_meta($post_id, '_402links_url', $link_url);
+            
+            DevLogger::log('DB', 'update_post_meta:_402links_synced_at', ['post_id' => $post_id, 'timestamp' => current_time('mysql'), 'context' => 'bulk_sync_meta']);
             update_post_meta($post_id, '_402links_synced_at', current_time('mysql'));
+            
+            DevLogger::log('DB', 'update_post_meta:_402links_block_humans', ['post_id' => $post_id, 'value' => $page['force_human_payment'] ? '1' : '0', 'context' => 'bulk_sync_meta']);
             update_post_meta($post_id, '_402links_block_humans', $page['force_human_payment'] ? '1' : '0');
             
             $updated++;
@@ -941,6 +980,7 @@ class API {
      * Get violations summary from backend
      */
     public function get_violations_summary() {
+        DevLogger::log('DB', 'get_option:402links_site_id', ['context' => 'get_violations_summary']);
         $site_id = get_option('402links_site_id');
         
         if (!$site_id) {

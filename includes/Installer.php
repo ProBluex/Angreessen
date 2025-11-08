@@ -12,7 +12,10 @@ class Installer {
         ]);
         
         // Check if already provisioned
+        DevLogger::log('DB', 'get_option:402links_api_key', ['context' => 'activation_check']);
         $existing_key = get_option('402links_api_key');
+        
+        DevLogger::log('DB', 'get_option:402links_site_id', ['context' => 'activation_check']);
         $existing_site_id = get_option('402links_site_id');
         
         if ($existing_key && $existing_site_id) {
@@ -52,9 +55,16 @@ class Installer {
             if ($result['success']) {
                 // Store credentials on success
                 if (isset($result['api_key'])) {
+                    DevLogger::log('DB', 'update_option:402links_api_key', ['length' => strlen($result['api_key'])]);
                     update_option('402links_api_key', $result['api_key']);
+                    
+                    DevLogger::log('DB', 'update_option:402links_api_key_id', ['api_key_id' => $result['api_key_id']]);
                     update_option('402links_api_key_id', $result['api_key_id']);
+                    
+                    DevLogger::log('DB', 'update_option:402links_site_id', ['site_id' => $result['site_id']]);
                     update_option('402links_site_id', $result['site_id']);
+                    
+                    DevLogger::log('DB', 'update_option:402links_provisioned_url', ['url' => get_site_url()]);
                     update_option('402links_provisioned_url', get_site_url());
                     
                     error_log('402links: Auto-provisioning successful! Site ID: ' . $result['site_id']);
@@ -63,11 +73,15 @@ class Installer {
                         'api_key_id' => $result['api_key_id'],
                         'api_key_length' => strlen($result['api_key'])
                     ]);
+                    DevLogger::log('DB', 'update_option:402links_provisioning_success', ['value' => true]);
                     update_option('402links_provisioning_success', true);
                     return;
                 } elseif (isset($result['already_provisioned']) && $result['already_provisioned']) {
                     // Site was already provisioned
+                    DevLogger::log('DB', 'update_option:402links_site_id', ['site_id' => $result['site_id'], 'context' => 'already_provisioned']);
                     update_option('402links_site_id', $result['site_id']);
+                    
+                    DevLogger::log('DB', 'update_option:402links_api_key_id', ['api_key_id' => $result['api_key_id'], 'context' => 'already_provisioned']);
                     update_option('402links_api_key_id', $result['api_key_id']);
                     
                     error_log('402links: Site already provisioned: ' . $result['site_id']);
@@ -75,6 +89,7 @@ class Installer {
                         'site_id' => $result['site_id'],
                         'api_key_id' => $result['api_key_id']
                     ]);
+                    DevLogger::log('DB', 'update_option:402links_provisioning_info', ['message' => 'Site already registered']);
                     update_option('402links_provisioning_info', 'Site was already registered. Please contact support if you need your API key.');
                     return;
                 }
@@ -97,6 +112,7 @@ class Installer {
                     'attempts' => $max_attempts,
                     'final_error' => $result['error']
                 ]);
+                DevLogger::log('DB', 'update_option:402links_provisioning_error', ['error' => $result['error'], 'attempts' => $max_attempts]);
                 update_option('402links_provisioning_error', 'Failed after ' . $max_attempts . ' attempts. Last error: ' . $result['error']);
             }
         }
@@ -106,6 +122,7 @@ class Installer {
      * Single provisioning attempt (used by retry logic)
      */
     private static function attempt_provision() {
+        DevLogger::log('DB', 'get_option:402links_settings', ['context' => 'provision_attempt']);
         $settings = get_option('402links_settings', []);
         $api_endpoint = $settings['api_endpoint'] ?? 'https://api.402links.com/v1';
         
