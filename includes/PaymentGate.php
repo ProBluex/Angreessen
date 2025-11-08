@@ -451,19 +451,51 @@ class PaymentGate {
      * @return string Persistent bind_hash
      */
     private static function get_or_create_bind_hash($post_id, $payment_wallet, $price) {
+        DevLogger::log('PAYMENT_GATE', 'bind_hash_generation_start', [
+            'post_id' => $post_id,
+            'wallet' => substr($payment_wallet, 0, 10) . '...',
+            'price' => $price
+        ]);
+        
         // Check if bind_hash already exists
         $existing_hash = get_post_meta($post_id, '_402links_bind_hash', true);
+        DevLogger::log('DB', 'get_post_meta', [
+            'post_id' => $post_id,
+            'meta_key' => '_402links_bind_hash',
+            'found' => !empty($existing_hash)
+        ]);
+        
         if (!empty($existing_hash)) {
+            DevLogger::log('PAYMENT_GATE', 'bind_hash_reused', [
+                'post_id' => $post_id,
+                'hash' => substr($existing_hash, 0, 16) . '...'
+            ]);
             return $existing_hash;
         }
         
         // Generate new unique nonce for this post (never changes after creation)
         $unique_nonce = wp_generate_password(32, false);
-        update_post_meta($post_id, '_402links_nonce', $unique_nonce);
+        $result = update_post_meta($post_id, '_402links_nonce', $unique_nonce);
+        DevLogger::log('DB', 'update_post_meta', [
+            'post_id' => $post_id,
+            'meta_key' => '_402links_nonce',
+            'success' => $result !== false
+        ]);
         
         // Generate bind_hash using post-specific nonce
         $bind_hash = hash('sha256', $post_id . $payment_wallet . $price . $unique_nonce);
-        update_post_meta($post_id, '_402links_bind_hash', $bind_hash);
+        $result = update_post_meta($post_id, '_402links_bind_hash', $bind_hash);
+        DevLogger::log('DB', 'update_post_meta', [
+            'post_id' => $post_id,
+            'meta_key' => '_402links_bind_hash',
+            'hash' => substr($bind_hash, 0, 16) . '...',
+            'success' => $result !== false
+        ]);
+        
+        DevLogger::log('PAYMENT_GATE', 'bind_hash_generated', [
+            'post_id' => $post_id,
+            'hash' => substr($bind_hash, 0, 16) . '...'
+        ]);
         
         return $bind_hash;
     }
@@ -477,13 +509,34 @@ class PaymentGate {
     private static function get_or_create_invoice_id($post_id) {
         // Check if invoice_id already exists
         $existing_invoice_id = get_post_meta($post_id, '_402links_invoice_id', true);
+        DevLogger::log('DB', 'get_post_meta', [
+            'post_id' => $post_id,
+            'meta_key' => '_402links_invoice_id',
+            'found' => !empty($existing_invoice_id)
+        ]);
+        
         if (!empty($existing_invoice_id)) {
+            DevLogger::log('PAYMENT_GATE', 'invoice_id_reused', [
+                'post_id' => $post_id,
+                'invoice_id' => $existing_invoice_id
+            ]);
             return $existing_invoice_id;
         }
         
         // Generate new invoice_id
         $invoice_id = 'wp_' . $post_id . '_' . time() . '_' . wp_generate_password(8, false);
-        update_post_meta($post_id, '_402links_invoice_id', $invoice_id);
+        $result = update_post_meta($post_id, '_402links_invoice_id', $invoice_id);
+        DevLogger::log('DB', 'update_post_meta', [
+            'post_id' => $post_id,
+            'meta_key' => '_402links_invoice_id',
+            'invoice_id' => $invoice_id,
+            'success' => $result !== false
+        ]);
+        
+        DevLogger::log('PAYMENT_GATE', 'invoice_id_generated', [
+            'post_id' => $post_id,
+            'invoice_id' => $invoice_id
+        ]);
         
         return $invoice_id;
     }
@@ -573,9 +626,21 @@ class PaymentGate {
      * Calls: verify-wordpress-payment edge function
      */
     private static function verify_payment($payment_header, $requirements) {
+        DevLogger::log('PAYMENT_GATE', 'payment_verification_start', [
+            'post_id' => get_the_ID(),
+            'has_payment_header' => !empty($payment_header),
+            'payment_wallet' => substr($requirements['payTo'] ?? '', 0, 10) . '...'
+        ]);
+        
         $settings = get_option('402links_settings');
         $api_key = get_option('402links_api_key');
         $api_endpoint = $settings['api_endpoint'] ?? 'https://api.402links.com/v1';
+        
+        DevLogger::log('EDGE_FUNCTION', 'edge_function_call', [
+            'function' => 'verify-wordpress-payment',
+            'endpoint' => $api_endpoint . '/verify-wordpress-payment',
+            'post_id' => get_the_ID()
+        ]);
         
         $response = wp_remote_post($api_endpoint . '/verify-wordpress-payment', [
             'timeout' => 30,
@@ -592,6 +657,10 @@ class PaymentGate {
         ]);
         
         if (is_wp_error($response)) {
+            DevLogger::log('ERROR', 'payment_verification_failed', [
+                'error' => $response->get_error_message(),
+                'post_id' => get_the_ID()
+            ]);
             return ['isValid' => false, 'error' => $response->get_error_message()];
         }
         
@@ -599,8 +668,18 @@ class PaymentGate {
         $data = json_decode($body, true);
         
         if (json_last_error() !== JSON_ERROR_NONE) {
+            DevLogger::log('ERROR', 'payment_verification_json_error', [
+                'error' => 'Invalid JSON response',
+                'json_error' => json_last_error_msg()
+            ]);
             return ['isValid' => false, 'error' => 'Invalid JSON response'];
         }
+        
+        DevLogger::log('PAYMENT_GATE', 'payment_verification_result', [
+            'post_id' => get_the_ID(),
+            'is_valid' => $data['isValid'] ?? false,
+            'transaction' => $data['transaction'] ?? 'none'
+        ]);
         
         return $data;
     }
@@ -609,6 +688,12 @@ class PaymentGate {
      * Validate invoice with 402links API
      */
     private static function validate_invoice($invoice_id, $post_id, $site_url) {
+        DevLogger::log('PAYMENT_GATE', 'invoice_validation_api_start', [
+            'invoice_id' => $invoice_id,
+            'post_id' => $post_id,
+            'api_url' => 'https://402links.com/api/v1/invoices/validate'
+        ]);
+        
         $api_url = 'https://402links.com/api/v1/invoices/validate';
         
         $response = wp_remote_post($api_url, [
@@ -625,6 +710,10 @@ class PaymentGate {
         
         if (is_wp_error($response)) {
             error_log('402links: Invoice validation request failed: ' . $response->get_error_message());
+            DevLogger::log('ERROR', 'invoice_validation_api_failed', [
+                'invoice_id' => $invoice_id,
+                'error' => $response->get_error_message()
+            ]);
             return ['isValid' => false, 'error' => 'API request failed'];
         }
         
@@ -644,8 +733,19 @@ class PaymentGate {
         
         if (json_last_error() !== JSON_ERROR_NONE) {
             error_log('402links: Invalid JSON response from validate-invoice: ' . $body);
+            DevLogger::log('ERROR', 'invoice_validation_json_error', [
+                'invoice_id' => $invoice_id,
+                'error' => 'Invalid JSON response',
+                'json_error' => json_last_error_msg()
+            ]);
             return ['isValid' => false, 'error' => 'Invalid JSON response'];
         }
+        
+        DevLogger::log('PAYMENT_GATE', 'invoice_validation_api_result', [
+            'invoice_id' => $invoice_id,
+            'is_valid' => $result['isValid'] ?? false,
+            'transaction_hash' => $result['transaction_hash'] ?? 'none'
+        ]);
         
         return $result;
     }
@@ -654,6 +754,12 @@ class PaymentGate {
      * Log agent access for analytics
      */
     private static function log_agent_access($post_id, $invoice_id, $validation) {
+        DevLogger::log('PAYMENT_GATE', 'agent_access_logging_start', [
+            'post_id' => $post_id,
+            'invoice_id' => $invoice_id,
+            'transaction' => $validation['transaction_hash'] ?? 'none'
+        ]);
+        
         global $wpdb;
         $table_name = $wpdb->prefix . '402links_agent_logs';
         
@@ -673,7 +779,20 @@ class PaymentGate {
             ['%d', '%s', '%s', '%f', '%s', '%s', '%s', '%s']
         );
         
+        DevLogger::log('DB', 'wpdb_query', [
+            'query_type' => 'INSERT',
+            'table' => $table_name,
+            'success' => $wpdb->last_error === '',
+            'error' => $wpdb->last_error
+        ]);
+        
         error_log('402links: Agent access logged to local database');
+        
+        DevLogger::log('PAYMENT_GATE', 'agent_access_logged', [
+            'post_id' => $post_id,
+            'invoice_id' => $invoice_id,
+            'amount' => $validation['amount'] ?? 0
+        ]);
     }
     
     /**
@@ -681,16 +800,42 @@ class PaymentGate {
      */
     private static function increment_link_usage($post_id) {
         $current_uses = (int) get_post_meta($post_id, '_402links_usage_count', true);
+        DevLogger::log('DB', 'get_post_meta', [
+            'post_id' => $post_id,
+            'meta_key' => '_402links_usage_count',
+            'value' => $current_uses
+        ]);
+        
         $new_uses = $current_uses + 1;
-        update_post_meta($post_id, '_402links_usage_count', $new_uses);
+        $result = update_post_meta($post_id, '_402links_usage_count', $new_uses);
+        DevLogger::log('DB', 'update_post_meta', [
+            'post_id' => $post_id,
+            'meta_key' => '_402links_usage_count',
+            'old_value' => $current_uses,
+            'new_value' => $new_uses,
+            'success' => $result !== false
+        ]);
         
         error_log('402links: Link usage incremented: ' . $current_uses . ' → ' . $new_uses);
+        
+        DevLogger::log('PAYMENT_GATE', 'usage_incremented', [
+            'post_id' => $post_id,
+            'from' => $current_uses,
+            'to' => $new_uses
+        ]);
     }
     
     /**
      * Log successful payment to backend and local database
      */
     private static function log_agent_payment($post_id, $verification, $agent_check) {
+        DevLogger::log('PAYMENT_GATE', 'agent_payment_logging_start', [
+            'post_id' => $post_id,
+            'transaction' => $verification['transaction'] ?? 'none',
+            'amount' => $verification['amount'] ?? 0,
+            'agent' => $agent_check['agent_name'] ?? 'unknown'
+        ]);
+        
         error_log('402links: Logging successful payment:');
         error_log('  - Post ID: ' . $post_id);
         error_log('  - Transaction: ' . ($verification['transaction'] ?? 'none'));
@@ -717,10 +862,35 @@ class PaymentGate {
             ['%d', '%s']
         );
         
+        DevLogger::log('DB', 'wpdb_query', [
+            'query_type' => 'UPDATE',
+            'table' => $table_name,
+            'post_id' => $post_id,
+            'success' => $wpdb->last_error === '',
+            'error' => $wpdb->last_error
+        ]);
+        
         // Send to backend for aggregation
         $settings = get_option('402links_settings');
+        DevLogger::log('DB', 'get_option', [
+            'key' => '402links_settings',
+            'found' => !empty($settings)
+        ]);
+        
         $api_key = get_option('402links_api_key');
+        DevLogger::log('DB', 'get_option', [
+            'key' => '402links_api_key',
+            'found' => !empty($api_key)
+        ]);
+        
         $api_endpoint = $settings['api_endpoint'] ?? 'https://api.402links.com/v1';
+        
+        DevLogger::log('EDGE_FUNCTION', 'edge_function_call', [
+            'function' => 'log-agent-payment',
+            'endpoint' => $api_endpoint . '/log-agent-payment',
+            'post_id' => $post_id,
+            'blocking' => false
+        ]);
         
         wp_remote_post($api_endpoint . '/log-agent-payment', [
             'timeout' => 15,
@@ -739,6 +909,12 @@ class PaymentGate {
                 'amount' => $verification['amount'] ?? 0,
                 'payer_address' => $verification['payer'] ?? ''
             ])
+        ]);
+        
+        DevLogger::log('PAYMENT_GATE', 'agent_payment_logged', [
+            'post_id' => $post_id,
+            'transaction' => $verification['transaction'] ?? 'none',
+            'amount' => $verification['amount'] ?? 0
         ]);
     }
 }

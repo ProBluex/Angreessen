@@ -101,6 +101,8 @@
             'PAYMENT_GATE': 'log-payment',
             'AJAX': 'log-ajax',
             'AGENT_DETECTION': 'log-agent',
+            'DB': 'log-db',
+            'CACHE': 'log-cache',
             'LINK_CREATE': 'log-link',
             'LINK_UPDATE': 'log-link',
             'BATCH': 'log-batch',

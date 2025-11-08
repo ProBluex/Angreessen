@@ -141,6 +141,34 @@
     border-left-color: #2271b1;
 }
 
+.dev-log-entry.log-payment {
+    border-left-color: #9b59b6;
+}
+
+.dev-log-entry.log-ajax {
+    border-left-color: #e67e22;
+}
+
+.dev-log-entry.log-agent {
+    border-left-color: #e74c3c;
+}
+
+.dev-log-entry.log-db {
+    border-left-color: #27ae60;
+}
+
+.dev-log-entry.log-cache {
+    border-left-color: #f39c12;
+}
+
+.dev-log-entry.log-wellknown {
+    border-left-color: #95a5a6;
+}
+
+.dev-log-entry.log-core {
+    border-left-color: #3498db;
+}
+
 /* Log Header */
 .log-header {
     display: flex;
