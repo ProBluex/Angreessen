@@ -855,12 +855,20 @@ class API {
      * Make HTTP request to API
      */
     private function request($method, $endpoint, $data = []) {
+        $start_time = microtime(true);
         $url = $this->api_endpoint . $endpoint;
         
         error_log('[API.php] 🚀 ==================== API REQUEST ====================');
         error_log('[API.php] 🚀 Method: ' . $method);
         error_log('[API.php] 🚀 URL: ' . $url);
         error_log('[API.php] 🚀 Endpoint: ' . $endpoint);
+        
+        DevLogger::log('API', 'request_started', [
+            'method' => $method,
+            'endpoint' => $endpoint,
+            'url' => $url,
+            'data' => $data
+        ]);
         
         // For GET requests, append data as query parameters
         if ($method === 'GET' && !empty($data)) {
@@ -892,10 +900,20 @@ class API {
         error_log('[API.php] 🚀 Making request...');
         $response = wp_remote_request($url, $args);
         
+        $elapsed_time = round((microtime(true) - $start_time) * 1000, 2); // ms
+        
         if (is_wp_error($response)) {
             $error_msg = $response->get_error_message();
             error_log('[API.php] ❌ WP_Error: ' . $error_msg);
             error_log('[API.php] ❌ ==================== REQUEST FAILED ====================');
+            
+            DevLogger::log('ERROR', 'api_request_failed', [
+                'endpoint' => $endpoint,
+                'method' => $method,
+                'error' => $error_msg,
+                'elapsed_ms' => $elapsed_time
+            ]);
+            
             return [
                 'success' => false,
                 'error' => $error_msg
@@ -916,6 +934,16 @@ class API {
             error_log('[API.php] ❌ HTTP ERROR ' . $status_code . ': ' . ($result['error'] ?? 'Unknown error'));
             error_log('[API.php] ❌ Full error response: ' . json_encode($result));
             error_log('[API.php] ❌ ==================== REQUEST FAILED ====================');
+            
+            DevLogger::log('ERROR', 'api_http_error', [
+                'endpoint' => $endpoint,
+                'method' => $method,
+                'status_code' => $status_code,
+                'error' => $result['error'] ?? 'Unknown error',
+                'response' => $result,
+                'elapsed_ms' => $elapsed_time
+            ]);
+            
             return [
                 'success' => false,
                 'error' => $result['error'] ?? 'API request failed',
@@ -925,6 +953,14 @@ class API {
         
         error_log('[API.php] ✅ Request successful');
         error_log('[API.php] ✅ ==================== REQUEST COMPLETE ====================');
+        
+        DevLogger::log('API', 'request_completed', [
+            'endpoint' => $endpoint,
+            'method' => $method,
+            'status_code' => $status_code,
+            'elapsed_ms' => $elapsed_time,
+            'success' => true
+        ]);
         
         return array_merge(['success' => true], $result ?? []);
     }

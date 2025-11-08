@@ -24,6 +24,7 @@ define('AGENT_HUB_VERSION', $header['Version'] ?: '3.16.6');
 define('AGENT_HUB_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('AGENT_HUB_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('AGENT_HUB_PLUGIN_FILE', __FILE__);
+define('TOLLIVER_DEV_MODE', true); // ⭐ SET TO false FOR PRODUCTION
 
 // Autoload classes
 spl_autoload_register(function ($class) {

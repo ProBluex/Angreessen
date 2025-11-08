@@ -159,6 +159,24 @@ class Admin {
             true
         );
         
+        // Enqueue dev logs script and styles if dev mode is enabled
+        if (defined('TOLLIVER_DEV_MODE') && TOLLIVER_DEV_MODE) {
+            wp_enqueue_style(
+                'agent-hub-dev-logs',
+                AGENT_HUB_PLUGIN_URL . 'assets/css/dev-logs.css',
+                [],
+                AGENT_HUB_VERSION
+            );
+            
+            wp_enqueue_script(
+                'agent-hub-dev-logs',
+                AGENT_HUB_PLUGIN_URL . 'assets/js/dev-logs.js',
+                ['jquery', 'agent-hub-admin'],
+                AGENT_HUB_VERSION,
+                true
+            );
+        }
+        
         wp_localize_script('agent-hub-admin', 'agentHubData', [
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('agent_hub_nonce'),
@@ -1047,5 +1065,33 @@ class Admin {
         } else {
             wp_send_json_error($result);
         }
+    }
+    
+    /**
+     * AJAX: Get dev logs
+     */
+    public static function ajax_get_dev_logs() {
+        check_ajax_referer('agent_hub_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Unauthorized']);
+        }
+        
+        $logs = \AgentHub\DevLogger::get_logs();
+        wp_send_json_success($logs);
+    }
+    
+    /**
+     * AJAX: Clear dev logs
+     */
+    public static function ajax_clear_dev_logs() {
+        check_ajax_referer('agent_hub_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Unauthorized']);
+        }
+        
+        \AgentHub\DevLogger::clear_logs();
+        wp_send_json_success(['message' => 'Logs cleared']);
     }
 }

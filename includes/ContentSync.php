@@ -85,6 +85,12 @@ class ContentSync {
     public static function create_link($post_id) {
         error_log('402links: create_link called for post ' . $post_id);
         
+        DevLogger::log('LINK_CREATE', 'started', [
+            'post_id' => $post_id,
+            'post_title' => get_the_title($post_id),
+            'post_url' => get_permalink($post_id)
+        ]);
+        
         $api = new API();
         $result = $api->create_link($post_id);
         
@@ -115,8 +121,21 @@ class ContentSync {
             }
             
             update_post_meta($post_id, '_402links_synced_at', current_time('mysql'));
+            
+            DevLogger::log('LINK_CREATE', 'success', [
+                'post_id' => $post_id,
+                'link_id' => $result['link_id'] ?? null,
+                'short_id' => $result['short_id'] ?? null,
+                'link_url' => $result['link_url'] ?? null
+            ]);
         } else {
             error_log('402links: Failed to create link for post ' . $post_id . ': ' . ($result['error'] ?? 'Unknown error'));
+            
+            DevLogger::log('ERROR', 'link_creation_failed', [
+                'post_id' => $post_id,
+                'error' => $result['error'] ?? 'Unknown error',
+                'response' => $result
+            ]);
         }
         
         return $result;
@@ -126,11 +145,20 @@ class ContentSync {
      * Bulk sync all published posts
      */
     public static function bulk_sync_all() {
+        DevLogger::log('BATCH', 'started', [
+            'query' => 'all published posts'
+        ]);
+        
         $posts = get_posts([
             'post_type' => 'post',  // ✅ ONLY posts, not pages
             'post_status' => 'publish',
             'posts_per_page' => -1,
             'fields' => 'ids'
+        ]);
+        
+        DevLogger::log('BATCH', 'posts_detected', [
+            'total_posts' => count($posts),
+            'post_ids' => $posts
         ]);
         
         $results = [
@@ -144,6 +172,12 @@ class ContentSync {
         foreach ($posts as $post_id) {
             $link_id = get_post_meta($post_id, '_402links_id', true);
             $api = new API();
+            
+            DevLogger::log('BATCH', 'processing_post', [
+                'post_id' => $post_id,
+                'has_existing_link' => !empty($link_id),
+                'link_id' => $link_id
+            ]);
             
             if ($link_id) {
                 $result = $api->update_link($post_id, $link_id);
@@ -163,6 +197,8 @@ class ContentSync {
                 }
             }
         }
+        
+        DevLogger::log('BATCH', 'completed', $results);
         
         return $results;
     }
