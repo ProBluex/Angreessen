@@ -38,10 +38,8 @@ class DevLogger {
         
         self::$logs[] = $entry;
         
-        // Auto-save every 10 entries or on errors
-        if (count(self::$logs) % 10 === 0 || $category === 'ERROR') {
-            self::save_logs();
-        }
+        // In DEV MODE, save IMMEDIATELY for real-time comprehensive logging
+        self::save_logs();
         
         // Also log to error_log for real-time debugging
         $log_message = sprintf(
