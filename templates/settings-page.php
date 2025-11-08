@@ -550,6 +550,8 @@ $is_connected = !empty($api_key) && !empty($site_id);
                 <button class="dev-log-tab" data-category="AGENT_DETECTION">Agent Detection <span class="tab-count">(0)</span></button>
                 <button class="dev-log-tab" data-category="DB">DB Operations <span class="tab-count">(0)</span></button>
                 <button class="dev-log-tab" data-category="CACHE">Cache <span class="tab-count">(0)</span></button>
+                <button class="dev-log-tab" data-category="LINK_CREATE">Link Creation <span class="tab-count">(0)</span></button>
+                <button class="dev-log-tab" data-category="BATCH">Batch Ops <span class="tab-count">(0)</span></button>
                 <button class="dev-log-tab" data-category="BATCH_PROCESSOR">Batch Processor <span class="tab-count">(0)</span></button>
                 <button class="dev-log-tab" data-category="WELL_KNOWN">Well-Known <span class="tab-count">(0)</span></button>
                 <button class="dev-log-tab" data-category="ERROR">Errors <span class="tab-count">(0)</span></button>

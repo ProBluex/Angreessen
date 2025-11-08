@@ -104,10 +104,8 @@
             'DB': 'log-db',
             'CACHE': 'log-cache',
             'LINK_CREATE': 'log-link',
-            'LINK_UPDATE': 'log-link',
             'BATCH': 'log-batch',
             'BATCH_PROCESSOR': 'log-batch',
-            'POST_SYNC': 'log-sync',
             'WELL_KNOWN': 'log-wellknown'
         };
         return classMap[category] || '';

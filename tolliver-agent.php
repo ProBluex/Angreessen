@@ -243,7 +243,7 @@ function agent_hub_activate() {
     require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
     dbDelta($sql);
     
-    \AgentHub\DevLogger::log('INSTALLER', 'agent_logs_table_created', [
+    \AgentHub\DevLogger::log('INSTALL', 'agent_logs_table_created', [
         'table_name' => $table_name,
         'charset_collate' => $charset_collate
     ]);
@@ -257,7 +257,7 @@ function agent_hub_activate() {
         ");
         update_option('402links_block_humans_migrated', '1');
         
-        \AgentHub\DevLogger::log('INSTALLER', 'meta_key_migration_completed', [
+        \AgentHub\DevLogger::log('INSTALL', 'meta_key_migration_completed', [
             'old_key' => '_402link_block_humans',
             'new_key' => '_402links_block_humans',
             'rows_affected' => $wpdb->rows_affected
