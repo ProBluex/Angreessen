@@ -540,11 +540,13 @@ $is_connected = !empty($api_key) && !empty($site_id);
             
             <div class="dev-logs-tabs">
                 <button class="dev-log-tab active" data-category="all">All <span class="tab-count">(0)</span></button>
+                <button class="dev-log-tab" data-category="CORE">Core Init <span class="tab-count">(0)</span></button>
                 <button class="dev-log-tab" data-category="INSTALL">Installation <span class="tab-count">(0)</span></button>
                 <button class="dev-log-tab" data-category="PROVISION">Provisioning <span class="tab-count">(0)</span></button>
-                <button class="dev-log-tab" data-category="API">API Calls <span class="tab-count">(0)</span></button>
-                <button class="dev-log-tab" data-category="LINK_CREATE">Link Creation <span class="tab-count">(0)</span></button>
-                <button class="dev-log-tab" data-category="BATCH">Batch Processing <span class="tab-count">(0)</span></button>
+                <button class="dev-log-tab" data-category="EDGE_FUNCTION">Edge Functions <span class="tab-count">(0)</span></button>
+                <button class="dev-log-tab" data-category="PAYMENT_GATE">Payment Gate <span class="tab-count">(0)</span></button>
+                <button class="dev-log-tab" data-category="AJAX">AJAX Actions <span class="tab-count">(0)</span></button>
+                <button class="dev-log-tab" data-category="AGENT_DETECTION">Agent Detection <span class="tab-count">(0)</span></button>
                 <button class="dev-log-tab" data-category="ERROR">Errors <span class="tab-count">(0)</span></button>
             </div>
             

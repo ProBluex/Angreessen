@@ -93,14 +93,20 @@
     function getCategoryClass(category) {
         const classMap = {
             'ERROR': 'log-error',
+            'CORE': 'log-core',
             'INSTALL': 'log-install',
             'PROVISION': 'log-provision',
             'API': 'log-api',
+            'EDGE_FUNCTION': 'log-edge',
+            'PAYMENT_GATE': 'log-payment',
+            'AJAX': 'log-ajax',
+            'AGENT_DETECTION': 'log-agent',
             'LINK_CREATE': 'log-link',
             'LINK_UPDATE': 'log-link',
             'BATCH': 'log-batch',
+            'BATCH_PROCESSOR': 'log-batch',
             'POST_SYNC': 'log-sync',
-            'EDGE_FUNCTION': 'log-edge'
+            'WELL_KNOWN': 'log-wellknown'
         };
         return classMap[category] || '';
     }

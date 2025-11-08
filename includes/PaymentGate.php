@@ -9,18 +9,25 @@ class PaymentGate {
      * DUAL DETECTION: AI agents always see 402, humans see 402 only if blocked
      */
     public static function intercept_request() {
+        DevLogger::log('PAYMENT_GATE', 'intercept_request_start', [
+            'is_singular' => is_singular(['post', 'page']),
+            'user_agent' => substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 100)
+        ]);
+        
         // Handle OPTIONS preflight requests for CORS
         if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
             header('Access-Control-Allow-Origin: *');
             header('Access-Control-Allow-Headers: X-PAYMENT, Content-Type, Authorization');
             header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
             header('Access-Control-Max-Age: 86400'); // 24 hours
+            DevLogger::log('PAYMENT_GATE', 'options_preflight_handled', []);
             status_header(200);
             exit;
         }
         
         // Skip if not singular post/page
         if (!is_singular(['post', 'page'])) {
+            DevLogger::log('PAYMENT_GATE', 'skipped_not_singular', []);
             return;
         }
         
@@ -31,6 +38,14 @@ class PaymentGate {
         $link_id  = get_post_meta($post->ID, '_402links_id', true); // legacy fallback
         
         $has_protection = !empty($short_id) || !empty($link_id);
+        
+        DevLogger::log('PAYMENT_GATE', 'request_intercepted', [
+            'post_id' => $post->ID,
+            'post_title' => get_the_title($post->ID),
+            'has_protection' => $has_protection,
+            'short_id' => $short_id ?: 'none',
+            'is_admin' => current_user_can('manage_options')
+        ]);
         
         // Skip if user is logged in admin
         if (current_user_can('manage_options')) {
@@ -84,6 +99,7 @@ class PaymentGate {
         if (!$has_protection) {
             error_log('402links: NOT PROTECTED - No short_id/link_id meta found');
             error_log('===== 402links PaymentGate: ALLOWING ACCESS =====');
+            DevLogger::log('PAYMENT_GATE', 'not_protected_allowing_access', ['post_id' => $post->ID]);
             return; // Not protected
         }
         
@@ -91,6 +107,12 @@ class PaymentGate {
         
         $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
         $agent_check = AgentDetector::is_ai_agent($user_agent);
+        
+        DevLogger::log('PAYMENT_GATE', 'agent_detection', [
+            'is_agent' => $agent_check['is_agent'],
+            'agent_name' => $agent_check['agent_name'] ?? 'none',
+            'user_agent' => substr($user_agent, 0, 100)
+        ]);
         
         error_log('Agent Check Result: ' . json_encode($agent_check));
         
@@ -100,9 +122,19 @@ class PaymentGate {
             $request_path = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?: '/';
             $violation_check = AgentDetector::check_robots_txt_compliance($user_agent, $request_path);
             
+            DevLogger::log('PAYMENT_GATE', 'robots_txt_check', [
+                'has_violation' => $violation_check !== null,
+                'violation_type' => $violation_check['violation_type'] ?? 'none'
+            ]);
+            
             if ($violation_check !== null) {
                 error_log('402links: ROBOTS.TXT VIOLATION DETECTED - ' . json_encode($violation_check));
                 $violation_data = $violation_check;
+                
+                DevLogger::log('PAYMENT_GATE', 'robots_txt_violation_reported', [
+                    'post_id' => $post->ID,
+                    'agent_name' => $agent_check['agent_name'] ?? 'Unknown'
+                ]);
                 
                 // Report robots.txt violation immediately
                 API::report_violation([
@@ -125,6 +157,9 @@ class PaymentGate {
         if ($agent_check['is_agent']) {
             error_log('402links: AGENT DETECTED - Will block');
             $should_block = true;
+            DevLogger::log('PAYMENT_GATE', 'blocking_decision_agent', [
+                'agent_name' => $agent_check['agent_name']
+            ]);
         } else {
             // For humans, check the block_humans flag
             $block_humans = get_post_meta($post->ID, '_402links_block_humans', true);
@@ -133,17 +168,28 @@ class PaymentGate {
             if ($block_humans === '1' || $block_humans === 1) {
                 error_log('402links: HUMAN BLOCKING ENABLED - Will block');
                 $should_block = true;
+                DevLogger::log('PAYMENT_GATE', 'blocking_decision_human_blocked', [
+                    'post_id' => $post->ID
+                ]);
             } else {
                 error_log('402links: HUMAN ALLOWED - Not blocking');
+                DevLogger::log('PAYMENT_GATE', 'blocking_decision_human_allowed', [
+                    'post_id' => $post->ID
+                ]);
             }
         }
         
         if (!$should_block) {
             error_log('===== 402links PaymentGate: ALLOWING ACCESS =====');
+            DevLogger::log('PAYMENT_GATE', 'allowing_access', ['post_id' => $post->ID]);
             return; // Allow access
         }
         
         error_log('===== 402links PaymentGate: BLOCKING REQUEST =====');
+        DevLogger::log('PAYMENT_GATE', 'blocking_request', [
+            'post_id' => $post->ID,
+            'reason' => $agent_check['is_agent'] ? 'agent_detected' : 'human_blocked'
+        ]);
         
         // ============= CHECK FOR 402LINKS INVOICE RECEIPT =============
         // If agent is returning from 402links.com with invoice receipt, validate it
@@ -151,6 +197,10 @@ class PaymentGate {
         $verified = $_GET['verified'] ?? '';
         
         if ($invoice_id && $verified === 'true') {
+            DevLogger::log('PAYMENT_GATE', 'invoice_validation_start', [
+                'invoice_id' => $invoice_id,
+                'post_id' => $post->ID
+            ]);
             error_log('402links: Validating invoice receipt from 402links.com redirect: ' . $invoice_id);
             
             // Call 402links API to confirm payment
@@ -160,6 +210,12 @@ class PaymentGate {
                 error_log('402links: Invoice valid, granting access');
                 error_log('  - Transaction: ' . ($validation['transaction_hash'] ?? 'none'));
                 error_log('  - Amount: ' . ($validation['amount'] ?? 0) . ' ' . ($validation['currency'] ?? 'USDC'));
+                
+                DevLogger::log('PAYMENT_GATE', 'invoice_validation_success', [
+                    'invoice_id' => $invoice_id,
+                    'transaction_hash' => $validation['transaction_hash'] ?? 'none',
+                    'amount' => $validation['amount'] ?? 0
+                ]);
                 
                 // Log the access
                 self::log_agent_access($post->ID, $invoice_id, $validation);
@@ -176,6 +232,12 @@ class PaymentGate {
                 $error_msg = $validation['error'] ?? 'Invoice validation failed';
                 
                 error_log('402links: Invoice validation failed: ' . $error_msg . ' (Code: ' . $error_code . ')');
+                
+                DevLogger::log('ERROR', 'invoice_validation_failed', [
+                    'invoice_id' => $invoice_id,
+                    'error_code' => $error_code,
+                    'error_msg' => $error_msg
+                ]);
                 
                 status_header(403);
                 header('Content-Type: application/json');
@@ -196,6 +258,10 @@ class PaymentGate {
         $settings = get_option('402links_settings');
         $site_id = get_option('402links_site_id');
         if (AgentDetector::is_blacklisted($user_agent, $site_id)) {
+            DevLogger::log('PAYMENT_GATE', 'agent_blacklisted', [
+                'user_agent' => substr($user_agent, 0, 100),
+                'site_id' => $site_id
+            ]);
             wp_die('Access denied: Agent blacklisted', 'Forbidden', ['response' => 403]);
         }
         
@@ -203,9 +269,15 @@ class PaymentGate {
         // Check for X-PAYMENT header (x402 protocol)
         $payment_header = $_SERVER['HTTP_X_PAYMENT'] ?? '';
         
+        DevLogger::log('PAYMENT_GATE', 'x_payment_header_check', [
+            'has_x_payment_header' => !empty($payment_header)
+        ]);
         error_log('402links: X-PAYMENT header present: ' . (!empty($payment_header) ? 'YES' : 'NO'));
         
         if (!empty($payment_header)) {
+            DevLogger::log('PAYMENT_GATE', 'x402_payment_verification_start', [
+                'post_id' => $post->ID
+            ]);
             error_log('402links: Processing x402 payment with CDP facilitator...');
             
             // Get payment requirements for verification
@@ -216,11 +288,21 @@ class PaymentGate {
             
             if (!$verification['isValid']) {
                 error_log('402links: Payment verification FAILED - ' . ($verification['error'] ?? 'unknown error'));
+                DevLogger::log('ERROR', 'x402_payment_verification_failed', [
+                    'error' => $verification['error'] ?? 'unknown error',
+                    'post_id' => $post->ID
+                ]);
                 self::send_402_response($requirements, $verification['error'] ?? 'Payment verification failed');
                 exit;
             }
             
             error_log('402links: Payment verification SUCCEEDED - txHash: ' . ($verification['transaction'] ?? 'none'));
+            
+            DevLogger::log('PAYMENT_GATE', 'x402_payment_verification_success', [
+                'transaction' => $verification['transaction'] ?? 'none',
+                'amount' => $verification['amount'] ?? 0,
+                'payer' => $verification['payer'] ?? 'unknown'
+            ]);
             
             // Log successful payment to Supabase and local DB
             self::log_agent_payment($post->ID, $verification, $agent_check);
@@ -241,6 +323,10 @@ class PaymentGate {
         // ============= X402 402 RESPONSE FOR AI AGENTS =============
         // If AI agent detected, send 402 Payment Required with X-402-* headers
         if ($agent_check['is_agent']) {
+            DevLogger::log('PAYMENT_GATE', 'sending_402_response', [
+                'post_id' => $post->ID,
+                'agent_name' => $agent_check['agent_name']
+            ]);
             error_log('402links: Agent detected - sending 402 response with payment requirements');
             
             $requirements = self::get_payment_requirements($post->ID);
@@ -253,6 +339,10 @@ class PaymentGate {
         $short_id = get_post_meta($post->ID, '_402links_short_id', true);
         
         if ($short_id) {
+            DevLogger::log('PAYMENT_GATE', 'redirecting_human_to_402links', [
+                'short_id' => $short_id,
+                'post_id' => $post->ID
+            ]);
             error_log('402links: Redirecting human to 402links.com/p/' . $short_id);
             
             $return_url = get_permalink($post->ID);
@@ -263,6 +353,10 @@ class PaymentGate {
             exit;
         } else {
             error_log('402links: ERROR - Missing short_id for post ' . $post->ID);
+            
+            DevLogger::log('ERROR', 'missing_short_id', [
+                'post_id' => $post->ID
+            ]);
             
             status_header(500);
             header('Content-Type: application/json');

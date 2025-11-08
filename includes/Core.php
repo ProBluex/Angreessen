@@ -3,6 +3,11 @@ namespace AgentHub;
 
 class Core {
     public function init() {
+        DevLogger::log('CORE', 'init_started', [
+            'is_admin' => is_admin(),
+            'site_url' => get_site_url()
+        ]);
+        
         // Agent interception (BEFORE WordPress serves content)
         add_action('template_redirect', [PaymentGate::class, 'intercept_request'], 1);
         
@@ -59,5 +64,15 @@ class Core {
         
         // REST API routes
         add_action('rest_api_init', [API::class, 'register_rest_routes']);
+        
+        DevLogger::log('CORE', 'init_completed', [
+            'hooks_registered' => [
+                'ajax_handlers' => 19,
+                'admin_hooks' => 4,
+                'payment_gate' => true,
+                'well_known_endpoints' => true,
+                'rest_api' => true
+            ]
+        ]);
     }
 }
