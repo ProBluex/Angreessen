@@ -6,6 +6,24 @@ namespace AgentHub;
  * 
  * Controlled by TOLLIVER_DEV_MODE constant in tolliver-agent.php
  * Set to true for development, false for production
+ * 
+ * Enhanced Category Guide:
+ * 
+ * CORE - Plugin initialization, hooks registration
+ * INSTALL - Plugin activation, provisioning, migrations
+ * PROVISION - Site provisioning, API key generation
+ * BATCH_PROCESSOR - Batch operations, chunking, progress
+ * LINK_CREATE - Link creation attempts, pre-validation
+ * LINK_UPDATE - Link update attempts
+ * API - HTTP requests, responses, payload details
+ * ERROR - All failures with full context
+ * VALIDATION - Data validation, pre-flight checks
+ * PERFORMANCE - Timeout warnings, slow operations
+ * DB - Database queries, meta operations
+ * CACHE - Transient operations
+ * EDGE_FUNCTION - Edge function calls, responses
+ * AJAX - AJAX handler start/success/error
+ * PAYMENT_GATE - Payment gate checks, access control
  */
 class DevLogger {
     private static $logs = [];

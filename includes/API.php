@@ -268,6 +268,23 @@ class API {
             'json_content' => $json_content  // NEW: Full content in JSON format
         ];
         
+        // Log outgoing payload details
+        DevLogger::log('API', 'create_link_payload', [
+            'post_id' => $post_id,
+            'payload_keys' => array_keys($payload),
+            'payload_size' => strlen(json_encode($payload)),
+            'title_length' => strlen($payload['title']),
+            'url_valid' => filter_var($payload['url'], FILTER_VALIDATE_URL) !== false,
+            'price_type' => gettype($payload['price']),
+            'price_value' => $payload['price'],
+            'has_excerpt' => !empty($payload['excerpt']),
+            'has_featured_image' => !empty($payload['featured_image_url']),
+            'has_json_content' => !empty($payload['json_content']),
+            'json_content_size' => isset($payload['json_content']) ? strlen(json_encode($payload['json_content'])) : 0,
+            'tags_count' => count($payload['tags'] ?? []),
+            'word_count' => $payload['word_count']
+        ]);
+        
         DevLogger::log('EDGE_FUNCTION', 'create_link_start', [
             'post_id' => $post_id,
             'title' => get_the_title($post_id),
@@ -1130,8 +1147,24 @@ class API {
         
         if (is_wp_error($response)) {
             $error_msg = $response->get_error_message();
+            $error_code = $response->get_error_code();
+            $error_data = $response->get_error_data();
             error_log('[API.php] ❌ WP_Error: ' . $error_msg);
             error_log('[API.php] ❌ ==================== REQUEST FAILED ====================');
+            
+            // Enhanced network error logging
+            DevLogger::log('ERROR', 'api_network_error', [
+                'endpoint' => $endpoint,
+                'method' => $method,
+                'error_message' => $error_msg,
+                'error_code' => $error_code,
+                'error_data' => $error_data,
+                'url' => $url,
+                'timeout' => $args['timeout'],
+                'elapsed_ms' => $elapsed_time,
+                'dns_resolution_possible' => checkdnsrr(parse_url($url, PHP_URL_HOST), 'A'),
+                'ssl_verify' => $args['sslverify']
+            ]);
             
             DevLogger::log('ERROR', 'api_request_failed', [
                 'endpoint' => $endpoint,
@@ -1161,6 +1194,21 @@ class API {
             error_log('[API.php] ❌ Full error response: ' . json_encode($result));
             error_log('[API.php] ❌ ==================== REQUEST FAILED ====================');
             
+            // Enhanced HTTP error logging with full context
+            DevLogger::log('ERROR', 'api_http_error_detailed', [
+                'endpoint' => $endpoint,
+                'method' => $method,
+                'status_code' => $status_code,
+                'error_message' => $result['error'] ?? 'Unknown error',
+                'response_body' => substr($body, 0, 2000),
+                'response_headers' => (array) $response_headers,
+                'request_data_keys' => is_array($data) ? array_keys($data) : 'not_array',
+                'request_size' => is_array($data) ? strlen(json_encode($data)) : 0,
+                'elapsed_ms' => $elapsed_time,
+                'api_key_present' => !empty($this->api_key),
+                'api_key_prefix' => substr($this->api_key, 0, 12) . '...'
+            ]);
+            
             DevLogger::log('ERROR', 'api_http_error', [
                 'endpoint' => $endpoint,
                 'method' => $method,
@@ -1173,7 +1221,8 @@ class API {
             return [
                 'success' => false,
                 'error' => $result['error'] ?? 'API request failed',
-                'status_code' => $status_code
+                'status_code' => $status_code,
+                'error_code' => $result['error_code'] ?? null
             ];
         }
         

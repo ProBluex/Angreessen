@@ -88,6 +88,30 @@ class ContentSync {
     public static function create_link($post_id) {
         error_log('402links: create_link called for post ' . $post_id);
         
+        // Pre-API call data validation and logging
+        $post = get_post($post_id);
+        $settings = get_option('402links_settings');
+        $price = get_post_meta($post_id, '_402links_price', true) ?: ($settings['default_price'] ?? 0.10);
+        
+        $create_link_context = [
+            'post_id' => $post_id,
+            'post_title' => get_the_title($post_id),
+            'post_url' => get_permalink($post_id),
+            'post_status' => $post->post_status,
+            'post_type' => $post->post_type,
+            'price' => $price,
+            'has_featured_image' => has_post_thumbnail($post_id),
+            'featured_image_url' => get_the_post_thumbnail_url($post_id, 'large') ?: null,
+            'excerpt_length' => strlen($post->post_excerpt ?? ''),
+            'content_length' => strlen($post->post_content ?? ''),
+            'word_count' => str_word_count(strip_tags($post->post_content ?? '')),
+            'author' => get_the_author_meta('display_name', $post->post_author),
+            'tags_count' => count(get_the_tags($post_id) ?: []),
+            'categories_count' => count(get_the_category($post_id) ?: [])
+        ];
+        
+        DevLogger::log('LINK_CREATE', 'pre_api_context', $create_link_context);
+        
         DevLogger::log('LINK_CREATE', 'started', [
             'post_id' => $post_id,
             'post_title' => get_the_title($post_id),
@@ -138,6 +162,20 @@ class ContentSync {
             ]);
         } else {
             error_log('402links: Failed to create link for post ' . $post_id . ': ' . ($result['error'] ?? 'Unknown error'));
+            
+            // Enhanced failure logging with full context
+            DevLogger::log('ERROR', 'link_create_failed_detailed', [
+                'post_id' => $post_id,
+                'post_title' => get_the_title($post_id),
+                'error_message' => $result['error'] ?? 'Unknown error',
+                'error_code' => $result['error_code'] ?? null,
+                'status_code' => $result['status_code'] ?? null,
+                'full_response' => $result,
+                'api_endpoint' => $settings['api_endpoint'] ?? 'unknown',
+                'has_api_key' => !empty(get_option('402links_api_key')),
+                'has_site_id' => !empty(get_option('402links_site_id')),
+                'site_url' => get_site_url()
+            ]);
             
             DevLogger::log('ERROR', 'link_creation_failed', [
                 'post_id' => $post_id,
