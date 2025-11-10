@@ -521,7 +521,7 @@ $is_connected = !empty($api_key) && !empty($site_id);
     
     <!-- Dev Logs Tab -->
     <?php if (defined('TOLLIVER_DEV_MODE') && TOLLIVER_DEV_MODE): ?>
-    <div id="dev-logs" class="tab-content">
+    <div id="tab-dev-logs" class="tab-content">
         <div class="dev-logs-container">
             <div class="dev-logs-header">
                 <h2>🛠️ Developer Debug Logs</h2>

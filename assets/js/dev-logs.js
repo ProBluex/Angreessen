@@ -233,7 +233,7 @@
         }
         
         autoRefreshInterval = setInterval(function() {
-            if ($('#dev-logs').is(':visible')) {
+            if ($('#tab-dev-logs').is(':visible')) {
                 loadLogs();
             }
         }, 3000); // Refresh every 3 seconds
@@ -254,7 +254,7 @@
      */
     $(document).ready(function() {
         // Initial load if Dev Logs tab exists
-        if ($('#dev-logs').length > 0) {
+        if ($('#tab-dev-logs').length > 0) {
             loadLogs();
             startAutoRefresh();
         }
