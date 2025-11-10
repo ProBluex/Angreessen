@@ -1220,8 +1220,9 @@ class Admin {
         
         DevLogger::log('AJAX', 'handler_success', [
             'action' => 'ajax_start_batch_generation',
-            'total_posts' => $progress['total'],
-            'status' => $progress['status']
+            'response_data' => $progress,
+            'status' => $progress['status'],
+            'total' => $progress['total']
         ]);
         
         wp_send_json_success($progress);

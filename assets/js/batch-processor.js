@@ -143,6 +143,8 @@
 
   /* ---------- Poll Batch Progress ---------- */
   function pollBatchProgress() {
+    console.log('[batch-processor] Polling batch progress...');
+    
     $.ajax({
       url: w.agentHubData.ajaxUrl,
       type: "POST",
@@ -154,6 +156,8 @@
       },
     })
       .done((res) => {
+        console.log('[batch-processor] Poll response:', res);
+        
         if (!res || !res.success) {
           debugLog("[batch-processor] Error polling:", res);
           if (w.showToast) {
@@ -185,7 +189,7 @@
         }
       })
       .fail((xhr, status, error) => {
-        debugLog("[batch-processor] Poll failed:", status, error);
+        console.error('[batch-processor] Poll failed:', status, error, xhr.responseText);
         if (w.showToast) {
           w.showToast("Error", "Network error during batch processing.", "error");
         }
@@ -217,12 +221,20 @@
         }
 
         const progress = res.data || {};
+        console.log('[batch-processor] Start response:', res);
+        console.log('[batch-processor] Progress object:', progress);
+        console.log('[batch-processor] Status:', progress.status);
+        console.log('[batch-processor] Total:', progress.total);
+        console.log('[batch-processor] Should start polling?', progress.status === "running" && progress.total > 0);
+        
         updateProgressUI(progress);
 
         // Start polling if batch is processing
         if (progress.status === "running" && progress.total > 0) {
+          console.log('[batch-processor] Starting polling in 2 seconds...');
           pollTimer = setTimeout(pollBatchProgress, POLL_INTERVAL);
         } else {
+          console.log('[batch-processor] NOT starting polling. Status:', progress.status, 'Total:', progress.total);
           // No posts to process or already complete
           if (w.showToast) {
             w.showToast("Info", "No posts available to generate links.", "success");
