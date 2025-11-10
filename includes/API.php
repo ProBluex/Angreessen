@@ -928,17 +928,4 @@ class API {
         
         return array_merge(['success' => true], $result ?? []);
     }
-    
-    /**
-     * Bulk update prices for existing links
-     */
-    public function bulk_update_prices_only() {
-        $settings = get_option('402links_settings');
-        $default_price = $settings['default_price'] ?? 0.10;
-        
-        return $this->request('POST', '/functions/v1/bulk-update-link-prices', [
-            'site_url' => get_site_url(),
-            'new_price' => floatval($default_price)
-        ]);
-    }
 }
