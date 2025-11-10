@@ -122,7 +122,7 @@
   function updateProgressUI(progress) {
     const total = parseInt(progress.total, 10) || 0;
     const processed = parseInt(progress.processed, 10) || 0;
-    const successful = parseInt(progress.successful, 10) || 0;
+    const successful = parseInt(progress.created, 10) || 0;
     const failed = parseInt(progress.failed, 10) || 0;
     const percent = total > 0 ? Math.round((processed / total) * 100) : 0;
 
@@ -167,11 +167,11 @@
         updateProgressUI(progress);
 
         // Continue polling if not complete
-        if (progress.status === "processing") {
+        if (progress.status === "running") {
           pollTimer = setTimeout(pollBatchProgress, POLL_INTERVAL);
         } else if (progress.status === "completed") {
           if (w.showToast) {
-            const msg = `Generated ${progress.successful || 0} links successfully. ${progress.failed || 0} failed.`;
+            const msg = `Generated ${progress.created || 0} links successfully. ${progress.failed || 0} failed.`;
             w.showToast("Batch Complete", msg, "success");
           }
 
@@ -220,7 +220,7 @@
         updateProgressUI(progress);
 
         // Start polling if batch is processing
-        if (progress.status === "processing" && progress.total > 0) {
+        if (progress.status === "running" && progress.total > 0) {
           pollTimer = setTimeout(pollBatchProgress, POLL_INTERVAL);
         } else {
           // No posts to process or already complete
