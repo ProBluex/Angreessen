@@ -247,10 +247,21 @@ class Admin {
         
         $message = 'Settings saved successfully';
         
-        // If default_price changed, warn user to re-sync existing links
+        // If default_price changed, inform user that prices were auto-updated
         if (isset($old_settings['default_price']) && 
             $old_settings['default_price'] != $settings['default_price']) {
-            $message .= '. Note: Existing links keep their old prices. Go to My Content → Generate Paid Links to update existing links with the new price.';
+            
+            // Check if sync result includes links_updated count
+            if (isset($sync_result['success']) && $sync_result['success'] && isset($sync_result['links_updated'])) {
+                $links_count = intval($sync_result['links_updated']);
+                if ($links_count > 0) {
+                    $message .= ". Automatically updated prices for {$links_count} existing link(s) to \${$settings['default_price']}.";
+                } else {
+                    $message .= ". Price updated to \${$settings['default_price']} (no existing links to update).";
+                }
+            } else {
+                $message .= ". Price updated to \${$settings['default_price']}.";
+            }
         }
         
         wp_send_json_success(['message' => $message]);
