@@ -149,7 +149,7 @@
       url: w.agentHubData.ajaxUrl,
       type: "POST",
       dataType: "json",
-      timeout: 10000,
+      timeout: 30000,
       data: {
         action: "agent_hub_process_batch",
         nonce: w.agentHubData.nonce,
@@ -167,25 +167,37 @@
           return;
         }
 
-        const progress = res.data || {};
+        // Handle both response structures:
+        // - start_batch: res.data = {status, total, ...}
+        // - process_next_batch: res.data = {success, completed, progress: {...}} OR {status, total, ...}
+        const responseData = res.data || {};
+        const progress = responseData.progress || responseData;
+        const isCompleted = responseData.completed || progress.status === 'completed';
+
+        console.log('[batch-processor] Extracted progress:', progress);
+        console.log('[batch-processor] Completed?', isCompleted, 'Status:', progress.status);
+
         updateProgressUI(progress);
 
-        // Continue polling if not complete
-        if (progress.status === "running") {
-          pollTimer = setTimeout(pollBatchProgress, POLL_INTERVAL);
-        } else if (progress.status === "completed") {
+        // Check completion
+        if (isCompleted || progress.status === "completed") {
           if (w.showToast) {
             const msg = `Generated ${progress.created || 0} links successfully. ${progress.failed || 0} failed.`;
             w.showToast("Batch Complete", msg, "success");
           }
 
-          // Auto-close after 5 seconds
+          // Auto-close after 3 seconds
           setTimeout(() => {
             closeModal();
             if (w.agentHub && w.agentHub.loadContent) {
               w.agentHub.loadContent();
             }
-          }, 5000);
+          }, 3000);
+        } else if (progress.status === "running") {
+          pollTimer = setTimeout(pollBatchProgress, POLL_INTERVAL);
+        } else {
+          console.warn('[batch-processor] Unexpected state:', progress);
+          closeModal();
         }
       })
       .fail((xhr, status, error) => {

@@ -1250,12 +1250,18 @@ class Admin {
         $result = BatchProcessor::process_next_batch();
         
         if ($result['success']) {
+            // Extract progress from nested structure for consistency with start_batch response
+            $progress = $result['progress'] ?? $result;
+            
             DevLogger::log('AJAX', 'handler_success', [
                 'action' => 'ajax_process_batch',
+                'status' => $progress['status'] ?? 'unknown',
                 'completed' => $result['completed'] ?? false,
-                'processed' => $result['progress']['processed'] ?? 0
+                'processed' => $progress['processed'] ?? 0
             ]);
-            wp_send_json_success($result);
+            
+            // Return progress directly for consistent structure
+            wp_send_json_success($progress);
         } else {
             DevLogger::log('ERROR', 'ajax_error', [
                 'action' => 'ajax_process_batch',
