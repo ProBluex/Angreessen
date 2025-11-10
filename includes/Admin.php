@@ -216,6 +216,9 @@ class Admin {
             wp_send_json_error(['message' => 'Unauthorized']);
         }
         
+        // Get old settings to detect price changes
+        $old_settings = get_option('402links_settings', []);
+        
         $settings = [
             'default_price' => floatval($_POST['default_price'] ?? 0.10),
             'auto_generate' => isset($_POST['auto_generate']) && $_POST['auto_generate'] === 'true',
@@ -242,7 +245,15 @@ class Admin {
             error_log('🟦 [Admin] Synced settings to Supabase: ' . json_encode($sync_result));
         }
         
-        wp_send_json_success(['message' => 'Settings saved successfully']);
+        $message = 'Settings saved successfully';
+        
+        // If default_price changed, warn user to re-sync existing links
+        if (isset($old_settings['default_price']) && 
+            $old_settings['default_price'] != $settings['default_price']) {
+            $message .= '. Note: Existing links keep their old prices. Go to My Content → Generate Paid Links to update existing links with the new price.';
+        }
+        
+        wp_send_json_success(['message' => $message]);
     }
     
     /**
