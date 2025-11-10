@@ -67,36 +67,18 @@ class AgentDetector {
     private static function load_bot_registry() {
         // Check memory cache
         if (self::$bot_registry_cache !== null) {
-            DevLogger::log('AGENT_DETECTION', 'bot_registry_cache_hit', [
-                'source' => 'memory',
-                'bot_count' => count(self::$bot_registry_cache)
-            ]);
             return self::$bot_registry_cache;
         }
         
         // Check transient cache
         $cached = get_transient('402links_bot_registry');
-        DevLogger::log('CACHE', 'get_transient', [
-            'key' => '402links_bot_registry',
-            'hit' => $cached !== false,
-            'bot_count' => $cached !== false ? count($cached) : 0
-        ]);
-        
         if ($cached !== false) {
             self::$bot_registry_cache = $cached;
-            DevLogger::log('AGENT_DETECTION', 'bot_registry_cache_hit', [
-                'source' => 'transient',
-                'bot_count' => count($cached)
-            ]);
             return $cached;
         }
         
         // Track bot registry load time for monitoring
         $start_time = microtime(true);
-        
-        DevLogger::log('AGENT_DETECTION', 'bot_registry_load_start', [
-            'source' => 'api'
-        ]);
         
         // Fetch from API
         $api = new API();
@@ -106,30 +88,13 @@ class AgentDetector {
             $elapsed = microtime(true) - $start_time;
             error_log(sprintf('402links: Bot registry loaded in %.2f seconds (%d bots)', $elapsed, count($registry)));
             
-            DevLogger::log('AGENT_DETECTION', 'bot_registry_loaded', [
-                'source' => 'api',
-                'bot_count' => count($registry),
-                'elapsed_ms' => round($elapsed * 1000, 2)
-            ]);
-            
             // Cache for 1 hour
             set_transient('402links_bot_registry', $registry, self::$cache_duration);
-            DevLogger::log('CACHE', 'set_transient', [
-                'key' => '402links_bot_registry',
-                'expiration' => self::$cache_duration,
-                'bot_count' => count($registry)
-            ]);
-            
             self::$bot_registry_cache = $registry;
             return $registry;
         }
         
         error_log('402links: Bot registry API failed or returned empty data');
-        DevLogger::log('ERROR', 'agent_detection_error', [
-            'action' => 'load_bot_registry',
-            'error' => 'Bot registry API failed or returned empty data'
-        ]);
-        
         return [];
     }
     
@@ -141,16 +106,7 @@ class AgentDetector {
      * @return array ['is_agent' => bool, 'agent_name' => string|null, 'bot_id' => string|null, 'category' => string|null, 'company' => string|null]
      */
     public static function is_ai_agent($user_agent) {
-        DevLogger::log('AGENT_DETECTION', 'agent_check_start', [
-            'user_agent' => $user_agent,
-            'user_agent_length' => strlen($user_agent ?? '')
-        ]);
-        
         if (empty($user_agent)) {
-            DevLogger::log('AGENT_DETECTION', 'agent_check_result', [
-                'is_agent' => false,
-                'reason' => 'empty_user_agent'
-            ]);
             return [
                 'is_agent' => false,
                 'agent_name' => null,
@@ -174,14 +130,6 @@ class AgentDetector {
             foreach ($patterns as $pattern) {
                 if (strpos($ua_lower, $pattern) !== false) {
                     error_log('402links: Major AI agent detected immediately: ' . $name);
-                    
-                    DevLogger::log('AGENT_DETECTION', 'agent_check_result', [
-                        'is_agent' => true,
-                        'agent_name' => $name,
-                        'detection_method' => 'priority_pattern',
-                        'matched_pattern' => $pattern
-                    ]);
-                    
                     return [
                         'is_agent' => true,
                         'agent_name' => $name,
@@ -197,14 +145,6 @@ class AgentDetector {
         // Try registry next (after priority detection)
         $bot = self::get_bot_from_registry($user_agent);
         if ($bot !== null) {
-            DevLogger::log('AGENT_DETECTION', 'agent_check_result', [
-                'is_agent' => true,
-                'agent_name' => $bot['bot_name'] ?? 'Unknown Bot',
-                'bot_id' => $bot['id'] ?? null,
-                'detection_method' => 'registry',
-                'category' => $bot['bot_category'] ?? null
-            ]);
-            
             return [
                 'is_agent' => true,
                 'agent_name' => $bot['bot_name'] ?? 'Unknown Bot',
@@ -218,13 +158,6 @@ class AgentDetector {
         $ua_lower = strtolower($user_agent);
         foreach (self::$fallback_patterns as $pattern) {
             if (stripos($user_agent, $pattern) !== false) {
-                DevLogger::log('AGENT_DETECTION', 'agent_check_result', [
-                    'is_agent' => true,
-                    'agent_name' => $pattern,
-                    'detection_method' => 'fallback_pattern',
-                    'matched_pattern' => $pattern
-                ]);
-                
                 return [
                     'is_agent' => true,
                     'agent_name' => $pattern,
@@ -239,13 +172,6 @@ class AgentDetector {
         $generic_keywords = ['bot', 'crawler', 'spider', 'scraper'];
         foreach ($generic_keywords as $keyword) {
             if (strpos($ua_lower, $keyword) !== false) {
-                DevLogger::log('AGENT_DETECTION', 'agent_check_result', [
-                    'is_agent' => true,
-                    'agent_name' => 'Generic Agent',
-                    'detection_method' => 'generic_keyword',
-                    'matched_keyword' => $keyword
-                ]);
-                
                 return [
                     'is_agent' => true,
                     'agent_name' => 'Generic Agent',
@@ -255,11 +181,6 @@ class AgentDetector {
                 ];
             }
         }
-        
-        DevLogger::log('AGENT_DETECTION', 'agent_check_result', [
-            'is_agent' => false,
-            'reason' => 'no_match'
-        ]);
         
         return [
             'is_agent' => false,
@@ -278,40 +199,18 @@ class AgentDetector {
      * @return array|null Violation details or null if compliant
      */
     public static function check_robots_txt_compliance($user_agent, $request_path) {
-        DevLogger::log('AGENT_DETECTION', 'robots_txt_check_start', [
-            'user_agent' => $user_agent,
-            'request_path' => $request_path
-        ]);
-        
         $bot = self::get_bot_from_registry($user_agent);
         
         if (!$bot || empty($bot['robots_txt_user_agent'])) {
-            DevLogger::log('AGENT_DETECTION', 'robots_txt_check_skip', [
-                'reason' => 'no_robots_txt_user_agent',
-                'bot_found' => $bot !== null
-            ]);
             return null; // Can't check compliance without robots.txt user agent
         }
         
         // Get robots.txt rules for this bot
         $robots_rules = self::get_robots_txt_rules($bot['robots_txt_user_agent']);
         
-        DevLogger::log('AGENT_DETECTION', 'robots_txt_rules_loaded', [
-            'user_agent' => $bot['robots_txt_user_agent'],
-            'disallow_count' => count($robots_rules['disallow']),
-            'allow_count' => count($robots_rules['allow'])
-        ]);
-        
         // Check if current path is disallowed
         foreach ($robots_rules['disallow'] as $disallowed_path) {
             if (strpos($request_path, $disallowed_path) === 0) {
-                DevLogger::log('AGENT_DETECTION', 'robots_txt_violation', [
-                    'user_agent' => $user_agent,
-                    'request_path' => $request_path,
-                    'disallowed_path' => $disallowed_path,
-                    'violation_type' => 'robots_txt'
-                ]);
-                
                 return [
                     'violation_type' => 'robots_txt',
                     'robots_txt_directive' => 'Disallow: ' . $disallowed_path,
@@ -321,11 +220,6 @@ class AgentDetector {
                 ];
             }
         }
-        
-        DevLogger::log('AGENT_DETECTION', 'robots_txt_check_compliant', [
-            'user_agent' => $user_agent,
-            'request_path' => $request_path
-        ]);
         
         return null; // No violation
     }
@@ -388,23 +282,10 @@ class AgentDetector {
      * @return bool
      */
     public static function is_blacklisted($user_agent, $site_id = null) {
-        DevLogger::log('AGENT_DETECTION', 'blacklist_check_start', [
-            'user_agent' => $user_agent,
-            'site_id' => $site_id
-        ]);
-        
         $api = new API();
         $result = $api->check_blacklist($user_agent, $site_id);
         
-        $is_blacklisted = $result['is_blacklisted'] ?? false;
-        
-        DevLogger::log('AGENT_DETECTION', 'blacklist_check_result', [
-            'user_agent' => $user_agent,
-            'is_blacklisted' => $is_blacklisted,
-            'reason' => $result['reason'] ?? null
-        ]);
-        
-        return $is_blacklisted;
+        return $result['is_blacklisted'] ?? false;
     }
     
     /**
@@ -416,13 +297,6 @@ class AgentDetector {
      * @param array $violation_data Optional violation data
      */
     public static function log_crawl($post_id, $agent_info, $payment_status = 'unpaid', $violation_data = null) {
-        DevLogger::log('AGENT_DETECTION', 'crawl_log_start', [
-            'post_id' => $post_id,
-            'agent_name' => $agent_info['agent_name'],
-            'payment_status' => $payment_status,
-            'has_violation' => $violation_data !== null
-        ]);
-        
         global $wpdb;
         $table_name = $wpdb->prefix . '402links_agent_logs';
         
@@ -442,30 +316,11 @@ class AgentDetector {
             $data['expected_behavior'] = $violation_data['expected_behavior'] ?? null;
             $data['actual_behavior'] = $violation_data['actual_behavior'] ?? null;
             
-            DevLogger::log('AGENT_DETECTION', 'violation_detected', [
-                'post_id' => $post_id,
-                'agent_name' => $agent_info['agent_name'],
-                'violation_type' => $violation_data['violation_type'] ?? null
-            ]);
-            
             // Report violation to backend
             self::report_violation_to_backend($post_id, $agent_info, $violation_data);
         }
         
         $wpdb->insert($table_name, $data, ['%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s']);
-        
-        DevLogger::log('DB', 'wpdb_query', [
-            'query_type' => 'INSERT',
-            'table' => $table_name,
-            'success' => $wpdb->last_error === '',
-            'error' => $wpdb->last_error
-        ]);
-        
-        DevLogger::log('AGENT_DETECTION', 'crawl_logged', [
-            'post_id' => $post_id,
-            'agent_name' => $agent_info['agent_name'],
-            'payment_status' => $payment_status
-        ]);
     }
     
     /**
@@ -476,12 +331,6 @@ class AgentDetector {
      * @param array $violation_data Violation details
      */
     private static function report_violation_to_backend($post_id, $agent_info, $violation_data) {
-        DevLogger::log('AGENT_DETECTION', 'violation_report_start', [
-            'post_id' => $post_id,
-            'agent_name' => $agent_info['agent_name'] ?? 'Unknown',
-            'violation_type' => $violation_data['violation_type'] ?? 'unknown'
-        ]);
-        
         $api = new API();
         
         $payload = [
@@ -498,18 +347,8 @@ class AgentDetector {
         
         if (!$result['success']) {
             error_log('402links: Failed to report violation: ' . ($result['error'] ?? 'Unknown error'));
-            DevLogger::log('ERROR', 'agent_detection_error', [
-                'action' => 'report_violation',
-                'error' => $result['error'] ?? 'Unknown error',
-                'post_id' => $post_id
-            ]);
         } else {
             error_log('402links: Violation reported successfully (ID: ' . ($result['violation_id'] ?? 'unknown') . ')');
-            DevLogger::log('AGENT_DETECTION', 'violation_reported', [
-                'post_id' => $post_id,
-                'violation_id' => $result['violation_id'] ?? 'unknown',
-                'agent_name' => $agent_info['agent_name'] ?? 'Unknown'
-            ]);
         }
     }
     

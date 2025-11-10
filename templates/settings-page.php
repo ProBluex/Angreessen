@@ -48,12 +48,6 @@ $is_connected = !empty($api_key) && !empty($site_id);
             <span class="dashicons dashicons-email"></span>
             Contact Us
         </button>
-        <?php if (defined('TOLLIVER_DEV_MODE') && TOLLIVER_DEV_MODE): ?>
-        <button class="tab-button" data-tab="dev-logs">
-            <span class="dashicons dashicons-admin-tools"></span>
-            🛠️ Dev Logs
-        </button>
-        <?php endif; ?>
     </div>
     
     <!-- Overview Tab -->
@@ -518,51 +512,6 @@ $is_connected = !empty($api_key) && !empty($site_id);
             </div>
         </div>
     </div>
-    
-    <!-- Dev Logs Tab -->
-    <?php if (defined('TOLLIVER_DEV_MODE') && TOLLIVER_DEV_MODE): ?>
-    <div id="tab-dev-logs" class="tab-content">
-        <div class="dev-logs-container">
-            <div class="dev-logs-header">
-                <h2>🛠️ Developer Debug Logs</h2>
-                <div>
-                    <button id="refresh-dev-logs" class="button button-secondary">
-                        <span class="dashicons dashicons-update"></span> Refresh
-                    </button>
-                    <button id="export-dev-logs" class="button button-secondary">
-                        <span class="dashicons dashicons-download"></span> Export JSON
-                    </button>
-                    <button id="clear-dev-logs" class="button button-secondary">
-                        <span class="dashicons dashicons-trash"></span> Clear All
-                    </button>
-                </div>
-            </div>
-            
-            <div class="dev-logs-tabs">
-                <button class="dev-log-tab active" data-category="all">All <span class="tab-count">(0)</span></button>
-                <button class="dev-log-tab" data-category="CORE">Core Init <span class="tab-count">(0)</span></button>
-                <button class="dev-log-tab" data-category="INSTALL">Installation <span class="tab-count">(0)</span></button>
-                <button class="dev-log-tab" data-category="PROVISION">Provisioning <span class="tab-count">(0)</span></button>
-                <button class="dev-log-tab" data-category="API">API Calls <span class="tab-count">(0)</span></button>
-                <button class="dev-log-tab" data-category="EDGE_FUNCTION">Edge Functions <span class="tab-count">(0)</span></button>
-                <button class="dev-log-tab" data-category="PAYMENT_GATE">Payment Gate <span class="tab-count">(0)</span></button>
-                <button class="dev-log-tab" data-category="AJAX">AJAX Actions <span class="tab-count">(0)</span></button>
-                <button class="dev-log-tab" data-category="AGENT_DETECTION">Agent Detection <span class="tab-count">(0)</span></button>
-                <button class="dev-log-tab" data-category="DB">DB Operations <span class="tab-count">(0)</span></button>
-                <button class="dev-log-tab" data-category="CACHE">Cache <span class="tab-count">(0)</span></button>
-                <button class="dev-log-tab" data-category="LINK_CREATE">Link Creation <span class="tab-count">(0)</span></button>
-                <button class="dev-log-tab" data-category="BATCH">Batch Ops <span class="tab-count">(0)</span></button>
-                <button class="dev-log-tab" data-category="BATCH_PROCESSOR">Batch Processor <span class="tab-count">(0)</span></button>
-                <button class="dev-log-tab" data-category="WELL_KNOWN">Well-Known <span class="tab-count">(0)</span></button>
-                <button class="dev-log-tab" data-category="ERROR">Errors <span class="tab-count">(0)</span></button>
-            </div>
-            
-            <div id="dev-logs-display" class="dev-logs-display">
-                <p class="no-logs">Loading logs...</p>
-            </div>
-        </div>
-    </div>
-    <?php endif; ?>
     
     <div id="agent-hub-toast" class="agent-hub-toast"></div>
 </div>

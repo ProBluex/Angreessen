@@ -41,18 +41,6 @@ delete_option('tolliver_debug_updater');
 // Clean up any remaining 402links or tolliver options (safety net)
 $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '402links%' OR option_name LIKE '%tolliver%'");
 
-// Delete transients with 402links prefix
-$wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_402links%' OR option_name LIKE '_transient_timeout_402links%'");
-
-// Delete any transients containing tolliver
-$wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_%tolliver%' OR option_name LIKE '_transient_timeout_%tolliver%'");
-
-// Delete agent_hub transients (analytics, locks, page counts)
-$wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_agent_hub_%' OR option_name LIKE '_transient_timeout_agent_hub_%'");
-
-// Delete batch processing transients
-$wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_402links_batch%' OR option_name LIKE '_transient_timeout_402links_batch%'");
-
 // Delete all post meta
 $wpdb->query("DELETE FROM {$wpdb->postmeta} WHERE meta_key LIKE '_402links_%'");
 

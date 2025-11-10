@@ -43,7 +43,6 @@ class ContentSync {
         }
         
         // Check if auto-generate is enabled
-        DevLogger::log('DB', 'get_option:402links_settings', ['context' => 'sync_post_check']);
         $settings = get_option('402links_settings');
         if (!isset($settings['auto_generate']) || !$settings['auto_generate']) {
             error_log('402links: Auto-generate is disabled for post ' . $post_id);
@@ -51,7 +50,6 @@ class ContentSync {
         }
         
         // Check if API key is set
-        DevLogger::log('DB', 'get_option:402links_api_key', ['context' => 'sync_post_check']);
         $api_key = get_option('402links_api_key');
         if (empty($api_key)) {
             error_log('402links: API key not set, cannot sync post ' . $post_id);
@@ -59,7 +57,6 @@ class ContentSync {
         }
         
         // Check if already synced
-        DevLogger::log('DB', 'get_post_meta:_402links_id', ['post_id' => $post_id, 'context' => 'sync_check']);
         $link_id = get_post_meta($post_id, '_402links_id', true);
         
         $api = new API();
@@ -88,36 +85,6 @@ class ContentSync {
     public static function create_link($post_id) {
         error_log('402links: create_link called for post ' . $post_id);
         
-        // Pre-API call data validation and logging
-        $post = get_post($post_id);
-        $settings = get_option('402links_settings');
-        $price = get_post_meta($post_id, '_402links_price', true) ?: ($settings['default_price'] ?? 0.10);
-        
-        $create_link_context = [
-            'post_id' => $post_id,
-            'post_title' => get_the_title($post_id),
-            'post_url' => get_permalink($post_id),
-            'post_status' => $post->post_status,
-            'post_type' => $post->post_type,
-            'price' => $price,
-            'has_featured_image' => has_post_thumbnail($post_id),
-            'featured_image_url' => get_the_post_thumbnail_url($post_id, 'large') ?: null,
-            'excerpt_length' => strlen($post->post_excerpt ?? ''),
-            'content_length' => strlen($post->post_content ?? ''),
-            'word_count' => str_word_count(strip_tags($post->post_content ?? '')),
-            'author' => get_the_author_meta('display_name', $post->post_author),
-            'tags_count' => count(get_the_tags($post_id) ?: []),
-            'categories_count' => count(get_the_category($post_id) ?: [])
-        ];
-        
-        DevLogger::log('LINK_CREATE', 'pre_api_context', $create_link_context);
-        
-        DevLogger::log('LINK_CREATE', 'started', [
-            'post_id' => $post_id,
-            'post_title' => get_the_title($post_id),
-            'post_url' => get_permalink($post_id)
-        ]);
-        
         $api = new API();
         $result = $api->create_link($post_id);
         
@@ -126,62 +93,30 @@ class ContentSync {
         if ($result['success']) {
             // Store link metadata
             if (isset($result['link_id'])) {
-                DevLogger::log('DB', 'update_post_meta:_402links_id', ['post_id' => $post_id, 'link_id' => $result['link_id']]);
                 update_post_meta($post_id, '_402links_id', $result['link_id']);
                 error_log('402links: Saved link_id ' . $result['link_id'] . ' for post ' . $post_id);
             }
             
             // ⭐ CRITICAL FIX: Store short_id in post meta
             if (isset($result['short_id'])) {
-                DevLogger::log('DB', 'update_post_meta:_402links_short_id', ['post_id' => $post_id, 'short_id' => $result['short_id']]);
                 update_post_meta($post_id, '_402links_short_id', $result['short_id']);
                 error_log('402links: Saved short_id ' . $result['short_id'] . ' for post ' . $post_id);
             }
             
             // Store the correct 402link URL using production domain
             if (isset($result['link_url'])) {
-                DevLogger::log('DB', 'update_post_meta:_402links_url', ['post_id' => $post_id, 'link_url' => $result['link_url']]);
                 update_post_meta($post_id, '_402links_url', $result['link_url']);
                 error_log('402links: Saved link_url for post ' . $post_id);
             } elseif (isset($result['short_id'])) {
                 // Construct the URL from short_id using production domain
                 $link_url = 'https://402links.com/p/' . $result['short_id'];
-                DevLogger::log('DB', 'update_post_meta:_402links_url', ['post_id' => $post_id, 'link_url' => $link_url, 'source' => 'constructed']);
                 update_post_meta($post_id, '_402links_url', $link_url);
                 error_log('402links: Constructed and saved link_url from short_id for post ' . $post_id);
             }
             
-            DevLogger::log('DB', 'update_post_meta:_402links_synced_at', ['post_id' => $post_id, 'timestamp' => current_time('mysql')]);
             update_post_meta($post_id, '_402links_synced_at', current_time('mysql'));
-            
-            DevLogger::log('LINK_CREATE', 'success', [
-                'post_id' => $post_id,
-                'link_id' => $result['link_id'] ?? null,
-                'short_id' => $result['short_id'] ?? null,
-                'link_url' => $result['link_url'] ?? null
-            ]);
         } else {
             error_log('402links: Failed to create link for post ' . $post_id . ': ' . ($result['error'] ?? 'Unknown error'));
-            
-            // Enhanced failure logging with full context
-            DevLogger::log('ERROR', 'link_create_failed_detailed', [
-                'post_id' => $post_id,
-                'post_title' => get_the_title($post_id),
-                'error_message' => $result['error'] ?? 'Unknown error',
-                'error_code' => $result['error_code'] ?? null,
-                'status_code' => $result['status_code'] ?? null,
-                'full_response' => $result,
-                'api_endpoint' => $settings['api_endpoint'] ?? 'unknown',
-                'has_api_key' => !empty(get_option('402links_api_key')),
-                'has_site_id' => !empty(get_option('402links_site_id')),
-                'site_url' => get_site_url()
-            ]);
-            
-            DevLogger::log('ERROR', 'link_creation_failed', [
-                'post_id' => $post_id,
-                'error' => $result['error'] ?? 'Unknown error',
-                'response' => $result
-            ]);
         }
         
         return $result;
@@ -191,20 +126,11 @@ class ContentSync {
      * Bulk sync all published posts
      */
     public static function bulk_sync_all() {
-        DevLogger::log('BATCH', 'started', [
-            'query' => 'all published posts'
-        ]);
-        
         $posts = get_posts([
             'post_type' => 'post',  // ✅ ONLY posts, not pages
             'post_status' => 'publish',
             'posts_per_page' => -1,
             'fields' => 'ids'
-        ]);
-        
-        DevLogger::log('BATCH', 'posts_detected', [
-            'total_posts' => count($posts),
-            'post_ids' => $posts
         ]);
         
         $results = [
@@ -216,15 +142,8 @@ class ContentSync {
         ];
         
         foreach ($posts as $post_id) {
-            DevLogger::log('DB', 'get_post_meta:_402links_id', ['post_id' => $post_id, 'context' => 'bulk_sync']);
             $link_id = get_post_meta($post_id, '_402links_id', true);
             $api = new API();
-            
-            DevLogger::log('BATCH', 'processing_post', [
-                'post_id' => $post_id,
-                'has_existing_link' => !empty($link_id),
-                'link_id' => $link_id
-            ]);
             
             if ($link_id) {
                 $result = $api->update_link($post_id, $link_id);
@@ -244,8 +163,6 @@ class ContentSync {
                 }
             }
         }
-        
-        DevLogger::log('BATCH', 'completed', $results);
         
         return $results;
     }
@@ -271,7 +188,6 @@ class ContentSync {
                 continue;
             }
             
-            DevLogger::log('DB', 'get_post_meta:_402links_id', ['post_id' => $post_id, 'context' => 'bulk_sync_specific']);
             $link_id = get_post_meta($post_id, '_402links_id', true);
             $api = new API();
             

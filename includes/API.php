@@ -8,17 +8,12 @@ class API {
     private $service_role_key;
     
     public function __construct() {
-        DevLogger::log('DB', 'get_option:402links_api_key', null);
         $this->api_key = get_option('402links_api_key');
-        
-        DevLogger::log('DB', 'get_option:402links_settings', null);
         $settings = get_option('402links_settings');
         $this->api_endpoint = $settings['api_endpoint'] ?? 'https://api.402links.com/v1';
         
         // Initialize Supabase credentials
         $this->supabase_url = 'https://cnionwnknwnzpwfuacse.supabase.co';
-        
-        DevLogger::log('DB', 'get_option:402links_supabase_service_key', null);
         $this->service_role_key = get_option('402links_supabase_service_key');
         
         error_log('🟦 [API Constructor] Supabase URL: ' . ($this->supabase_url ?: 'NOT SET'));
@@ -38,11 +33,6 @@ class API {
      * Register WordPress site with 402links backend
      */
     public function register_site() {
-        DevLogger::log('EDGE_FUNCTION', 'register_site_start', [
-            'site_url' => get_site_url(),
-            'site_name' => get_bloginfo('name')
-        ]);
-        
         // Get the stored API key ID from the api_keys table lookup
         $api_key_id = $this->get_api_key_id();
         
@@ -59,27 +49,17 @@ class API {
             $payload['api_key_id'] = $api_key_id;
         }
         
-        DevLogger::log('EDGE_FUNCTION', 'register_site_payload', $payload);
-        
         $result = $this->request('POST', '/register-wordpress-site', $payload);
         
         // Handle specific API key reuse error
         if (!$result['success'] && isset($result['error']) && strpos($result['error'], 'already being used') !== false) {
             error_log('402links: API key is already in use by another site');
-            DevLogger::log('ERROR', 'register_site_api_key_in_use', [
-                'error' => $result['error']
-            ]);
             return [
                 'success' => false,
                 'error' => $result['error'],
                 'error_code' => 'API_KEY_IN_USE'
             ];
         }
-        
-        DevLogger::log('EDGE_FUNCTION', 'register_site_complete', [
-            'success' => $result['success'],
-            'site_id' => $result['site_id'] ?? null
-        ]);
         
         return $result;
     }
@@ -89,21 +69,14 @@ class API {
      * Now uses edge function instead of direct REST API call
      */
     public function sync_site_settings($settings) {
-        DevLogger::log('DB', 'get_option:402links_site_id', null);
         $site_id = get_option('402links_site_id');
         
         if (!$site_id) {
-            DevLogger::log('ERROR', 'sync_settings_no_site_id', ['settings' => $settings]);
             return [
                 'success' => false,
                 'error' => 'Site not registered'
             ];
         }
-        
-        DevLogger::log('EDGE_FUNCTION', 'sync_settings_start', [
-            'site_id' => $site_id,
-            'settings' => $settings
-        ]);
         
         error_log('🟦 [API] === SYNC SITE SETTINGS (via edge function) ===');
         error_log('🟦 [API] Site ID: ' . $site_id);
@@ -117,13 +90,7 @@ class API {
             $payload['payment_wallet'] = $settings['payment_wallet'];
         }
         
-        $result = $this->request('POST', '/sync-wordpress-site-settings', $payload);
-        
-        DevLogger::log('EDGE_FUNCTION', 'sync_settings_complete', [
-            'success' => $result['success'] ?? false
-        ]);
-        
-        return $result;
+        return $this->request('POST', '/sync-wordpress-site-settings', $payload);
     }
     
     /**
@@ -131,15 +98,11 @@ class API {
      * Now uses edge function instead of direct REST API call
      */
     public function check_existing_links_count() {
-        DevLogger::log('DB', 'get_option:402links_site_id', null);
         $site_id = get_option('402links_site_id');
         
         if (!$site_id) {
-            DevLogger::log('EDGE_FUNCTION', 'check_links_no_site_id', []);
             return ['count' => 0];
         }
-        
-        DevLogger::log('EDGE_FUNCTION', 'check_links_count_start', ['site_id' => $site_id]);
         
         error_log('🟦 [API] === CHECK LINKS COUNT (via edge function) ===');
         error_log('🟦 [API] Site ID: ' . $site_id);
@@ -148,11 +111,8 @@ class API {
         
         if (!$result['success']) {
             error_log('🔴 [API] Failed to count links: ' . ($result['error'] ?? 'Unknown error'));
-            DevLogger::log('ERROR', 'check_links_count_failed', ['error' => $result['error'] ?? 'Unknown error']);
             return ['count' => 0];
         }
-        
-        DevLogger::log('EDGE_FUNCTION', 'check_links_count_complete', ['count' => $result['count'] ?? 0]);
         
         return [
             'count' => $result['count'] ?? 0
@@ -165,25 +125,16 @@ class API {
      */
     private function get_api_key_id() {
         if (!$this->api_key) {
-            DevLogger::log('EDGE_FUNCTION', 'get_api_key_id_no_key', []);
             return null;
         }
-        
-        DevLogger::log('EDGE_FUNCTION', 'get_api_key_id_start', [
-            'api_key_prefix' => substr($this->api_key, 0, 8)
-        ]);
         
         // Make authenticated request - the API key middleware will look it up
         $response = $this->request('GET', '/get-api-key-id');
         
         if ($response['success'] && isset($response['api_key_id'])) {
-            DevLogger::log('EDGE_FUNCTION', 'get_api_key_id_success', [
-                'api_key_id' => substr($response['api_key_id'], 0, 8)
-            ]);
             return $response['api_key_id'];
         }
         
-        DevLogger::log('ERROR', 'get_api_key_id_failed', ['response' => $response]);
         return null;
     }
     
@@ -192,11 +143,8 @@ class API {
      */
     public function create_link($post_id) {
         $post = get_post($post_id);
-        
-        DevLogger::log('DB', 'get_option:402links_settings', ['context' => 'create_link']);
         $settings = get_option('402links_settings');
         
-        DevLogger::log('DB', 'get_post_meta:_402links_price', ['post_id' => $post_id]);
         $price = get_post_meta($post_id, '_402links_price', true);
         if (empty($price)) {
             $price = $settings['default_price'] ?? 0.10;
@@ -268,40 +216,9 @@ class API {
             'json_content' => $json_content  // NEW: Full content in JSON format
         ];
         
-        // Log outgoing payload details
-        DevLogger::log('API', 'create_link_payload', [
-            'post_id' => $post_id,
-            'payload_keys' => array_keys($payload),
-            'payload_size' => strlen(json_encode($payload)),
-            'title_length' => strlen($payload['title']),
-            'url_valid' => filter_var($payload['url'], FILTER_VALIDATE_URL) !== false,
-            'price_type' => gettype($payload['price']),
-            'price_value' => $payload['price'],
-            'has_excerpt' => !empty($payload['excerpt']),
-            'has_featured_image' => !empty($payload['featured_image_url']),
-            'has_json_content' => !empty($payload['json_content']),
-            'json_content_size' => isset($payload['json_content']) ? strlen(json_encode($payload['json_content'])) : 0,
-            'tags_count' => count($payload['tags'] ?? []),
-            'word_count' => $payload['word_count']
-        ]);
-        
-        DevLogger::log('EDGE_FUNCTION', 'create_link_start', [
-            'post_id' => $post_id,
-            'title' => get_the_title($post_id),
-            'price' => $payload['price']
-        ]);
-        
         error_log('402links: Creating link for post ' . $post_id . ' with payload: ' . json_encode($payload));
         
-        $result = $this->request('POST', '/create-wordpress-link', $payload);
-        
-        DevLogger::log('EDGE_FUNCTION', 'create_link_complete', [
-            'post_id' => $post_id,
-            'success' => $result['success'] ?? false,
-            'link_id' => $result['link_id'] ?? null
-        ]);
-        
-        return $result;
+        return $this->request('POST', '/create-wordpress-link', $payload);
     }
     
     /**
@@ -309,11 +226,8 @@ class API {
      */
     public function update_link($post_id, $link_id) {
         $post = get_post($post_id);
-        
-        DevLogger::log('DB', 'get_option:402links_settings', ['context' => 'update_link']);
         $settings = get_option('402links_settings');
         
-        DevLogger::log('DB', 'get_post_meta:_402links_price', ['post_id' => $post_id]);
         $price = get_post_meta($post_id, '_402links_price', true);
         if (empty($price)) {
             $price = $settings['default_price'] ?? 0.10;
@@ -363,13 +277,7 @@ class API {
             'featured_image_url' => $featured_image_url ?: null
         ];
         
-        DevLogger::log('EDGE_FUNCTION', 'update_link_start', [
-            'post_id' => $post_id,
-            'link_id' => $link_id,
-            'title' => get_the_title($post_id)
-        ]);
-        
-        $result = $this->request('PUT', '/update-wordpress-link', [
+        return $this->request('PUT', '/update-wordpress-link', [
             'site_url' => get_site_url(),
             'link_id' => $link_id,
             'post_id' => $post_id,
@@ -384,14 +292,6 @@ class API {
             'modified_at' => $post->post_modified,
             'json_content' => $json_content  // NEW: Full content in JSON format
         ]);
-        
-        DevLogger::log('EDGE_FUNCTION', 'update_link_complete', [
-            'post_id' => $post_id,
-            'link_id' => $link_id,
-            'success' => $result['success'] ?? false
-        ]);
-        
-        return $result;
     }
     
     /**
@@ -415,19 +315,13 @@ class API {
      * Used for: Overview tab cards
      */
     public function get_site_analytics($period = '30d') {
-        DevLogger::log('DB', 'get_option:402links_site_id', ['context' => 'get_site_analytics']);
         $site_id = get_option('402links_site_id');
         if (!$site_id) {
             error_log('[API.php] ⚠️ get_site_analytics() - No site_id found');
-            DevLogger::log('ERROR', 'get_site_analytics_no_site_id', ['period' => $period]);
             return ['success' => false, 'error' => 'Site not registered'];
         }
         
         $period = $this->normalize_period($period);
-        DevLogger::log('EDGE_FUNCTION', 'get_site_analytics_start', [
-            'site_id' => $site_id,
-            'period' => $period
-        ]);
         error_log('[API.php] 📊 get_site_analytics() - site_id: ' . $site_id . ', period: ' . $period);
         
         $result = $this->request('GET', '/get-site-analytics', [
@@ -435,10 +329,6 @@ class API {
             'period'  => $period
         ]);
         
-        DevLogger::log('EDGE_FUNCTION', 'get_site_analytics_complete', [
-            'success' => $result['success'] ?? false,
-            'has_data' => isset($result['data'])
-        ]);
         error_log('[API.php] 📊 get_site_analytics() result: ' . json_encode([
             'success' => $result['success'] ?? false,
             'has_data' => isset($result['data'])
@@ -452,7 +342,6 @@ class API {
      * Used for: Analytics tab lower fold (Top Performing Content)
      */
     public function get_wordpress_analytics($timeframe = '30d') {
-        DevLogger::log('EDGE_FUNCTION', 'get_wordpress_analytics_start', ['timeframe' => $timeframe]);
         error_log('[API.php] 📊 get_wordpress_analytics() called with timeframe: ' . $timeframe);
         
         $result = $this->request('POST', '/wordpress-analytics', [
@@ -460,10 +349,6 @@ class API {
             'timeframe' => $timeframe ?: '30d'
         ]);
         
-        DevLogger::log('EDGE_FUNCTION', 'get_wordpress_analytics_complete', [
-            'success' => $result['success'] ?? false,
-            'has_data' => isset($result['data'])
-        ]);
         error_log('[API.php] 📊 get_wordpress_analytics() result: ' . json_encode([
             'success' => $result['success'] ?? false,
             'has_data' => isset($result['data'])
@@ -491,7 +376,6 @@ class API {
      * Get ecosystem-wide statistics
      */
     public function get_ecosystem_stats($timeframe = '30d') {
-        DevLogger::log('EDGE_FUNCTION', 'get_ecosystem_stats_start', ['timeframe' => $timeframe]);
         error_log('[API.php] 🌍 get_ecosystem_stats() called with timeframe: ' . $timeframe);
         
         $url = '/wordpress-ecosystem-stats';
@@ -508,7 +392,6 @@ class API {
         
         if (!isset($result['success'])) {
             error_log('[API.php] ❌ get_ecosystem_stats() - Invalid response structure (no success field)');
-            DevLogger::log('ERROR', 'get_ecosystem_stats_invalid_response', ['result' => $result]);
             return ['success' => false, 'error' => 'Invalid response from server'];
         }
         
@@ -516,15 +399,8 @@ class API {
             $error_msg = $result['error'] ?? $result['message'] ?? 'Unknown error';
             $status_code = $result['status_code'] ?? $result['status'] ?? 'unknown';
             error_log('[API.php] ❌ get_ecosystem_stats() failed: ' . $error_msg . ' (HTTP ' . $status_code . ')');
-            DevLogger::log('ERROR', 'get_ecosystem_stats_failed', [
-                'error' => $error_msg,
-                'status_code' => $status_code
-            ]);
         } else {
             error_log('[API.php] ✅ get_ecosystem_stats() successful - has data: ' . (isset($result['data']) ? 'yes' : 'no'));
-            DevLogger::log('EDGE_FUNCTION', 'get_ecosystem_stats_complete', [
-                'has_data' => isset($result['data'])
-            ]);
         }
         
         return $result;
@@ -535,91 +411,45 @@ class API {
      */
     public function check_blacklist($user_agent, $site_id = null) {
         if (!$site_id) {
-            DevLogger::log('DB', 'get_option:402links_site_id', ['context' => 'check_blacklist']);
             $site_id = get_option('402links_site_id');
         }
         
-        DevLogger::log('EDGE_FUNCTION', 'check_blacklist_start', [
-            'user_agent' => substr($user_agent, 0, 50),
-            'site_id' => $site_id
-        ]);
-        
-        $result = $this->request('POST', '/check-agent-blacklist', [
+        return $this->request('POST', '/check-agent-blacklist', [
             'user_agent' => $user_agent,
             'site_id' => $site_id
         ]);
-        
-        DevLogger::log('EDGE_FUNCTION', 'check_blacklist_complete', [
-            'is_blacklisted' => $result['is_blacklisted'] ?? false
-        ]);
-        
-        return $result;
     }
     
     /**
      * Get all links for this site
      */
     public function get_links($page = 1, $per_page = 20) {
-        DevLogger::log('DB', 'get_option:402links_site_id', ['context' => 'get_links']);
         $site_id = get_option('402links_site_id');
-        DevLogger::log('EDGE_FUNCTION', 'get_links_start', [
-            'site_id' => $site_id,
-            'page' => $page,
-            'per_page' => $per_page
-        ]);
-        
-        $result = $this->request('GET', "/wordpress-links?site_id={$site_id}&page={$page}&per_page={$per_page}");
-        
-        DevLogger::log('EDGE_FUNCTION', 'get_links_complete', [
-            'success' => $result['success'] ?? false
-        ]);
-        
-        return $result;
+        return $this->request('GET', "/wordpress-links?site_id={$site_id}&page={$page}&per_page={$per_page}");
     }
     
     /**
      * Get page analytics for all synced pages
      */
     public function get_pages_analytics($site_id) {
-        DevLogger::log('EDGE_FUNCTION', 'get_pages_analytics_start', ['site_id' => $site_id]);
-        $result = $this->request('GET', '/get-site-pages-analytics?site_id=' . $site_id);
-        DevLogger::log('EDGE_FUNCTION', 'get_pages_analytics_complete', [
-            'success' => $result['success'] ?? false
-        ]);
-        return $result;
+        return $this->request('GET', '/get-site-pages-analytics?site_id=' . $site_id);
     }
     
     /**
      * Sync payment wallet to Supabase
      */
     public function sync_wallet($site_id, $wallet) {
-        DevLogger::log('EDGE_FUNCTION', 'sync_wallet_start', [
-            'site_id' => $site_id,
-            'wallet' => substr($wallet, 0, 10) . '...'
-        ]);
-        
-        $result = $this->request('POST', '/sync-site-wallet', [
+        return $this->request('POST', '/sync-site-wallet', [
             'site_id' => $site_id,
             'payment_wallet' => $wallet
         ]);
-        
-        DevLogger::log('EDGE_FUNCTION', 'sync_wallet_complete', [
-            'success' => $result['success'] ?? false
-        ]);
-        
-        return $result;
     }
     
     /**
      * Get site info from Supabase
      */
     public function get_site_info($site_id) {
-        DevLogger::log('EDGE_FUNCTION', 'get_site_info_start', ['site_id' => $site_id]);
-        $result = $this->request('GET', '/get-site-info?site_id=' . $site_id);
-        DevLogger::log('EDGE_FUNCTION', 'get_site_info_complete', [
-            'success' => $result['success'] ?? false
-        ]);
-        return $result;
+        return $this->request('GET', '/get-site-info?site_id=' . $site_id);
     }
     
     /**
@@ -627,21 +457,13 @@ class API {
      * Returns all active bots with their detection patterns
      */
     public function get_bot_registry() {
-        DevLogger::log('EDGE_FUNCTION', 'get_bot_registry_start', []);
-        
         $result = $this->request('GET', '/get-bot-registry');
         
         if ($result['success'] && isset($result['bots'])) {
-            DevLogger::log('EDGE_FUNCTION', 'get_bot_registry_complete', [
-                'bot_count' => count($result['bots'])
-            ]);
             return $result['bots'];
         }
         
         error_log('402links: Failed to fetch bot registry: ' . ($result['error'] ?? 'Unknown error'));
-        DevLogger::log('ERROR', 'get_bot_registry_failed', [
-            'error' => $result['error'] ?? 'Unknown error'
-        ]);
         return [];
     }
     
@@ -662,11 +484,9 @@ class API {
      * @return array Response from backend
      */
     public function report_violation($violation_data) {
-        DevLogger::log('DB', 'get_option:402links_site_id', ['context' => 'report_violation']);
         $site_id = get_option('402links_site_id');
         if (!$site_id) {
             error_log('402links: Cannot report violation - site not registered');
-            DevLogger::log('ERROR', 'report_violation_no_site_id', $violation_data);
             return ['success' => false, 'error' => 'Site not registered'];
         }
         
@@ -676,17 +496,9 @@ class API {
             'detected_at' => gmdate('Y-m-d\TH:i:s\Z')
         ], $violation_data);
         
-        DevLogger::log('EDGE_FUNCTION', 'report_violation_start', $payload);
         error_log('402links: Reporting violation: ' . json_encode($payload));
         
-        $result = $this->request('POST', '/report-violation', $payload);
-        
-        DevLogger::log('EDGE_FUNCTION', 'report_violation_complete', [
-            'success' => $result['success'] ?? false,
-            'violation_id' => $result['violation_id'] ?? null
-        ]);
-        
-        return $result;
+        return $this->request('POST', '/report-violation', $payload);
     }
     
     /**
@@ -723,7 +535,6 @@ class API {
     public function get_top_pages($timeframe = '30d', $limit = 10, $offset = 0) {
         error_log('🟦 [API] === GET TOP PAGES START ===');
         
-        DevLogger::log('DB', 'get_option:402links_site_id', ['context' => 'get_top_pages']);
         $site_id = get_option('402links_site_id');
         error_log('🟦 [API] Site ID: ' . ($site_id ?: 'NOT SET'));
         
@@ -749,7 +560,6 @@ class API {
                 $body = json_decode(wp_remote_retrieve_body($fetch_response), true);
                 if (!empty($body) && isset($body[0]['id'])) {
                     $site_id = $body[0]['id'];
-                    DevLogger::log('DB', 'update_option:402links_site_id', ['site_id' => $site_id, 'context' => 'get_top_pages_auto_fetch']);
                     update_option('402links_site_id', $site_id);
                     error_log('🟢 [API] Site ID fetched and stored: ' . $site_id);
                 }
@@ -865,7 +675,6 @@ class API {
         
         // Extract Bearer token
         $api_key = str_replace('Bearer ', '', $auth_header);
-        DevLogger::log('DB', 'get_option:402links_api_key', ['context' => 'rest_permission_check']);
         $stored_key = get_option('402links_api_key');
         
         if ($api_key !== $stored_key) {
@@ -900,19 +709,10 @@ class API {
         error_log('402links: force_human_payment = ' . ($force_human ? 'true' : 'false'));
         
         // Update post meta to enable PaymentGate blocking
-        DevLogger::log('DB', 'update_post_meta:_402links_id', ['post_id' => $post_id, 'link_id' => $link_id, 'context' => 'rest_sync']);
         update_post_meta($post_id, '_402links_id', $link_id);
-        
-        DevLogger::log('DB', 'update_post_meta:_402links_short_id', ['post_id' => $post_id, 'short_id' => $short_id, 'context' => 'rest_sync']);
         update_post_meta($post_id, '_402links_short_id', $short_id);
-        
-        DevLogger::log('DB', 'update_post_meta:_402links_url', ['post_id' => $post_id, 'link_url' => $link_url, 'context' => 'rest_sync']);
         update_post_meta($post_id, '_402links_url', $link_url);
-        
-        DevLogger::log('DB', 'update_post_meta:_402links_synced_at', ['post_id' => $post_id, 'timestamp' => current_time('mysql'), 'context' => 'rest_sync']);
         update_post_meta($post_id, '_402links_synced_at', current_time('mysql'));
-        
-        DevLogger::log('DB', 'update_post_meta:_402links_block_humans', ['post_id' => $post_id, 'value' => $force_human ? '1' : '0', 'context' => 'rest_sync']);
         update_post_meta($post_id, '_402links_block_humans', $force_human ? '1' : '0');
         
         error_log('402links: SYNC SUCCESS - Post meta updated for post ' . $post_id);
@@ -929,7 +729,6 @@ class API {
      * Bulk sync meta for all existing links from Supabase
      */
     public function bulk_sync_meta() {
-        DevLogger::log('DB', 'get_option:402links_site_id', ['context' => 'bulk_sync_meta']);
         $site_id = get_option('402links_site_id');
         if (!$site_id) {
             return [
@@ -968,19 +767,10 @@ class API {
             $link_url = 'https://api.402links.com/p/' . $paid_link['short_id'];
             
             // Update post meta
-            DevLogger::log('DB', 'update_post_meta:_402links_id', ['post_id' => $post_id, 'link_id' => $page['paid_link_id'], 'context' => 'bulk_sync_meta']);
             update_post_meta($post_id, '_402links_id', $page['paid_link_id']);
-            
-            DevLogger::log('DB', 'update_post_meta:_402links_short_id', ['post_id' => $post_id, 'short_id' => $paid_link['short_id'], 'context' => 'bulk_sync_meta']);
             update_post_meta($post_id, '_402links_short_id', $paid_link['short_id']);
-            
-            DevLogger::log('DB', 'update_post_meta:_402links_url', ['post_id' => $post_id, 'link_url' => $link_url, 'context' => 'bulk_sync_meta']);
             update_post_meta($post_id, '_402links_url', $link_url);
-            
-            DevLogger::log('DB', 'update_post_meta:_402links_synced_at', ['post_id' => $post_id, 'timestamp' => current_time('mysql'), 'context' => 'bulk_sync_meta']);
             update_post_meta($post_id, '_402links_synced_at', current_time('mysql'));
-            
-            DevLogger::log('DB', 'update_post_meta:_402links_block_humans', ['post_id' => $post_id, 'value' => $page['force_human_payment'] ? '1' : '0', 'context' => 'bulk_sync_meta']);
             update_post_meta($post_id, '_402links_block_humans', $page['force_human_payment'] ? '1' : '0');
             
             $updated++;
@@ -997,28 +787,18 @@ class API {
      * Get violations summary from backend
      */
     public function get_violations_summary() {
-        DevLogger::log('DB', 'get_option:402links_site_id', ['context' => 'get_violations_summary']);
         $site_id = get_option('402links_site_id');
         
         if (!$site_id) {
-            DevLogger::log('ERROR', 'get_violations_summary_no_site_id', []);
             return [
                 'success' => false,
                 'error' => 'Site not registered. Please complete setup first.'
             ];
         }
         
-        DevLogger::log('EDGE_FUNCTION', 'get_violations_summary_start', ['site_id' => $site_id]);
-        
-        $result = $this->request('GET', '/get-agent-violations-summary', [
+        return $this->request('GET', '/get-agent-violations-summary', [
             'site_id' => $site_id
         ]);
-        
-        DevLogger::log('EDGE_FUNCTION', 'get_violations_summary_complete', [
-            'success' => $result['success'] ?? false
-        ]);
-        
-        return $result;
     }
     
     /**
@@ -1026,24 +806,15 @@ class API {
      */
     public function get_site_bot_policies($site_id) {
         if (!$site_id) {
-            DevLogger::log('ERROR', 'get_site_bot_policies_no_site_id', []);
             return [
                 'success' => false,
                 'error' => 'Site ID is required'
             ];
         }
         
-        DevLogger::log('EDGE_FUNCTION', 'get_site_bot_policies_start', ['site_id' => $site_id]);
-        
-        $result = $this->request('GET', '/get-site-bot-policies', [
+        return $this->request('GET', '/get-site-bot-policies', [
             'site_id' => $site_id
         ]);
-        
-        DevLogger::log('EDGE_FUNCTION', 'get_site_bot_policies_complete', [
-            'success' => $result['success'] ?? false
-        ]);
-        
-        return $result;
     }
     
     /**
@@ -1051,7 +822,6 @@ class API {
      */
     public function update_site_bot_policies($site_id, $policies) {
         if (!$site_id) {
-            DevLogger::log('ERROR', 'update_site_bot_policies_no_site_id', []);
             return [
                 'success' => false,
                 'error' => 'Site ID is required'
@@ -1059,7 +829,6 @@ class API {
         }
         
         if (!is_array($policies)) {
-            DevLogger::log('ERROR', 'update_site_bot_policies_invalid_policies', ['policies' => $policies]);
             return [
                 'success' => false,
                 'error' => 'Policies must be an array'
@@ -1069,7 +838,6 @@ class API {
         // Validate policy structure
         foreach ($policies as $policy) {
             if (!isset($policy['bot_registry_id']) || !isset($policy['action'])) {
-                DevLogger::log('ERROR', 'update_site_bot_policies_invalid_structure', ['policy' => $policy]);
                 return [
                     'success' => false,
                     'error' => 'Each policy must have bot_registry_id and action'
@@ -1077,41 +845,22 @@ class API {
             }
         }
         
-        DevLogger::log('EDGE_FUNCTION', 'update_site_bot_policies_start', [
-            'site_id' => $site_id,
-            'policy_count' => count($policies)
-        ]);
-        
-        $result = $this->request('POST', '/update-site-bot-policies', [
+        return $this->request('POST', '/update-site-bot-policies', [
             'site_id' => $site_id,
             'policies' => $policies
         ]);
-        
-        DevLogger::log('EDGE_FUNCTION', 'update_site_bot_policies_complete', [
-            'success' => $result['success'] ?? false
-        ]);
-        
-        return $result;
     }
     
     /**
      * Make HTTP request to API
      */
     private function request($method, $endpoint, $data = []) {
-        $start_time = microtime(true);
         $url = $this->api_endpoint . $endpoint;
         
         error_log('[API.php] 🚀 ==================== API REQUEST ====================');
         error_log('[API.php] 🚀 Method: ' . $method);
         error_log('[API.php] 🚀 URL: ' . $url);
         error_log('[API.php] 🚀 Endpoint: ' . $endpoint);
-        
-        DevLogger::log('API', 'request_started', [
-            'method' => $method,
-            'endpoint' => $endpoint,
-            'url' => $url,
-            'data' => $data
-        ]);
         
         // For GET requests, append data as query parameters
         if ($method === 'GET' && !empty($data)) {
@@ -1143,36 +892,10 @@ class API {
         error_log('[API.php] 🚀 Making request...');
         $response = wp_remote_request($url, $args);
         
-        $elapsed_time = round((microtime(true) - $start_time) * 1000, 2); // ms
-        
         if (is_wp_error($response)) {
             $error_msg = $response->get_error_message();
-            $error_code = $response->get_error_code();
-            $error_data = $response->get_error_data();
             error_log('[API.php] ❌ WP_Error: ' . $error_msg);
             error_log('[API.php] ❌ ==================== REQUEST FAILED ====================');
-            
-            // Enhanced network error logging
-            DevLogger::log('ERROR', 'api_network_error', [
-                'endpoint' => $endpoint,
-                'method' => $method,
-                'error_message' => $error_msg,
-                'error_code' => $error_code,
-                'error_data' => $error_data,
-                'url' => $url,
-                'timeout' => $args['timeout'],
-                'elapsed_ms' => $elapsed_time,
-                'dns_resolution_possible' => checkdnsrr(parse_url($url, PHP_URL_HOST), 'A'),
-                'ssl_verify' => $args['sslverify']
-            ]);
-            
-            DevLogger::log('ERROR', 'api_request_failed', [
-                'endpoint' => $endpoint,
-                'method' => $method,
-                'error' => $error_msg,
-                'elapsed_ms' => $elapsed_time
-            ]);
-            
             return [
                 'success' => false,
                 'error' => $error_msg
@@ -1193,49 +916,15 @@ class API {
             error_log('[API.php] ❌ HTTP ERROR ' . $status_code . ': ' . ($result['error'] ?? 'Unknown error'));
             error_log('[API.php] ❌ Full error response: ' . json_encode($result));
             error_log('[API.php] ❌ ==================== REQUEST FAILED ====================');
-            
-            // Enhanced HTTP error logging with full context
-            DevLogger::log('ERROR', 'api_http_error_detailed', [
-                'endpoint' => $endpoint,
-                'method' => $method,
-                'status_code' => $status_code,
-                'error_message' => $result['error'] ?? 'Unknown error',
-                'response_body' => substr($body, 0, 2000),
-                'response_headers' => (array) $response_headers,
-                'request_data_keys' => is_array($data) ? array_keys($data) : 'not_array',
-                'request_size' => is_array($data) ? strlen(json_encode($data)) : 0,
-                'elapsed_ms' => $elapsed_time,
-                'api_key_present' => !empty($this->api_key),
-                'api_key_prefix' => substr($this->api_key, 0, 12) . '...'
-            ]);
-            
-            DevLogger::log('ERROR', 'api_http_error', [
-                'endpoint' => $endpoint,
-                'method' => $method,
-                'status_code' => $status_code,
-                'error' => $result['error'] ?? 'Unknown error',
-                'response' => $result,
-                'elapsed_ms' => $elapsed_time
-            ]);
-            
             return [
                 'success' => false,
                 'error' => $result['error'] ?? 'API request failed',
-                'status_code' => $status_code,
-                'error_code' => $result['error_code'] ?? null
+                'status_code' => $status_code
             ];
         }
         
         error_log('[API.php] ✅ Request successful');
         error_log('[API.php] ✅ ==================== REQUEST COMPLETE ====================');
-        
-        DevLogger::log('API', 'request_completed', [
-            'endpoint' => $endpoint,
-            'method' => $method,
-            'status_code' => $status_code,
-            'elapsed_ms' => $elapsed_time,
-            'success' => true
-        ]);
         
         return array_merge(['success' => true], $result ?? []);
     }

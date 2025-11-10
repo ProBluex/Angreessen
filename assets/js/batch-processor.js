@@ -122,7 +122,7 @@
   function updateProgressUI(progress) {
     const total = parseInt(progress.total, 10) || 0;
     const processed = parseInt(progress.processed, 10) || 0;
-    const successful = parseInt(progress.created, 10) || 0;
+    const successful = parseInt(progress.successful, 10) || 0;
     const failed = parseInt(progress.failed, 10) || 0;
     const percent = total > 0 ? Math.round((processed / total) * 100) : 0;
 
@@ -143,21 +143,17 @@
 
   /* ---------- Poll Batch Progress ---------- */
   function pollBatchProgress() {
-    console.log('[batch-processor] Polling batch progress...');
-    
     $.ajax({
       url: w.agentHubData.ajaxUrl,
       type: "POST",
       dataType: "json",
-      timeout: 30000,
+      timeout: 10000,
       data: {
         action: "agent_hub_process_batch",
         nonce: w.agentHubData.nonce,
       },
     })
       .done((res) => {
-        console.log('[batch-processor] Poll response:', res);
-        
         if (!res || !res.success) {
           debugLog("[batch-processor] Error polling:", res);
           if (w.showToast) {
@@ -167,41 +163,29 @@
           return;
         }
 
-        // Handle both response structures:
-        // - start_batch: res.data = {status, total, ...}
-        // - process_next_batch: res.data = {success, completed, progress: {...}} OR {status, total, ...}
-        const responseData = res.data || {};
-        const progress = responseData.progress || responseData;
-        const isCompleted = responseData.completed || progress.status === 'completed';
-
-        console.log('[batch-processor] Extracted progress:', progress);
-        console.log('[batch-processor] Completed?', isCompleted, 'Status:', progress.status);
-
+        const progress = res.data || {};
         updateProgressUI(progress);
 
-        // Check completion
-        if (isCompleted || progress.status === "completed") {
+        // Continue polling if not complete
+        if (progress.status === "processing") {
+          pollTimer = setTimeout(pollBatchProgress, POLL_INTERVAL);
+        } else if (progress.status === "completed") {
           if (w.showToast) {
-            const msg = `Generated ${progress.created || 0} links successfully. ${progress.failed || 0} failed.`;
+            const msg = `Generated ${progress.successful || 0} links successfully. ${progress.failed || 0} failed.`;
             w.showToast("Batch Complete", msg, "success");
           }
 
-          // Auto-close after 3 seconds
+          // Auto-close after 5 seconds
           setTimeout(() => {
             closeModal();
             if (w.agentHub && w.agentHub.loadContent) {
               w.agentHub.loadContent();
             }
-          }, 3000);
-        } else if (progress.status === "running") {
-          pollTimer = setTimeout(pollBatchProgress, POLL_INTERVAL);
-        } else {
-          console.warn('[batch-processor] Unexpected state:', progress);
-          closeModal();
+          }, 5000);
         }
       })
       .fail((xhr, status, error) => {
-        console.error('[batch-processor] Poll failed:', status, error, xhr.responseText);
+        debugLog("[batch-processor] Poll failed:", status, error);
         if (w.showToast) {
           w.showToast("Error", "Network error during batch processing.", "error");
         }
@@ -233,20 +217,12 @@
         }
 
         const progress = res.data || {};
-        console.log('[batch-processor] Start response:', res);
-        console.log('[batch-processor] Progress object:', progress);
-        console.log('[batch-processor] Status:', progress.status);
-        console.log('[batch-processor] Total:', progress.total);
-        console.log('[batch-processor] Should start polling?', progress.status === "running" && progress.total > 0);
-        
         updateProgressUI(progress);
 
         // Start polling if batch is processing
-        if (progress.status === "running" && progress.total > 0) {
-          console.log('[batch-processor] Starting polling in 2 seconds...');
+        if (progress.status === "processing" && progress.total > 0) {
           pollTimer = setTimeout(pollBatchProgress, POLL_INTERVAL);
         } else {
-          console.log('[batch-processor] NOT starting polling. Status:', progress.status, 'Total:', progress.total);
           // No posts to process or already complete
           if (w.showToast) {
             w.showToast("Info", "No posts available to generate links.", "success");

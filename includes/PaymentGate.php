@@ -9,25 +9,18 @@ class PaymentGate {
      * DUAL DETECTION: AI agents always see 402, humans see 402 only if blocked
      */
     public static function intercept_request() {
-        DevLogger::log('PAYMENT_GATE', 'intercept_request_start', [
-            'is_singular' => is_singular(['post', 'page']),
-            'user_agent' => substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 100)
-        ]);
-        
         // Handle OPTIONS preflight requests for CORS
         if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
             header('Access-Control-Allow-Origin: *');
             header('Access-Control-Allow-Headers: X-PAYMENT, Content-Type, Authorization');
             header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
             header('Access-Control-Max-Age: 86400'); // 24 hours
-            DevLogger::log('PAYMENT_GATE', 'options_preflight_handled', []);
             status_header(200);
             exit;
         }
         
         // Skip if not singular post/page
         if (!is_singular(['post', 'page'])) {
-            DevLogger::log('PAYMENT_GATE', 'skipped_not_singular', []);
             return;
         }
         
@@ -38,14 +31,6 @@ class PaymentGate {
         $link_id  = get_post_meta($post->ID, '_402links_id', true); // legacy fallback
         
         $has_protection = !empty($short_id) || !empty($link_id);
-        
-        DevLogger::log('PAYMENT_GATE', 'request_intercepted', [
-            'post_id' => $post->ID,
-            'post_title' => get_the_title($post->ID),
-            'has_protection' => $has_protection,
-            'short_id' => $short_id ?: 'none',
-            'is_admin' => current_user_can('manage_options')
-        ]);
         
         // Skip if user is logged in admin
         if (current_user_can('manage_options')) {
@@ -99,7 +84,6 @@ class PaymentGate {
         if (!$has_protection) {
             error_log('402links: NOT PROTECTED - No short_id/link_id meta found');
             error_log('===== 402links PaymentGate: ALLOWING ACCESS =====');
-            DevLogger::log('PAYMENT_GATE', 'not_protected_allowing_access', ['post_id' => $post->ID]);
             return; // Not protected
         }
         
@@ -107,12 +91,6 @@ class PaymentGate {
         
         $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
         $agent_check = AgentDetector::is_ai_agent($user_agent);
-        
-        DevLogger::log('PAYMENT_GATE', 'agent_detection', [
-            'is_agent' => $agent_check['is_agent'],
-            'agent_name' => $agent_check['agent_name'] ?? 'none',
-            'user_agent' => substr($user_agent, 0, 100)
-        ]);
         
         error_log('Agent Check Result: ' . json_encode($agent_check));
         
@@ -122,19 +100,9 @@ class PaymentGate {
             $request_path = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?: '/';
             $violation_check = AgentDetector::check_robots_txt_compliance($user_agent, $request_path);
             
-            DevLogger::log('PAYMENT_GATE', 'robots_txt_check', [
-                'has_violation' => $violation_check !== null,
-                'violation_type' => $violation_check['violation_type'] ?? 'none'
-            ]);
-            
             if ($violation_check !== null) {
                 error_log('402links: ROBOTS.TXT VIOLATION DETECTED - ' . json_encode($violation_check));
                 $violation_data = $violation_check;
-                
-                DevLogger::log('PAYMENT_GATE', 'robots_txt_violation_reported', [
-                    'post_id' => $post->ID,
-                    'agent_name' => $agent_check['agent_name'] ?? 'Unknown'
-                ]);
                 
                 // Report robots.txt violation immediately
                 API::report_violation([
@@ -157,9 +125,6 @@ class PaymentGate {
         if ($agent_check['is_agent']) {
             error_log('402links: AGENT DETECTED - Will block');
             $should_block = true;
-            DevLogger::log('PAYMENT_GATE', 'blocking_decision_agent', [
-                'agent_name' => $agent_check['agent_name']
-            ]);
         } else {
             // For humans, check the block_humans flag
             $block_humans = get_post_meta($post->ID, '_402links_block_humans', true);
@@ -168,28 +133,17 @@ class PaymentGate {
             if ($block_humans === '1' || $block_humans === 1) {
                 error_log('402links: HUMAN BLOCKING ENABLED - Will block');
                 $should_block = true;
-                DevLogger::log('PAYMENT_GATE', 'blocking_decision_human_blocked', [
-                    'post_id' => $post->ID
-                ]);
             } else {
                 error_log('402links: HUMAN ALLOWED - Not blocking');
-                DevLogger::log('PAYMENT_GATE', 'blocking_decision_human_allowed', [
-                    'post_id' => $post->ID
-                ]);
             }
         }
         
         if (!$should_block) {
             error_log('===== 402links PaymentGate: ALLOWING ACCESS =====');
-            DevLogger::log('PAYMENT_GATE', 'allowing_access', ['post_id' => $post->ID]);
             return; // Allow access
         }
         
         error_log('===== 402links PaymentGate: BLOCKING REQUEST =====');
-        DevLogger::log('PAYMENT_GATE', 'blocking_request', [
-            'post_id' => $post->ID,
-            'reason' => $agent_check['is_agent'] ? 'agent_detected' : 'human_blocked'
-        ]);
         
         // ============= CHECK FOR 402LINKS INVOICE RECEIPT =============
         // If agent is returning from 402links.com with invoice receipt, validate it
@@ -197,10 +151,6 @@ class PaymentGate {
         $verified = $_GET['verified'] ?? '';
         
         if ($invoice_id && $verified === 'true') {
-            DevLogger::log('PAYMENT_GATE', 'invoice_validation_start', [
-                'invoice_id' => $invoice_id,
-                'post_id' => $post->ID
-            ]);
             error_log('402links: Validating invoice receipt from 402links.com redirect: ' . $invoice_id);
             
             // Call 402links API to confirm payment
@@ -210,12 +160,6 @@ class PaymentGate {
                 error_log('402links: Invoice valid, granting access');
                 error_log('  - Transaction: ' . ($validation['transaction_hash'] ?? 'none'));
                 error_log('  - Amount: ' . ($validation['amount'] ?? 0) . ' ' . ($validation['currency'] ?? 'USDC'));
-                
-                DevLogger::log('PAYMENT_GATE', 'invoice_validation_success', [
-                    'invoice_id' => $invoice_id,
-                    'transaction_hash' => $validation['transaction_hash'] ?? 'none',
-                    'amount' => $validation['amount'] ?? 0
-                ]);
                 
                 // Log the access
                 self::log_agent_access($post->ID, $invoice_id, $validation);
@@ -232,12 +176,6 @@ class PaymentGate {
                 $error_msg = $validation['error'] ?? 'Invoice validation failed';
                 
                 error_log('402links: Invoice validation failed: ' . $error_msg . ' (Code: ' . $error_code . ')');
-                
-                DevLogger::log('ERROR', 'invoice_validation_failed', [
-                    'invoice_id' => $invoice_id,
-                    'error_code' => $error_code,
-                    'error_msg' => $error_msg
-                ]);
                 
                 status_header(403);
                 header('Content-Type: application/json');
@@ -258,10 +196,6 @@ class PaymentGate {
         $settings = get_option('402links_settings');
         $site_id = get_option('402links_site_id');
         if (AgentDetector::is_blacklisted($user_agent, $site_id)) {
-            DevLogger::log('PAYMENT_GATE', 'agent_blacklisted', [
-                'user_agent' => substr($user_agent, 0, 100),
-                'site_id' => $site_id
-            ]);
             wp_die('Access denied: Agent blacklisted', 'Forbidden', ['response' => 403]);
         }
         
@@ -269,15 +203,9 @@ class PaymentGate {
         // Check for X-PAYMENT header (x402 protocol)
         $payment_header = $_SERVER['HTTP_X_PAYMENT'] ?? '';
         
-        DevLogger::log('PAYMENT_GATE', 'x_payment_header_check', [
-            'has_x_payment_header' => !empty($payment_header)
-        ]);
         error_log('402links: X-PAYMENT header present: ' . (!empty($payment_header) ? 'YES' : 'NO'));
         
         if (!empty($payment_header)) {
-            DevLogger::log('PAYMENT_GATE', 'x402_payment_verification_start', [
-                'post_id' => $post->ID
-            ]);
             error_log('402links: Processing x402 payment with CDP facilitator...');
             
             // Get payment requirements for verification
@@ -288,21 +216,11 @@ class PaymentGate {
             
             if (!$verification['isValid']) {
                 error_log('402links: Payment verification FAILED - ' . ($verification['error'] ?? 'unknown error'));
-                DevLogger::log('ERROR', 'x402_payment_verification_failed', [
-                    'error' => $verification['error'] ?? 'unknown error',
-                    'post_id' => $post->ID
-                ]);
                 self::send_402_response($requirements, $verification['error'] ?? 'Payment verification failed');
                 exit;
             }
             
             error_log('402links: Payment verification SUCCEEDED - txHash: ' . ($verification['transaction'] ?? 'none'));
-            
-            DevLogger::log('PAYMENT_GATE', 'x402_payment_verification_success', [
-                'transaction' => $verification['transaction'] ?? 'none',
-                'amount' => $verification['amount'] ?? 0,
-                'payer' => $verification['payer'] ?? 'unknown'
-            ]);
             
             // Log successful payment to Supabase and local DB
             self::log_agent_payment($post->ID, $verification, $agent_check);
@@ -323,10 +241,6 @@ class PaymentGate {
         // ============= X402 402 RESPONSE FOR AI AGENTS =============
         // If AI agent detected, send 402 Payment Required with X-402-* headers
         if ($agent_check['is_agent']) {
-            DevLogger::log('PAYMENT_GATE', 'sending_402_response', [
-                'post_id' => $post->ID,
-                'agent_name' => $agent_check['agent_name']
-            ]);
             error_log('402links: Agent detected - sending 402 response with payment requirements');
             
             $requirements = self::get_payment_requirements($post->ID);
@@ -339,10 +253,6 @@ class PaymentGate {
         $short_id = get_post_meta($post->ID, '_402links_short_id', true);
         
         if ($short_id) {
-            DevLogger::log('PAYMENT_GATE', 'redirecting_human_to_402links', [
-                'short_id' => $short_id,
-                'post_id' => $post->ID
-            ]);
             error_log('402links: Redirecting human to 402links.com/p/' . $short_id);
             
             $return_url = get_permalink($post->ID);
@@ -353,10 +263,6 @@ class PaymentGate {
             exit;
         } else {
             error_log('402links: ERROR - Missing short_id for post ' . $post->ID);
-            
-            DevLogger::log('ERROR', 'missing_short_id', [
-                'post_id' => $post->ID
-            ]);
             
             status_header(500);
             header('Content-Type: application/json');
@@ -451,51 +357,19 @@ class PaymentGate {
      * @return string Persistent bind_hash
      */
     private static function get_or_create_bind_hash($post_id, $payment_wallet, $price) {
-        DevLogger::log('PAYMENT_GATE', 'bind_hash_generation_start', [
-            'post_id' => $post_id,
-            'wallet' => substr($payment_wallet, 0, 10) . '...',
-            'price' => $price
-        ]);
-        
         // Check if bind_hash already exists
         $existing_hash = get_post_meta($post_id, '_402links_bind_hash', true);
-        DevLogger::log('DB', 'get_post_meta', [
-            'post_id' => $post_id,
-            'meta_key' => '_402links_bind_hash',
-            'found' => !empty($existing_hash)
-        ]);
-        
         if (!empty($existing_hash)) {
-            DevLogger::log('PAYMENT_GATE', 'bind_hash_reused', [
-                'post_id' => $post_id,
-                'hash' => substr($existing_hash, 0, 16) . '...'
-            ]);
             return $existing_hash;
         }
         
         // Generate new unique nonce for this post (never changes after creation)
         $unique_nonce = wp_generate_password(32, false);
-        $result = update_post_meta($post_id, '_402links_nonce', $unique_nonce);
-        DevLogger::log('DB', 'update_post_meta', [
-            'post_id' => $post_id,
-            'meta_key' => '_402links_nonce',
-            'success' => $result !== false
-        ]);
+        update_post_meta($post_id, '_402links_nonce', $unique_nonce);
         
         // Generate bind_hash using post-specific nonce
         $bind_hash = hash('sha256', $post_id . $payment_wallet . $price . $unique_nonce);
-        $result = update_post_meta($post_id, '_402links_bind_hash', $bind_hash);
-        DevLogger::log('DB', 'update_post_meta', [
-            'post_id' => $post_id,
-            'meta_key' => '_402links_bind_hash',
-            'hash' => substr($bind_hash, 0, 16) . '...',
-            'success' => $result !== false
-        ]);
-        
-        DevLogger::log('PAYMENT_GATE', 'bind_hash_generated', [
-            'post_id' => $post_id,
-            'hash' => substr($bind_hash, 0, 16) . '...'
-        ]);
+        update_post_meta($post_id, '_402links_bind_hash', $bind_hash);
         
         return $bind_hash;
     }
@@ -509,34 +383,13 @@ class PaymentGate {
     private static function get_or_create_invoice_id($post_id) {
         // Check if invoice_id already exists
         $existing_invoice_id = get_post_meta($post_id, '_402links_invoice_id', true);
-        DevLogger::log('DB', 'get_post_meta', [
-            'post_id' => $post_id,
-            'meta_key' => '_402links_invoice_id',
-            'found' => !empty($existing_invoice_id)
-        ]);
-        
         if (!empty($existing_invoice_id)) {
-            DevLogger::log('PAYMENT_GATE', 'invoice_id_reused', [
-                'post_id' => $post_id,
-                'invoice_id' => $existing_invoice_id
-            ]);
             return $existing_invoice_id;
         }
         
         // Generate new invoice_id
         $invoice_id = 'wp_' . $post_id . '_' . time() . '_' . wp_generate_password(8, false);
-        $result = update_post_meta($post_id, '_402links_invoice_id', $invoice_id);
-        DevLogger::log('DB', 'update_post_meta', [
-            'post_id' => $post_id,
-            'meta_key' => '_402links_invoice_id',
-            'invoice_id' => $invoice_id,
-            'success' => $result !== false
-        ]);
-        
-        DevLogger::log('PAYMENT_GATE', 'invoice_id_generated', [
-            'post_id' => $post_id,
-            'invoice_id' => $invoice_id
-        ]);
+        update_post_meta($post_id, '_402links_invoice_id', $invoice_id);
         
         return $invoice_id;
     }
@@ -612,13 +465,6 @@ class PaymentGate {
         if (self::is_browser_request()) {
             require_once plugin_dir_path(__FILE__) . 'PaywallTemplate.php';
             header('Content-Type: text/html; charset=UTF-8');
-            
-            DevLogger::log('PAYMENT_GATE', 'paywall_html_rendered', [
-                'amount' => $requirements['maxAmountRequired'] ?? 0,
-                'network' => $requirements['network'] ?? 'base',
-                'resource' => $requirements['resource'] ?? 'unknown'
-            ]);
-            
             echo PaywallTemplate::render($x402_response, $requirements);
         } else {
             header('Content-Type: application/json');
@@ -633,21 +479,9 @@ class PaymentGate {
      * Calls: verify-wordpress-payment edge function
      */
     private static function verify_payment($payment_header, $requirements) {
-        DevLogger::log('PAYMENT_GATE', 'payment_verification_start', [
-            'post_id' => get_the_ID(),
-            'has_payment_header' => !empty($payment_header),
-            'payment_wallet' => substr($requirements['payTo'] ?? '', 0, 10) . '...'
-        ]);
-        
         $settings = get_option('402links_settings');
         $api_key = get_option('402links_api_key');
         $api_endpoint = $settings['api_endpoint'] ?? 'https://api.402links.com/v1';
-        
-        DevLogger::log('EDGE_FUNCTION', 'edge_function_call', [
-            'function' => 'verify-wordpress-payment',
-            'endpoint' => $api_endpoint . '/verify-wordpress-payment',
-            'post_id' => get_the_ID()
-        ]);
         
         $response = wp_remote_post($api_endpoint . '/verify-wordpress-payment', [
             'timeout' => 30,
@@ -664,10 +498,6 @@ class PaymentGate {
         ]);
         
         if (is_wp_error($response)) {
-            DevLogger::log('ERROR', 'payment_verification_failed', [
-                'error' => $response->get_error_message(),
-                'post_id' => get_the_ID()
-            ]);
             return ['isValid' => false, 'error' => $response->get_error_message()];
         }
         
@@ -675,18 +505,8 @@ class PaymentGate {
         $data = json_decode($body, true);
         
         if (json_last_error() !== JSON_ERROR_NONE) {
-            DevLogger::log('ERROR', 'payment_verification_json_error', [
-                'error' => 'Invalid JSON response',
-                'json_error' => json_last_error_msg()
-            ]);
             return ['isValid' => false, 'error' => 'Invalid JSON response'];
         }
-        
-        DevLogger::log('PAYMENT_GATE', 'payment_verification_result', [
-            'post_id' => get_the_ID(),
-            'is_valid' => $data['isValid'] ?? false,
-            'transaction' => $data['transaction'] ?? 'none'
-        ]);
         
         return $data;
     }
@@ -695,12 +515,6 @@ class PaymentGate {
      * Validate invoice with 402links API
      */
     private static function validate_invoice($invoice_id, $post_id, $site_url) {
-        DevLogger::log('PAYMENT_GATE', 'invoice_validation_api_start', [
-            'invoice_id' => $invoice_id,
-            'post_id' => $post_id,
-            'api_url' => 'https://402links.com/api/v1/invoices/validate'
-        ]);
-        
         $api_url = 'https://402links.com/api/v1/invoices/validate';
         
         $response = wp_remote_post($api_url, [
@@ -717,10 +531,6 @@ class PaymentGate {
         
         if (is_wp_error($response)) {
             error_log('402links: Invoice validation request failed: ' . $response->get_error_message());
-            DevLogger::log('ERROR', 'invoice_validation_api_failed', [
-                'invoice_id' => $invoice_id,
-                'error' => $response->get_error_message()
-            ]);
             return ['isValid' => false, 'error' => 'API request failed'];
         }
         
@@ -740,19 +550,8 @@ class PaymentGate {
         
         if (json_last_error() !== JSON_ERROR_NONE) {
             error_log('402links: Invalid JSON response from validate-invoice: ' . $body);
-            DevLogger::log('ERROR', 'invoice_validation_json_error', [
-                'invoice_id' => $invoice_id,
-                'error' => 'Invalid JSON response',
-                'json_error' => json_last_error_msg()
-            ]);
             return ['isValid' => false, 'error' => 'Invalid JSON response'];
         }
-        
-        DevLogger::log('PAYMENT_GATE', 'invoice_validation_api_result', [
-            'invoice_id' => $invoice_id,
-            'is_valid' => $result['isValid'] ?? false,
-            'transaction_hash' => $result['transaction_hash'] ?? 'none'
-        ]);
         
         return $result;
     }
@@ -761,12 +560,6 @@ class PaymentGate {
      * Log agent access for analytics
      */
     private static function log_agent_access($post_id, $invoice_id, $validation) {
-        DevLogger::log('PAYMENT_GATE', 'agent_access_logging_start', [
-            'post_id' => $post_id,
-            'invoice_id' => $invoice_id,
-            'transaction' => $validation['transaction_hash'] ?? 'none'
-        ]);
-        
         global $wpdb;
         $table_name = $wpdb->prefix . '402links_agent_logs';
         
@@ -786,20 +579,7 @@ class PaymentGate {
             ['%d', '%s', '%s', '%f', '%s', '%s', '%s', '%s']
         );
         
-        DevLogger::log('DB', 'wpdb_query', [
-            'query_type' => 'INSERT',
-            'table' => $table_name,
-            'success' => $wpdb->last_error === '',
-            'error' => $wpdb->last_error
-        ]);
-        
         error_log('402links: Agent access logged to local database');
-        
-        DevLogger::log('PAYMENT_GATE', 'agent_access_logged', [
-            'post_id' => $post_id,
-            'invoice_id' => $invoice_id,
-            'amount' => $validation['amount'] ?? 0
-        ]);
     }
     
     /**
@@ -807,42 +587,16 @@ class PaymentGate {
      */
     private static function increment_link_usage($post_id) {
         $current_uses = (int) get_post_meta($post_id, '_402links_usage_count', true);
-        DevLogger::log('DB', 'get_post_meta', [
-            'post_id' => $post_id,
-            'meta_key' => '_402links_usage_count',
-            'value' => $current_uses
-        ]);
-        
         $new_uses = $current_uses + 1;
-        $result = update_post_meta($post_id, '_402links_usage_count', $new_uses);
-        DevLogger::log('DB', 'update_post_meta', [
-            'post_id' => $post_id,
-            'meta_key' => '_402links_usage_count',
-            'old_value' => $current_uses,
-            'new_value' => $new_uses,
-            'success' => $result !== false
-        ]);
+        update_post_meta($post_id, '_402links_usage_count', $new_uses);
         
         error_log('402links: Link usage incremented: ' . $current_uses . ' → ' . $new_uses);
-        
-        DevLogger::log('PAYMENT_GATE', 'usage_incremented', [
-            'post_id' => $post_id,
-            'from' => $current_uses,
-            'to' => $new_uses
-        ]);
     }
     
     /**
      * Log successful payment to backend and local database
      */
     private static function log_agent_payment($post_id, $verification, $agent_check) {
-        DevLogger::log('PAYMENT_GATE', 'agent_payment_logging_start', [
-            'post_id' => $post_id,
-            'transaction' => $verification['transaction'] ?? 'none',
-            'amount' => $verification['amount'] ?? 0,
-            'agent' => $agent_check['agent_name'] ?? 'unknown'
-        ]);
-        
         error_log('402links: Logging successful payment:');
         error_log('  - Post ID: ' . $post_id);
         error_log('  - Transaction: ' . ($verification['transaction'] ?? 'none'));
@@ -869,35 +623,10 @@ class PaymentGate {
             ['%d', '%s']
         );
         
-        DevLogger::log('DB', 'wpdb_query', [
-            'query_type' => 'UPDATE',
-            'table' => $table_name,
-            'post_id' => $post_id,
-            'success' => $wpdb->last_error === '',
-            'error' => $wpdb->last_error
-        ]);
-        
         // Send to backend for aggregation
         $settings = get_option('402links_settings');
-        DevLogger::log('DB', 'get_option', [
-            'key' => '402links_settings',
-            'found' => !empty($settings)
-        ]);
-        
         $api_key = get_option('402links_api_key');
-        DevLogger::log('DB', 'get_option', [
-            'key' => '402links_api_key',
-            'found' => !empty($api_key)
-        ]);
-        
         $api_endpoint = $settings['api_endpoint'] ?? 'https://api.402links.com/v1';
-        
-        DevLogger::log('EDGE_FUNCTION', 'edge_function_call', [
-            'function' => 'log-agent-payment',
-            'endpoint' => $api_endpoint . '/log-agent-payment',
-            'post_id' => $post_id,
-            'blocking' => false
-        ]);
         
         wp_remote_post($api_endpoint . '/log-agent-payment', [
             'timeout' => 15,
@@ -916,12 +645,6 @@ class PaymentGate {
                 'amount' => $verification['amount'] ?? 0,
                 'payer_address' => $verification['payer'] ?? ''
             ])
-        ]);
-        
-        DevLogger::log('PAYMENT_GATE', 'agent_payment_logged', [
-            'post_id' => $post_id,
-            'transaction' => $verification['transaction'] ?? 'none',
-            'amount' => $verification['amount'] ?? 0
         ]);
     }
 }
