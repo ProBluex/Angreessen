@@ -98,9 +98,18 @@ class BatchProcessor {
         $progress['updated_at'] = current_time('mysql');
         set_transient(self::PROGRESS_KEY, $progress, 3600);
         
+        // Check if batch is actually complete
+        $is_complete = ($progress['processed'] >= $progress['total']);
+        
+        if ($is_complete) {
+            $progress['status'] = 'completed';
+            $progress['updated_at'] = current_time('mysql');
+            set_transient(self::PROGRESS_KEY, $progress, 3600);
+        }
+        
         return [
             'success' => true,
-            'completed' => false,
+            'completed' => $is_complete,
             'progress' => $progress
         ];
     }
