@@ -45,6 +45,12 @@ class Core {
         add_action('wp_ajax_agent_hub_get_batch_status', [Admin::class, 'ajax_get_batch_status']);
         add_action('wp_ajax_agent_hub_cancel_batch', [Admin::class, 'ajax_cancel_batch']);
         
+        // Background batch processing AJAX handlers (Sprint 3)
+        add_action('wp_ajax_agent_hub_start_background_batch', [Admin::class, 'ajax_start_background_batch']);
+        add_action('wp_ajax_agent_hub_get_batch_history', [Admin::class, 'ajax_get_batch_history']);
+        add_action('wp_ajax_agent_hub_get_background_batch_progress', [Admin::class, 'ajax_get_background_batch_progress']);
+        add_action('wp_ajax_agent_hub_retry_failed_batch', [Admin::class, 'ajax_retry_failed_batch']);
+        
         // Violations AJAX handler
         add_action('wp_ajax_agent_hub_get_violations', [Admin::class, 'ajax_get_violations']);
         add_action('wp_ajax_agent_hub_get_violations_summary', [Admin::class, 'ajax_get_violations_summary']);

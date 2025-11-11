@@ -3,7 +3,7 @@
  * Plugin Name: Tolliver - Ai Agent Pay Collector
  * Plugin URI: https://402links.com
  * Description: Convert any WordPress page into a paid API endpoint using HTTP 402 - requiring payment before AI agents access your content.
- * Version:           3.16.17
+ * Version:           3.16.18
  * Author: Tolliver Team
  * Author URI: https://402links.com
  * License: MIT
@@ -20,7 +20,7 @@ if (!function_exists('get_file_data')) {
     require_once(ABSPATH . 'wp-includes/functions.php');
 }
 $header = get_file_data(__FILE__, ['Version' => 'Version'], 'plugin');
-define('AGENT_HUB_VERSION', $header['Version'] ?: '3.16.17');
+define('AGENT_HUB_VERSION', $header['Version'] ?: '3.16.18');
 define('AGENT_HUB_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('AGENT_HUB_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('AGENT_HUB_PLUGIN_FILE', __FILE__);
@@ -284,6 +284,27 @@ function agent_hub_deactivate() {
     
     flush_rewrite_rules();
 }
+
+// Run database migrations on plugin load
+add_action('plugins_loaded', function() {
+    if (class_exists('\AgentHub\DatabaseMigration')) {
+        \AgentHub\DatabaseMigration::run();
+    }
+}, 5);
+
+// Initialize Action Scheduler hooks for background processing
+add_action('action_scheduler_init', function() {
+    if (class_exists('\AgentHub\BackgroundProcessor')) {
+        add_action('402links_process_background_batch', ['\AgentHub\BackgroundProcessor', 'process_batch'], 10, 1);
+        add_action('402links_send_batch_notification', ['\AgentHub\Notifications', 'send_completion_email'], 10, 1);
+    }
+}, 10);
+
+// Schedule daily cleanup of old batch records
+if (!wp_next_scheduled('402links_cleanup_old_batches')) {
+    wp_schedule_event(time(), 'daily', '402links_cleanup_old_batches');
+}
+add_action('402links_cleanup_old_batches', ['\AgentHub\DatabaseMigration', 'cleanup_old_batches']);
 
 // Initialize plugin core after translations are ready
 add_action('init', function() {

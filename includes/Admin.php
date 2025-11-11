@@ -921,6 +921,102 @@ class Admin {
     }
     
     /**
+     * AJAX: Start background batch
+     */
+    public static function ajax_start_background_batch() {
+        check_ajax_referer('agent_hub_nonce', 'nonce');
+        
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(['message' => 'Unauthorized']);
+        }
+        
+        // Get all publishable posts
+        $posts = get_posts([
+            'post_type' => 'post',
+            'post_status' => 'publish',
+            'posts_per_page' => -1,
+            'fields' => 'ids',
+            'orderby' => 'ID',
+            'order' => 'ASC'
+        ]);
+        
+        if (empty($posts)) {
+            wp_send_json_error(['message' => 'No posts available to generate links']);
+        }
+        
+        $mode = isset($_POST['mode']) ? sanitize_text_field($_POST['mode']) : 'background';
+        
+        $result = BackgroundProcessor::queue_batch($posts, $mode);
+        wp_send_json_success($result);
+    }
+    
+    /**
+     * AJAX: Get batch history
+     */
+    public static function ajax_get_batch_history() {
+        check_ajax_referer('agent_hub_nonce', 'nonce');
+        
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(['message' => 'Unauthorized']);
+        }
+        
+        $user = wp_get_current_user();
+        $history = BackgroundProcessor::get_batch_history($user->ID);
+        
+        wp_send_json_success(['batches' => $history]);
+    }
+    
+    /**
+     * AJAX: Get background batch progress
+     */
+    public static function ajax_get_background_batch_progress() {
+        check_ajax_referer('agent_hub_nonce', 'nonce');
+        
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(['message' => 'Unauthorized']);
+        }
+        
+        $batch_id = isset($_POST['batch_id']) ? sanitize_text_field($_POST['batch_id']) : '';
+        
+        if (empty($batch_id)) {
+            wp_send_json_error(['message' => 'Batch ID required']);
+        }
+        
+        $progress = BackgroundProcessor::get_batch_progress($batch_id);
+        
+        if (!$progress) {
+            wp_send_json_error(['message' => 'Batch not found']);
+        }
+        
+        wp_send_json_success($progress);
+    }
+    
+    /**
+     * AJAX: Retry failed batch
+     */
+    public static function ajax_retry_failed_batch() {
+        check_ajax_referer('agent_hub_nonce', 'nonce');
+        
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(['message' => 'Unauthorized']);
+        }
+        
+        $batch_id = isset($_POST['batch_id']) ? sanitize_text_field($_POST['batch_id']) : '';
+        
+        if (empty($batch_id)) {
+            wp_send_json_error(['message' => 'Batch ID required']);
+        }
+        
+        $result = BackgroundProcessor::retry_failed_posts($batch_id);
+        
+        if ($result['success']) {
+            wp_send_json_success($result);
+        } else {
+            wp_send_json_error($result);
+        }
+    }
+    
+    /**
      * AJAX: Get violations summary
      */
     public static function ajax_get_violations_summary() {
