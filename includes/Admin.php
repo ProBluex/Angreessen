@@ -165,8 +165,7 @@ class Admin {
             'siteUrl' => get_site_url(),
             'siteName' => get_bloginfo('name'),
             'siteId' => get_option('402links_site_id'),  // Add site_id for contact form validation
-            'pluginUrl' => AGENT_HUB_PLUGIN_URL,  // Add plugin URL for direct ecosystem data endpoint
-            'hasActionScheduler' => function_exists('as_schedule_single_action')  // Background processing availability
+            'pluginUrl' => AGENT_HUB_PLUGIN_URL  // Add plugin URL for direct ecosystem data endpoint
         ]);
     }
     
@@ -771,79 +770,6 @@ class Admin {
     }
     
     /**
-     * AJAX: Extract Action Scheduler library manually
-     */
-    public static function ajax_extract_action_scheduler() {
-        check_ajax_referer('agent_hub_nonce', 'nonce');
-        
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(['message' => 'Unauthorized']);
-        }
-        
-        $zip_path = AGENT_HUB_PLUGIN_DIR . 'lib/action-scheduler.zip';
-        $extract_to = AGENT_HUB_PLUGIN_DIR . 'lib/';
-        $target_file = AGENT_HUB_PLUGIN_DIR . 'lib/action-scheduler/action-scheduler.php';
-        
-        error_log('🔵 402links: Manual Action Scheduler extraction requested');
-        error_log('🔵 402links: ZIP path: ' . $zip_path);
-        error_log('🔵 402links: ZIP exists: ' . (file_exists($zip_path) ? 'yes' : 'no'));
-        
-        if (!file_exists($zip_path)) {
-            error_log('⚠️ 402links: ZIP file not found');
-            wp_send_json_error([
-                'message' => 'Action Scheduler ZIP file not found. Please ensure action-scheduler.zip exists in the lib/ directory.'
-            ]);
-        }
-        
-        if (!is_readable($zip_path)) {
-            error_log('⚠️ 402links: ZIP file not readable');
-            wp_send_json_error([
-                'message' => 'Action Scheduler ZIP file is not readable. Check file permissions.'
-            ]);
-        }
-        
-        if (!is_writable($extract_to)) {
-            error_log('⚠️ 402links: Target directory not writable');
-            wp_send_json_error([
-                'message' => 'Target directory is not writable. Check directory permissions for: ' . $extract_to
-            ]);
-        }
-        
-        // Initialize WordPress filesystem
-        require_once ABSPATH . 'wp-admin/includes/file.php';
-        WP_Filesystem();
-        
-        error_log('🔵 402links: Attempting extraction...');
-        $result = unzip_file($zip_path, $extract_to);
-        
-        if (is_wp_error($result)) {
-            $error_msg = $result->get_error_message();
-            error_log('⚠️ 402links: Extraction failed: ' . $error_msg);
-            update_option('402links_action_scheduler_error', $error_msg);
-            wp_send_json_error([
-                'message' => 'Extraction failed: ' . $error_msg
-            ]);
-        }
-        
-        // Validate extraction succeeded
-        if (file_exists($target_file)) {
-            error_log('✅ 402links: Action Scheduler extracted successfully');
-            error_log('✅ 402links: Verified file: ' . $target_file);
-            delete_option('402links_action_scheduler_error');
-            update_option('402links_action_scheduler_extracted', current_time('mysql'));
-            wp_send_json_success([
-                'message' => 'Action Scheduler library extracted successfully. Reloading page...'
-            ]);
-        } else {
-            error_log('⚠️ 402links: Extraction completed but target file not found');
-            update_option('402links_action_scheduler_error', 'Extraction completed but action-scheduler.php not found');
-            wp_send_json_error([
-                'message' => 'Extraction completed but action-scheduler.php was not found. The ZIP file may be corrupted.'
-            ]);
-        }
-    }
-    
-    /**
      * AJAX: Toggle human access for a post
      */
     public static function ajax_toggle_human_access() {
@@ -992,102 +918,6 @@ class Admin {
         
         $status = BatchProcessor::get_status();
         wp_send_json_success($status);
-    }
-    
-    /**
-     * AJAX: Start background batch
-     */
-    public static function ajax_start_background_batch() {
-        check_ajax_referer('agent_hub_nonce', 'nonce');
-        
-        if (!current_user_can('edit_posts')) {
-            wp_send_json_error(['message' => 'Unauthorized']);
-        }
-        
-        // Get all publishable posts
-        $posts = get_posts([
-            'post_type' => 'post',
-            'post_status' => 'publish',
-            'posts_per_page' => -1,
-            'fields' => 'ids',
-            'orderby' => 'ID',
-            'order' => 'ASC'
-        ]);
-        
-        if (empty($posts)) {
-            wp_send_json_error(['message' => 'No posts available to generate links']);
-        }
-        
-        $mode = isset($_POST['mode']) ? sanitize_text_field($_POST['mode']) : 'background';
-        
-        $result = BackgroundProcessor::queue_batch($posts, $mode);
-        wp_send_json_success($result);
-    }
-    
-    /**
-     * AJAX: Get batch history
-     */
-    public static function ajax_get_batch_history() {
-        check_ajax_referer('agent_hub_nonce', 'nonce');
-        
-        if (!current_user_can('edit_posts')) {
-            wp_send_json_error(['message' => 'Unauthorized']);
-        }
-        
-        $user = wp_get_current_user();
-        $history = BackgroundProcessor::get_batch_history($user->ID);
-        
-        wp_send_json_success(['batches' => $history]);
-    }
-    
-    /**
-     * AJAX: Get background batch progress
-     */
-    public static function ajax_get_background_batch_progress() {
-        check_ajax_referer('agent_hub_nonce', 'nonce');
-        
-        if (!current_user_can('edit_posts')) {
-            wp_send_json_error(['message' => 'Unauthorized']);
-        }
-        
-        $batch_id = isset($_POST['batch_id']) ? sanitize_text_field($_POST['batch_id']) : '';
-        
-        if (empty($batch_id)) {
-            wp_send_json_error(['message' => 'Batch ID required']);
-        }
-        
-        $progress = BackgroundProcessor::get_batch_progress($batch_id);
-        
-        if (!$progress) {
-            wp_send_json_error(['message' => 'Batch not found']);
-        }
-        
-        wp_send_json_success($progress);
-    }
-    
-    /**
-     * AJAX: Retry failed batch
-     */
-    public static function ajax_retry_failed_batch() {
-        check_ajax_referer('agent_hub_nonce', 'nonce');
-        
-        if (!current_user_can('edit_posts')) {
-            wp_send_json_error(['message' => 'Unauthorized']);
-        }
-        
-        $batch_id = isset($_POST['batch_id']) ? sanitize_text_field($_POST['batch_id']) : '';
-        
-        if (empty($batch_id)) {
-            wp_send_json_error(['message' => 'Batch ID required']);
-        }
-        
-        $result = BackgroundProcessor::retry_failed_posts($batch_id);
-        
-        if ($result['success']) {
-            wp_send_json_success($result);
-        } else {
-            wp_send_json_error($result);
-        }
     }
     
     /**

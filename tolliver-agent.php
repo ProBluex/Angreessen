@@ -3,7 +3,7 @@
  * Plugin Name: Tolliver - Ai Agent Pay Collector
  * Plugin URI: https://402links.com
  * Description: Convert any WordPress page into a paid API endpoint using HTTP 402 - requiring payment before AI agents access your content.
- * Version:           3.16.18
+ * Version:           3.16.16
  * Author: Tolliver Team
  * Author URI: https://402links.com
  * License: MIT
@@ -20,7 +20,7 @@ if (!function_exists('get_file_data')) {
     require_once(ABSPATH . 'wp-includes/functions.php');
 }
 $header = get_file_data(__FILE__, ['Version' => 'Version'], 'plugin');
-define('AGENT_HUB_VERSION', $header['Version'] ?: '3.16.18');
+define('AGENT_HUB_VERSION', $header['Version'] ?: '3.16.16');
 define('AGENT_HUB_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('AGENT_HUB_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('AGENT_HUB_PLUGIN_FILE', __FILE__);
@@ -42,12 +42,6 @@ spl_autoload_register(function ($class) {
         require $file;
     }
 });
-
-// Load Action Scheduler library for background job processing
-$action_scheduler_path = AGENT_HUB_PLUGIN_DIR . 'lib/action-scheduler/action-scheduler.php';
-if (file_exists($action_scheduler_path)) {
-    require_once $action_scheduler_path;
-}
 
 // Load text domain at the correct time (WordPress 6.7+ requirement)
 add_action('init', function() {
@@ -273,50 +267,6 @@ function agent_hub_activate() {
     update_option('402links_plugin_active', true);
     update_option('402links_last_activated', current_time('mysql'));
     
-    // Extract Action Scheduler library if not already extracted
-    $action_scheduler_zip = AGENT_HUB_PLUGIN_DIR . 'lib/action-scheduler.zip';
-    $action_scheduler_dir = AGENT_HUB_PLUGIN_DIR . 'lib/action-scheduler/';
-    $action_scheduler_file = $action_scheduler_dir . 'action-scheduler.php';
-    
-    if (file_exists($action_scheduler_zip) && !file_exists($action_scheduler_file)) {
-        error_log('🔵 Tolliver: Attempting Action Scheduler extraction...');
-        error_log('🔵 Tolliver: ZIP path: ' . $action_scheduler_zip);
-        error_log('🔵 Tolliver: ZIP size: ' . filesize($action_scheduler_zip) . ' bytes');
-        error_log('🔵 Tolliver: ZIP readable: ' . (is_readable($action_scheduler_zip) ? 'yes' : 'no'));
-        error_log('🔵 Tolliver: Target dir: ' . AGENT_HUB_PLUGIN_DIR . 'lib/');
-        error_log('🔵 Tolliver: Target writable: ' . (is_writable(AGENT_HUB_PLUGIN_DIR . 'lib/') ? 'yes' : 'no'));
-        
-        // Initialize WordPress filesystem
-        require_once ABSPATH . 'wp-admin/includes/file.php';
-        WP_Filesystem();
-        
-        $unzip_result = unzip_file($action_scheduler_zip, AGENT_HUB_PLUGIN_DIR . 'lib/');
-        
-        if (is_wp_error($unzip_result)) {
-            $error_msg = $unzip_result->get_error_message();
-            error_log('⚠️ Tolliver: Failed to extract Action Scheduler library: ' . $error_msg);
-            update_option('402links_action_scheduler_error', $error_msg);
-        } else {
-            // Validate extraction succeeded
-            if (file_exists($action_scheduler_file)) {
-                error_log('✅ Tolliver: Action Scheduler library extracted successfully');
-                error_log('✅ Tolliver: Verified file exists: ' . $action_scheduler_file);
-                delete_option('402links_action_scheduler_error');
-                update_option('402links_action_scheduler_extracted', current_time('mysql'));
-            } else {
-                error_log('⚠️ Tolliver: Extraction completed but action-scheduler.php not found');
-                update_option('402links_action_scheduler_error', 'Extraction completed but file not found');
-            }
-        }
-    } elseif (file_exists($action_scheduler_file)) {
-        error_log('✅ Tolliver: Action Scheduler library already present');
-        update_option('402links_action_scheduler_extracted', current_time('mysql'));
-    } else {
-        error_log('⚠️ Tolliver: Action Scheduler ZIP file not found at ' . $action_scheduler_zip);
-        error_log('⚠️ Tolliver: Please ensure action-scheduler.zip exists in lib/ directory');
-        update_option('402links_action_scheduler_error', 'ZIP file not found at expected location');
-    }
-    
     // Flush rewrite rules for .well-known endpoint
     flush_rewrite_rules();
 }
@@ -334,27 +284,6 @@ function agent_hub_deactivate() {
     
     flush_rewrite_rules();
 }
-
-// Run database migrations on plugin load
-add_action('plugins_loaded', function() {
-    if (class_exists('\AgentHub\DatabaseMigration')) {
-        \AgentHub\DatabaseMigration::run();
-    }
-}, 5);
-
-// Initialize Action Scheduler hooks for background processing
-add_action('action_scheduler_init', function() {
-    if (class_exists('\AgentHub\BackgroundProcessor')) {
-        add_action('402links_process_background_batch', ['\AgentHub\BackgroundProcessor', 'process_batch'], 10, 1);
-        add_action('402links_send_batch_notification', ['\AgentHub\Notifications', 'send_completion_email'], 10, 1);
-    }
-}, 10);
-
-// Schedule daily cleanup of old batch records
-if (!wp_next_scheduled('402links_cleanup_old_batches')) {
-    wp_schedule_event(time(), 'daily', '402links_cleanup_old_batches');
-}
-add_action('402links_cleanup_old_batches', ['\AgentHub\DatabaseMigration', 'cleanup_old_batches']);
 
 // Initialize plugin core after translations are ready
 add_action('init', function() {

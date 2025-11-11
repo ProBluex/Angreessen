@@ -225,44 +225,6 @@ $is_connected = !empty($api_key) && !empty($site_id);
         
         <!-- Pagination Controls -->
         <div id="content-pagination" style="margin-top: 20px;"></div>
-        
-        <!-- Background Processing Health Check -->
-        <div class="agent-hub-section" style="margin-top: 20px; padding: 15px; background: <?php echo function_exists('as_schedule_single_action') ? '#d4edda' : '#fff3cd'; ?>; border-left: 4px solid <?php echo function_exists('as_schedule_single_action') ? '#28a745' : '#ffc107'; ?>; border-radius: 4px;">
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <span class="dashicons dashicons-<?php echo function_exists('as_schedule_single_action') ? 'yes-alt' : 'warning'; ?>" style="font-size: 24px; color: <?php echo function_exists('as_schedule_single_action') ? '#28a745' : '#ffc107'; ?>;"></span>
-                <div>
-                    <strong style="font-size: 14px;">Background Processing: <?php echo function_exists('as_schedule_single_action') ? '✅ Available' : '⚠️ Unavailable'; ?></strong>
-                    <p style="margin: 5px 0 0 0; font-size: 13px; color: #666;">
-                        <?php if (function_exists('as_schedule_single_action')): ?>
-                            You can close your browser while batches process in the background.
-                        <?php else: 
-                            $error = get_option('402links_action_scheduler_error');
-                            if ($error): ?>
-                                Action Scheduler library failed to extract: <?php echo esc_html($error); ?>. Background processing unavailable. Use "Stay on Page" mode instead.
-                            <?php else: ?>
-                                Action Scheduler library not loaded. Background processing unavailable. Use "Stay on Page" mode instead.
-                            <?php endif;
-                        endif; ?>
-                    </p>
-                    <?php if (!function_exists('as_schedule_single_action')): ?>
-                        <button id="extract-action-scheduler" class="button button-primary" style="margin-top: 10px;">
-                            <span class="dashicons dashicons-download" style="vertical-align: middle;"></span>
-                            Extract Action Scheduler Library
-                        </button>
-                        <span id="extraction-status" style="margin-left: 10px; font-size: 13px;"></span>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Batch Processing History Section -->
-        <div class="agent-hub-section" style="margin-top: 30px;">
-            <h2>
-                <span class="dashicons dashicons-archive"></span>
-                Batch Processing History
-            </h2>
-            <div id="batch-history-container"></div>
-        </div>
     </div>
     
     <!-- Analytics Tab -->
