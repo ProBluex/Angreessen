@@ -907,35 +907,39 @@ class Admin {
             return;
         }
         
-        $pages = $response['data']['pages'] ?? [];
-        error_log('[Link Repair] Found ' . count($pages) . ' pages in database');
+        $links = $response['links'] ?? [];
+        $repaired_count = 0;
         
-        $repaired = 0;
-        foreach ($pages as $page) {
-            $wp_post_id = $page['wordpress_post_id'] ?? null;
-            $short_id = $page['paid_link_short_id'] ?? null;
-            $link_id = $page['paid_link_id'] ?? null;
+        error_log('[Link Repair] Found ' . count($links) . ' existing links in database');
+        
+        // Update WordPress post meta for each existing link
+        foreach ($links as $link) {
+            $post_id = $link['wordpress_post_id'] ?? null;
+            $link_id = $link['link_id'] ?? null;
+            $short_id = $link['short_id'] ?? null;
+            $link_url = $link['link_url'] ?? null;
             
-            if (!$wp_post_id || !$short_id || !$link_id) {
+            if (!$post_id || !$link_id || !$short_id || !$link_url) {
+                error_log("[Link Repair] Skipping incomplete link data for post {$post_id}");
                 continue;
             }
             
             // Check if WordPress post meta is missing or incorrect
-            $existing_url = get_post_meta($wp_post_id, '_402links_url', true);
-            $correct_url = "https://api.402links.com/p/{$short_id}";
+            $existing_url = get_post_meta($post_id, '_402links_url', true);
             
-            if (empty($existing_url) || $existing_url !== $correct_url) {
-                error_log("[Link Repair] Repairing post {$wp_post_id}: setting URL to {$correct_url}");
+            if (empty($existing_url) || $existing_url !== $link_url) {
+                error_log("[Link Repair] Repairing post {$post_id}: setting URL to {$link_url}");
                 
-                update_post_meta($wp_post_id, '_402links_id', $link_id);
-                update_post_meta($wp_post_id, '_402links_short_id', $short_id);
-                update_post_meta($wp_post_id, '_402links_url', $correct_url);
+                // Update WordPress post meta
+                update_post_meta($post_id, '_402links_id', $link_id);
+                update_post_meta($post_id, '_402links_short_id', $short_id);
+                update_post_meta($post_id, '_402links_url', $link_url);
                 
-                $repaired++;
+                $repaired_count++;
             }
         }
         
-        error_log("[Link Repair] Repair complete: {$repaired} links repaired");
+        error_log("[Link Repair] Repair complete: {$repaired_count} links repaired");
     }
     
     /**
