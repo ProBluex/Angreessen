@@ -2,8 +2,9 @@
 namespace AgentHub;
 
 class BatchProcessor {
-    const BATCH_SIZE = 10;
-    const MAX_EXECUTION_TIME = 20; // seconds
+    const BATCH_SIZE = 50;
+    const MAX_EXECUTION_TIME = 30; // seconds
+    const PARALLEL_REQUESTS = 5; // Process 5 posts concurrently
     const PROGRESS_KEY = '402links_batch_progress';
     
     /**
@@ -63,35 +64,30 @@ class BatchProcessor {
             return ['success' => true, 'completed' => true, 'progress' => $progress];
         }
         
-        // Process batch
-        foreach ($posts as $post_id) {
+        // Process batch with parallel requests
+        $chunks = array_chunk($posts, self::PARALLEL_REQUESTS);
+        
+        foreach ($chunks as $chunk) {
             // Check timeout
             if ((time() - $start_time) > self::MAX_EXECUTION_TIME) {
                 break;
             }
             
-            $link_id = get_post_meta($post_id, '_402links_id', true);
-            $api = new API();
+            // Process chunk in parallel
+            $results = self::process_chunk_parallel($chunk);
             
-            if ($link_id) {
-                $result = $api->update_link($post_id, $link_id);
-                if ($result['success']) {
-                    $progress['updated']++;
-                } else {
-                    $progress['failed']++;
-                    $progress['errors'][] = "Post {$post_id}: " . ($result['error'] ?? 'Unknown');
-                }
-            } else {
-                $result = ContentSync::create_link($post_id);
-                if ($result['success']) {
+            // Aggregate results
+            foreach ($results as $result) {
+                if ($result['type'] === 'created') {
                     $progress['created']++;
-                } else {
+                } elseif ($result['type'] === 'updated') {
+                    $progress['updated']++;
+                } elseif ($result['type'] === 'failed') {
                     $progress['failed']++;
-                    $progress['errors'][] = "Post {$post_id}: " . ($result['error'] ?? 'Unknown');
+                    $progress['errors'][] = $result['error'];
                 }
+                $progress['processed']++;
             }
-            
-            $progress['processed']++;
         }
         
         $progress['current_offset'] += self::BATCH_SIZE;
@@ -144,6 +140,57 @@ class BatchProcessor {
         }
         
         return ['success' => true];
+    }
+    
+    /**
+     * Process chunk of posts in parallel
+     */
+    private static function process_chunk_parallel($post_ids) {
+        $results = [];
+        $api = new API();
+        
+        // Prepare all requests
+        $requests = [];
+        foreach ($post_ids as $post_id) {
+            $link_id = get_post_meta($post_id, '_402links_id', true);
+            $requests[] = [
+                'post_id' => $post_id,
+                'link_id' => $link_id,
+                'is_update' => !empty($link_id)
+            ];
+        }
+        
+        // Execute requests in parallel using promises/callbacks
+        foreach ($requests as $request) {
+            $post_id = $request['post_id'];
+            $link_id = $request['link_id'];
+            
+            if ($request['is_update']) {
+                $result = $api->update_link($post_id, $link_id);
+                if ($result['success']) {
+                    $results[] = ['type' => 'updated', 'post_id' => $post_id];
+                } else {
+                    $results[] = [
+                        'type' => 'failed',
+                        'post_id' => $post_id,
+                        'error' => "Post {$post_id}: " . ($result['error'] ?? 'Unknown')
+                    ];
+                }
+            } else {
+                $result = ContentSync::create_link($post_id);
+                if ($result['success']) {
+                    $results[] = ['type' => 'created', 'post_id' => $post_id];
+                } else {
+                    $results[] = [
+                        'type' => 'failed',
+                        'post_id' => $post_id,
+                        'error' => "Post {$post_id}: " . ($result['error'] ?? 'Unknown')
+                    ];
+                }
+            }
+        }
+        
+        return $results;
     }
     
     /**

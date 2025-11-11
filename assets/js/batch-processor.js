@@ -14,9 +14,12 @@
     return;
   }
 
-  const POLL_INTERVAL = 2000; // 2 seconds
+  const POLL_INTERVAL_MIN = 1000; // 1 second
+  const POLL_INTERVAL_MAX = 3000; // 3 seconds
+  let currentPollInterval = POLL_INTERVAL_MIN;
   let pollTimer = null;
   let modalElement = null;
+  let lastPollTime = 0;
 
   /* ---------- Modal HTML ---------- */
   function createModal() {
@@ -143,6 +146,8 @@
 
   /* ---------- Poll Batch Progress ---------- */
   function pollBatchProgress() {
+    const pollStartTime = Date.now();
+    
     $.ajax({
       url: w.agentHubData.ajaxUrl,
       type: "POST",
@@ -154,6 +159,20 @@
       },
     })
       .done((res) => {
+        // Adaptive polling: adjust interval based on response time
+        const responseTime = Date.now() - pollStartTime;
+        if (responseTime > 5000) {
+          // Slow response, use longer interval
+          currentPollInterval = POLL_INTERVAL_MAX;
+        } else if (responseTime < 2000) {
+          // Fast response, use shorter interval
+          currentPollInterval = POLL_INTERVAL_MIN;
+        } else {
+          // Medium response, use middle interval
+          currentPollInterval = 2000;
+        }
+        debugLog('[batch-processor] Response time:', responseTime, 'Next poll:', currentPollInterval);
+        
         if (!res || !res.success) {
           debugLog("[batch-processor] Error polling:", res);
           if (w.showToast) {
@@ -187,7 +206,7 @@
             }
           }, 3000);
         } else if (progress.status === "running") {
-          pollTimer = setTimeout(pollBatchProgress, POLL_INTERVAL);
+          pollTimer = setTimeout(pollBatchProgress, currentPollInterval);
         } else {
           console.warn('[batch-processor] Unexpected state:', progress);
           closeModal();
@@ -228,9 +247,9 @@
         const progress = res.data || {};
         updateProgressUI(progress);
 
-        // Start polling if batch is processing
-        if (progress.status === "processing" && progress.total > 0) {
-          pollTimer = setTimeout(pollBatchProgress, POLL_INTERVAL);
+        // Start polling if batch is running
+        if (progress.status === "running" && progress.total > 0) {
+          pollTimer = setTimeout(pollBatchProgress, currentPollInterval);
         } else {
           // No posts to process or already complete
           if (w.showToast) {
