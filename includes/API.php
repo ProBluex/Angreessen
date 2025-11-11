@@ -222,6 +222,142 @@ class API {
     }
     
     /**
+     * Create multiple links in parallel using wp_remote_request()
+     * 
+     * @param array $post_ids Array of WordPress post IDs
+     * @return array Results with created/failed counts
+     */
+    public function create_links_parallel($post_ids) {
+        if (empty($post_ids)) {
+            return ['total' => 0, 'created' => 0, 'failed' => 0, 'errors' => []];
+        }
+        
+        $results = [
+            'total' => count($post_ids),
+            'created' => 0,
+            'failed' => 0,
+            'errors' => []
+        ];
+        
+        $settings = get_option('402links_settings');
+        
+        // Prepare all requests
+        $requests = [];
+        foreach ($post_ids as $post_id) {
+            $post = get_post($post_id);
+            if (!$post || $post->post_status !== 'publish') {
+                $results['failed']++;
+                continue;
+            }
+            
+            $price = get_post_meta($post_id, '_402links_price', true);
+            if (empty($price)) {
+                $price = $settings['default_price'] ?? 0.10;
+            }
+            
+            $excerpt = $post->post_excerpt;
+            if (empty($excerpt)) {
+                $excerpt = wp_trim_words(strip_tags($post->post_content), 30);
+            }
+            
+            $author = get_the_author_meta('display_name', $post->post_author);
+            $featured_image_url = get_the_post_thumbnail_url($post_id, 'large');
+            $word_count = str_word_count(strip_tags($post->post_content));
+            
+            $tags = [];
+            $post_tags = get_the_tags($post_id);
+            if ($post_tags && !is_wp_error($post_tags)) {
+                foreach ($post_tags as $tag) {
+                    $tags[] = $tag->name;
+                }
+            }
+            
+            $categories = get_the_category($post_id);
+            $category_names = [];
+            if ($categories) {
+                foreach ($categories as $category) {
+                    $category_names[] = $category->name;
+                }
+            }
+            
+            $json_content = [
+                'version' => '1.0',
+                'content_type' => 'blog_post',
+                'title' => get_the_title($post_id),
+                'body' => wp_strip_all_tags($post->post_content),
+                'excerpt' => $excerpt,
+                'author' => $author,
+                'published_at' => $post->post_date,
+                'modified_at' => $post->post_modified,
+                'word_count' => $word_count,
+                'categories' => $category_names,
+                'tags' => $tags,
+                'featured_image_url' => $featured_image_url ?: null
+            ];
+            
+            $payload = [
+                'post_id' => $post_id,
+                'title' => get_the_title($post_id),
+                'url' => get_permalink($post_id),
+                'price' => floatval($price),
+                'site_url' => get_site_url(),
+                'content_type' => $post->post_type,
+                'published_at' => $post->post_date,
+                'excerpt' => $excerpt,
+                'author' => $author,
+                'featured_image_url' => $featured_image_url ?: null,
+                'word_count' => $word_count,
+                'tags' => $tags,
+                'description' => !empty($category_names) ? 'Filed under: ' . implode(', ', $category_names) : '',
+                'json_content' => $json_content
+            ];
+            
+            $requests[$post_id] = [
+                'url' => $this->api_endpoint . '/create-wordpress-link',
+                'args' => [
+                    'method' => 'POST',
+                    'headers' => [
+                        'Authorization' => 'Bearer ' . $this->api_key,
+                        'Content-Type' => 'application/json'
+                    ],
+                    'body' => json_encode($payload),
+                    'timeout' => 15,
+                    'blocking' => false
+                ]
+            ];
+        }
+        
+        // Send all requests in parallel
+        $responses = [];
+        foreach ($requests as $post_id => $request) {
+            $responses[$post_id] = wp_remote_request($request['url'], $request['args']);
+        }
+        
+        // Process responses
+        foreach ($responses as $post_id => $response) {
+            if (is_wp_error($response)) {
+                $results['failed']++;
+                $results['errors'][] = "Post {$post_id}: " . $response->get_error_message();
+            } else {
+                $body = wp_remote_retrieve_body($response);
+                $data = json_decode($body, true);
+                
+                if (($data['success'] ?? false) && isset($data['link_id'])) {
+                    $results['created']++;
+                    update_post_meta($post_id, '_402links_id', $data['link_id']);
+                    update_post_meta($post_id, '_402links_short_id', $data['short_id'] ?? '');
+                    update_post_meta($post_id, '_402links_url', $data['link_url'] ?? '');
+                } else {
+                    $results['failed']++;
+                    $results['errors'][] = "Post {$post_id}: " . ($data['error'] ?? 'Unknown error');
+                }
+            }
+        }
+        
+        return $results;
+    }
+    
+    /**
      * Update existing 402link
      */
     public function update_link($post_id, $link_id) {

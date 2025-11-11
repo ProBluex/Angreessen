@@ -2,8 +2,8 @@
 namespace AgentHub;
 
 class BatchProcessor {
-    const BATCH_SIZE = 10;
-    const MAX_EXECUTION_TIME = 20; // seconds
+    const BATCH_SIZE = 50;
+    const MAX_EXECUTION_TIME = 25; // seconds
     const PROGRESS_KEY = '402links_batch_progress';
     
     /**
@@ -63,35 +63,21 @@ class BatchProcessor {
             return ['success' => true, 'completed' => true, 'progress' => $progress];
         }
         
-        // Process batch
-        foreach ($posts as $post_id) {
-            // Check timeout
-            if ((time() - $start_time) > self::MAX_EXECUTION_TIME) {
-                break;
-            }
-            
-            $link_id = get_post_meta($post_id, '_402links_id', true);
-            $api = new API();
-            
-            if ($link_id) {
-                $result = $api->update_link($post_id, $link_id);
-                if ($result['success']) {
-                    $progress['updated']++;
-                } else {
-                    $progress['failed']++;
-                    $progress['errors'][] = "Post {$post_id}: " . ($result['error'] ?? 'Unknown');
-                }
-            } else {
-                $result = ContentSync::create_link($post_id);
-                if ($result['success']) {
-                    $progress['created']++;
-                } else {
-                    $progress['failed']++;
-                    $progress['errors'][] = "Post {$post_id}: " . ($result['error'] ?? 'Unknown');
-                }
-            }
-            
-            $progress['processed']++;
+        // Process batch with parallel API calls
+        $api = new API();
+        $chunk_result = $api->create_links_parallel($posts);
+        
+        // Update progress with parallel results
+        $progress['created'] += $chunk_result['created'];
+        $progress['failed'] += $chunk_result['failed'];
+        $progress['processed'] += count($posts);
+        
+        // Merge errors
+        if (!empty($chunk_result['errors'])) {
+            $progress['errors'] = array_merge(
+                $progress['errors'] ?? [],
+                $chunk_result['errors']
+            );
         }
         
         $progress['current_offset'] += self::BATCH_SIZE;

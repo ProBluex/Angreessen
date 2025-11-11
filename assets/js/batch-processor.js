@@ -14,7 +14,7 @@
     return;
   }
 
-  const POLL_INTERVAL = 2000; // 2 seconds
+  const POLL_INTERVAL = 1000; // 1 second for faster UI updates
   let pollTimer = null;
   let modalElement = null;
 
@@ -228,8 +228,8 @@
         const progress = res.data || {};
         updateProgressUI(progress);
 
-        // Start polling if batch is processing
-        if (progress.status === "processing" && progress.total > 0) {
+        // Start polling if batch is running
+        if (progress.status === "running" && progress.total > 0) {
           pollTimer = setTimeout(pollBatchProgress, POLL_INTERVAL);
         } else {
           // No posts to process or already complete
