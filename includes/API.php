@@ -436,16 +436,6 @@ class API {
     }
     
     /**
-     * Sync payment wallet to Supabase
-     */
-    public function sync_wallet($site_id, $wallet) {
-        return $this->request('POST', '/sync-site-wallet', [
-            'site_id' => $site_id,
-            'payment_wallet' => $wallet
-        ]);
-    }
-    
-    /**
      * Get site info from Supabase
      */
     public function get_site_info($site_id) {
