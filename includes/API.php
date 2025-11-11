@@ -240,9 +240,12 @@ class API {
         ];
         
         $settings = get_option('402links_settings');
+        $curl_handles = [];
+        $post_map = []; // Map curl handle resource ID to post_id
         
-        // Prepare all requests
-        $requests = [];
+        // Initialize cURL multi-handle
+        $multi_handle = curl_multi_init();
+        
         foreach ($post_ids as $post_id) {
             $post = get_post($post_id);
             if (!$post || $post->post_status !== 'publish') {
@@ -312,35 +315,50 @@ class API {
                 'json_content' => $json_content
             ];
             
-            $requests[$post_id] = [
-                'url' => $this->api_endpoint . '/create-wordpress-link',
-                'args' => [
-                    'method' => 'POST',
-                    'headers' => [
-                        'Authorization' => 'Bearer ' . $this->api_key,
-                        'Content-Type' => 'application/json'
-                    ],
-                    'body' => json_encode($payload),
-                    'timeout' => 15,
-                    'blocking' => false
+            // Create individual cURL handle for true parallel execution
+            $ch = curl_init();
+            curl_setopt_array($ch, [
+                CURLOPT_URL => $this->api_endpoint . '/create-wordpress-link',
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => json_encode($payload),
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT => 15,
+                CURLOPT_HTTPHEADER => [
+                    'Authorization: Bearer ' . $this->api_key,
+                    'Content-Type: application/json'
                 ]
-            ];
+            ]);
+            
+            // Add to multi-handle for parallel execution
+            curl_multi_add_handle($multi_handle, $ch);
+            
+            // Store handle reference (use resource ID as key)
+            $curl_handles[] = $ch;
+            $post_map[(int)$ch] = $post_id;
         }
         
-        // Send all requests in parallel
-        $responses = [];
-        foreach ($requests as $post_id => $request) {
-            $responses[$post_id] = wp_remote_request($request['url'], $request['args']);
-        }
+        // Execute all requests in parallel
+        $running = null;
+        do {
+            curl_multi_exec($multi_handle, $running);
+            curl_multi_select($multi_handle);
+        } while ($running > 0);
         
-        // Process responses
-        foreach ($responses as $post_id => $response) {
-            if (is_wp_error($response)) {
+        // Collect and process all responses
+        foreach ($curl_handles as $ch) {
+            $post_id = $post_map[(int)$ch];
+            $response = curl_multi_getcontent($ch);
+            $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curl_error = curl_error($ch);
+            
+            if ($curl_error) {
                 $results['failed']++;
-                $results['errors'][] = "Post {$post_id}: " . $response->get_error_message();
+                $results['errors'][] = "Post {$post_id}: cURL error - {$curl_error}";
+            } elseif ($http_code !== 200) {
+                $results['failed']++;
+                $results['errors'][] = "Post {$post_id}: HTTP {$http_code}";
             } else {
-                $body = wp_remote_retrieve_body($response);
-                $data = json_decode($body, true);
+                $data = json_decode($response, true);
                 
                 if (($data['success'] ?? false) && isset($data['link_id'])) {
                     $results['created']++;
@@ -352,7 +370,14 @@ class API {
                     $results['errors'][] = "Post {$post_id}: " . ($data['error'] ?? 'Unknown error');
                 }
             }
+            
+            // Clean up individual handle
+            curl_multi_remove_handle($multi_handle, $ch);
+            curl_close($ch);
         }
+        
+        // Close multi-handle
+        curl_multi_close($multi_handle);
         
         return $results;
     }
