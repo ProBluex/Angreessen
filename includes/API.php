@@ -351,23 +351,59 @@ class API {
             $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             $curl_error = curl_error($ch);
             
+            // Comprehensive logging for diagnostics
+            error_log("🔍 [Parallel Link Creation] Post {$post_id}:");
+            error_log("  - HTTP Code: {$http_code}");
+            error_log("  - cURL Error: " . ($curl_error ?: 'none'));
+            error_log("  - Response (first 200 chars): " . substr($response, 0, 200));
+            
             if ($curl_error) {
                 $results['failed']++;
                 $results['errors'][] = "Post {$post_id}: cURL error - {$curl_error}";
             } elseif ($http_code !== 200) {
                 $results['failed']++;
                 $results['errors'][] = "Post {$post_id}: HTTP {$http_code}";
+                error_log("  ❌ Failed: HTTP {$http_code}");
             } else {
                 $data = json_decode($response, true);
                 
-                if (($data['success'] ?? false) && isset($data['link_id'])) {
+                // Log parsed data structure
+                error_log("  - Parsed data keys: " . implode(', ', array_keys($data ?: [])));
+                error_log("  - Has 'success' key: " . (isset($data['success']) ? 'yes' : 'no'));
+                error_log("  - Has 'data' key: " . (isset($data['data']) ? 'yes' : 'no'));
+                
+                // Handle nested response structure: {success: true, data: {link_id, short_id, link_url}}
+                $link_data = $data['data'] ?? $data;
+                
+                error_log("  - Extracted link_data keys: " . implode(', ', array_keys($link_data ?: [])));
+                error_log("  - link_id present: " . (isset($link_data['link_id']) ? 'yes' : 'no'));
+                error_log("  - short_id present: " . (isset($link_data['short_id']) ? 'yes' : 'no'));
+                error_log("  - link_url present: " . (isset($link_data['link_url']) ? 'yes' : 'no'));
+                
+                if (($data['success'] ?? false) && isset($link_data['link_id'])) {
+                    $link_id = $link_data['link_id'];
+                    $short_id = $link_data['short_id'] ?? '';
+                    $link_url = $link_data['link_url'] ?? '';
+                    
+                    error_log("  ✅ Success - Updating post meta:");
+                    error_log("    - link_id: {$link_id}");
+                    error_log("    - short_id: {$short_id}");
+                    error_log("    - link_url: {$link_url}");
+                    
+                    update_post_meta($post_id, '_402links_id', $link_id);
+                    update_post_meta($post_id, '_402links_short_id', $short_id);
+                    update_post_meta($post_id, '_402links_url', $link_url);
+                    
+                    // Verify meta was actually saved
+                    $saved_url = get_post_meta($post_id, '_402links_url', true);
+                    error_log("    - Verified saved URL: {$saved_url}");
+                    
                     $results['created']++;
-                    update_post_meta($post_id, '_402links_id', $data['link_id']);
-                    update_post_meta($post_id, '_402links_short_id', $data['short_id'] ?? '');
-                    update_post_meta($post_id, '_402links_url', $data['link_url'] ?? '');
                 } else {
                     $results['failed']++;
-                    $results['errors'][] = "Post {$post_id}: " . ($data['error'] ?? 'Unknown error');
+                    $error_msg = $data['error'] ?? $link_data['error'] ?? 'Unknown error - link_id missing';
+                    $results['errors'][] = "Post {$post_id}: {$error_msg}";
+                    error_log("  ❌ Failed: {$error_msg}");
                 }
             }
             

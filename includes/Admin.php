@@ -877,8 +877,65 @@ class Admin {
             wp_send_json_error(['message' => 'Unauthorized']);
         }
         
+        // Repair existing links before starting new batch
+        self::repair_existing_links();
+        
         $progress = BatchProcessor::start_batch();
         wp_send_json_success($progress);
+    }
+    
+    /**
+     * Repair existing links that have short_id in database but missing WordPress meta
+     */
+    private static function repair_existing_links() {
+        global $wpdb;
+        
+        $site_id = get_option('402links_site_id');
+        if (!$site_id) {
+            error_log('[Link Repair] No site_id configured, skipping repair');
+            return;
+        }
+        
+        error_log('[Link Repair] Starting repair process for site: ' . $site_id);
+        
+        // Query Supabase to get all existing links for this site
+        $api = new API();
+        $response = $api->request('GET', "/get-site-pages-with-links?site_id={$site_id}");
+        
+        if (!($response['success'] ?? false)) {
+            error_log('[Link Repair] Failed to fetch existing links from database');
+            return;
+        }
+        
+        $pages = $response['data']['pages'] ?? [];
+        error_log('[Link Repair] Found ' . count($pages) . ' pages in database');
+        
+        $repaired = 0;
+        foreach ($pages as $page) {
+            $wp_post_id = $page['wordpress_post_id'] ?? null;
+            $short_id = $page['paid_link_short_id'] ?? null;
+            $link_id = $page['paid_link_id'] ?? null;
+            
+            if (!$wp_post_id || !$short_id || !$link_id) {
+                continue;
+            }
+            
+            // Check if WordPress post meta is missing or incorrect
+            $existing_url = get_post_meta($wp_post_id, '_402links_url', true);
+            $correct_url = "https://api.402links.com/p/{$short_id}";
+            
+            if (empty($existing_url) || $existing_url !== $correct_url) {
+                error_log("[Link Repair] Repairing post {$wp_post_id}: setting URL to {$correct_url}");
+                
+                update_post_meta($wp_post_id, '_402links_id', $link_id);
+                update_post_meta($wp_post_id, '_402links_short_id', $short_id);
+                update_post_meta($wp_post_id, '_402links_url', $correct_url);
+                
+                $repaired++;
+            }
+        }
+        
+        error_log("[Link Repair] Repair complete: {$repaired} links repaired");
     }
     
     /**
