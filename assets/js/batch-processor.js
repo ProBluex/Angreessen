@@ -92,6 +92,15 @@
     modalElement = createModal();
     $("body").append(modalElement);
 
+    // Health check: Disable background mode if Action Scheduler not available
+    if (!w.agentHubData.hasActionScheduler) {
+      $("input[name='batch-mode'][value='background']").prop('disabled', true);
+      $("input[name='batch-mode'][value='background']").closest('label').css('opacity', '0.5').attr('title', 'Background processing unavailable - Action Scheduler library not loaded');
+      $("input[name='batch-mode'][value='foreground']").prop('checked', true);
+      currentMode = 'foreground';
+      debugWarn("⚠️ Background processing unavailable - Action Scheduler not loaded");
+    }
+
     // Bind actions
     $("#batch-start-btn").on("click", startBatchWithMode);
     $("#batch-close-btn").on("click", closeModal);
@@ -99,7 +108,18 @@
     
     // Listen for mode changes
     $("input[name='batch-mode']").on("change", function() {
-      currentMode = $(this).val();
+      const selectedMode = $(this).val();
+      
+      // Prevent background mode selection if Action Scheduler unavailable
+      if (selectedMode === 'background' && !w.agentHubData.hasActionScheduler) {
+        alert('Background processing is not available. Action Scheduler library is not loaded.\n\nPlease use "Stay on Page" mode instead.');
+        $("input[name='batch-mode'][value='foreground']").prop('checked', true);
+        currentMode = 'foreground';
+        return;
+      }
+      
+      currentMode = selectedMode;
+      debugLog("📌 Batch mode changed to:", currentMode);
     });
   }
 

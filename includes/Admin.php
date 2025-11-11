@@ -165,7 +165,8 @@ class Admin {
             'siteUrl' => get_site_url(),
             'siteName' => get_bloginfo('name'),
             'siteId' => get_option('402links_site_id'),  // Add site_id for contact form validation
-            'pluginUrl' => AGENT_HUB_PLUGIN_URL  // Add plugin URL for direct ecosystem data endpoint
+            'pluginUrl' => AGENT_HUB_PLUGIN_URL,  // Add plugin URL for direct ecosystem data endpoint
+            'hasActionScheduler' => function_exists('as_schedule_single_action')  // Background processing availability
         ]);
     }
     

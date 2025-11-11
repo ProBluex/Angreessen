@@ -279,14 +279,26 @@ function agent_hub_activate() {
     $action_scheduler_file = $action_scheduler_dir . 'action-scheduler.php';
     
     if (file_exists($action_scheduler_zip) && !file_exists($action_scheduler_file)) {
+        // Initialize WordPress filesystem
+        require_once ABSPATH . 'wp-admin/includes/file.php';
         WP_Filesystem();
+        
         $unzip_result = unzip_file($action_scheduler_zip, AGENT_HUB_PLUGIN_DIR . 'lib/');
         
         if (is_wp_error($unzip_result)) {
-            error_log('Tolliver: Failed to extract Action Scheduler library: ' . $unzip_result->get_error_message());
+            error_log('⚠️ Tolliver: Failed to extract Action Scheduler library: ' . $unzip_result->get_error_message());
+            update_option('402links_action_scheduler_error', $unzip_result->get_error_message());
         } else {
-            error_log('Tolliver: Action Scheduler library extracted successfully');
+            error_log('✅ Tolliver: Action Scheduler library extracted successfully');
+            delete_option('402links_action_scheduler_error');
+            update_option('402links_action_scheduler_extracted', true);
         }
+    } elseif (file_exists($action_scheduler_file)) {
+        error_log('✅ Tolliver: Action Scheduler library already present');
+        update_option('402links_action_scheduler_extracted', true);
+    } else {
+        error_log('⚠️ Tolliver: Action Scheduler ZIP file not found at ' . $action_scheduler_zip);
+        update_option('402links_action_scheduler_error', 'ZIP file not found');
     }
     
     // Flush rewrite rules for .well-known endpoint
