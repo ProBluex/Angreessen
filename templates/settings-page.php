@@ -244,6 +244,13 @@ $is_connected = !empty($api_key) && !empty($site_id);
                             <?php endif;
                         endif; ?>
                     </p>
+                    <?php if (!function_exists('as_schedule_single_action')): ?>
+                        <button id="extract-action-scheduler" class="button button-primary" style="margin-top: 10px;">
+                            <span class="dashicons dashicons-download" style="vertical-align: middle;"></span>
+                            Extract Action Scheduler Library
+                        </button>
+                        <span id="extraction-status" style="margin-left: 10px; font-size: 13px;"></span>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>

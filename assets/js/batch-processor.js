@@ -13,6 +13,44 @@
     console.error("[batch-processor] Missing agentHubData config.");
     return;
   }
+  
+  /* ---------- Manual Action Scheduler Extraction ---------- */
+  $(d).on('click', '#extract-action-scheduler', function(e) {
+    e.preventDefault();
+    
+    const $btn = $(this);
+    const $status = $('#extraction-status');
+    
+    if ($btn.prop('disabled')) return;
+    
+    $btn.prop('disabled', true).html('<span class="dashicons dashicons-update dashicons-spin" style="vertical-align: middle;"></span> Extracting...');
+    $status.html('');
+    
+    $.ajax({
+      url: w.agentHubData.ajaxUrl,
+      type: 'POST',
+      data: {
+        action: 'agent_hub_extract_action_scheduler',
+        nonce: w.agentHubData.nonce
+      },
+      timeout: 30000,
+      success: function(response) {
+        if (response.success) {
+          $status.html('<span style="color: #28a745;">✅ ' + response.data.message + '</span>');
+          setTimeout(function() {
+            location.reload();
+          }, 1500);
+        } else {
+          $status.html('<span style="color: #dc3545;">❌ ' + response.data.message + '</span>');
+          $btn.prop('disabled', false).html('<span class="dashicons dashicons-download" style="vertical-align: middle;"></span> Retry Extraction');
+        }
+      },
+      error: function(xhr, status, error) {
+        $status.html('<span style="color: #dc3545;">❌ Request failed: ' + error + '</span>');
+        $btn.prop('disabled', false).html('<span class="dashicons dashicons-download" style="vertical-align: middle;"></span> Retry Extraction');
+      }
+    });
+  });
 
   const POLL_INTERVAL_MIN = 1000; // 1 second
   const POLL_INTERVAL_MAX = 3000; // 3 seconds

@@ -771,6 +771,79 @@ class Admin {
     }
     
     /**
+     * AJAX: Extract Action Scheduler library manually
+     */
+    public static function ajax_extract_action_scheduler() {
+        check_ajax_referer('agent_hub_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Unauthorized']);
+        }
+        
+        $zip_path = AGENT_HUB_PLUGIN_DIR . 'lib/action-scheduler.zip';
+        $extract_to = AGENT_HUB_PLUGIN_DIR . 'lib/';
+        $target_file = AGENT_HUB_PLUGIN_DIR . 'lib/action-scheduler/action-scheduler.php';
+        
+        error_log('🔵 402links: Manual Action Scheduler extraction requested');
+        error_log('🔵 402links: ZIP path: ' . $zip_path);
+        error_log('🔵 402links: ZIP exists: ' . (file_exists($zip_path) ? 'yes' : 'no'));
+        
+        if (!file_exists($zip_path)) {
+            error_log('⚠️ 402links: ZIP file not found');
+            wp_send_json_error([
+                'message' => 'Action Scheduler ZIP file not found. Please ensure action-scheduler.zip exists in the lib/ directory.'
+            ]);
+        }
+        
+        if (!is_readable($zip_path)) {
+            error_log('⚠️ 402links: ZIP file not readable');
+            wp_send_json_error([
+                'message' => 'Action Scheduler ZIP file is not readable. Check file permissions.'
+            ]);
+        }
+        
+        if (!is_writable($extract_to)) {
+            error_log('⚠️ 402links: Target directory not writable');
+            wp_send_json_error([
+                'message' => 'Target directory is not writable. Check directory permissions for: ' . $extract_to
+            ]);
+        }
+        
+        // Initialize WordPress filesystem
+        require_once ABSPATH . 'wp-admin/includes/file.php';
+        WP_Filesystem();
+        
+        error_log('🔵 402links: Attempting extraction...');
+        $result = unzip_file($zip_path, $extract_to);
+        
+        if (is_wp_error($result)) {
+            $error_msg = $result->get_error_message();
+            error_log('⚠️ 402links: Extraction failed: ' . $error_msg);
+            update_option('402links_action_scheduler_error', $error_msg);
+            wp_send_json_error([
+                'message' => 'Extraction failed: ' . $error_msg
+            ]);
+        }
+        
+        // Validate extraction succeeded
+        if (file_exists($target_file)) {
+            error_log('✅ 402links: Action Scheduler extracted successfully');
+            error_log('✅ 402links: Verified file: ' . $target_file);
+            delete_option('402links_action_scheduler_error');
+            update_option('402links_action_scheduler_extracted', current_time('mysql'));
+            wp_send_json_success([
+                'message' => 'Action Scheduler library extracted successfully. Reloading page...'
+            ]);
+        } else {
+            error_log('⚠️ 402links: Extraction completed but target file not found');
+            update_option('402links_action_scheduler_error', 'Extraction completed but action-scheduler.php not found');
+            wp_send_json_error([
+                'message' => 'Extraction completed but action-scheduler.php was not found. The ZIP file may be corrupted.'
+            ]);
+        }
+    }
+    
+    /**
      * AJAX: Toggle human access for a post
      */
     public static function ajax_toggle_human_access() {

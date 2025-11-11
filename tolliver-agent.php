@@ -279,6 +279,13 @@ function agent_hub_activate() {
     $action_scheduler_file = $action_scheduler_dir . 'action-scheduler.php';
     
     if (file_exists($action_scheduler_zip) && !file_exists($action_scheduler_file)) {
+        error_log('🔵 Tolliver: Attempting Action Scheduler extraction...');
+        error_log('🔵 Tolliver: ZIP path: ' . $action_scheduler_zip);
+        error_log('🔵 Tolliver: ZIP size: ' . filesize($action_scheduler_zip) . ' bytes');
+        error_log('🔵 Tolliver: ZIP readable: ' . (is_readable($action_scheduler_zip) ? 'yes' : 'no'));
+        error_log('🔵 Tolliver: Target dir: ' . AGENT_HUB_PLUGIN_DIR . 'lib/');
+        error_log('🔵 Tolliver: Target writable: ' . (is_writable(AGENT_HUB_PLUGIN_DIR . 'lib/') ? 'yes' : 'no'));
+        
         // Initialize WordPress filesystem
         require_once ABSPATH . 'wp-admin/includes/file.php';
         WP_Filesystem();
@@ -286,19 +293,28 @@ function agent_hub_activate() {
         $unzip_result = unzip_file($action_scheduler_zip, AGENT_HUB_PLUGIN_DIR . 'lib/');
         
         if (is_wp_error($unzip_result)) {
-            error_log('⚠️ Tolliver: Failed to extract Action Scheduler library: ' . $unzip_result->get_error_message());
-            update_option('402links_action_scheduler_error', $unzip_result->get_error_message());
+            $error_msg = $unzip_result->get_error_message();
+            error_log('⚠️ Tolliver: Failed to extract Action Scheduler library: ' . $error_msg);
+            update_option('402links_action_scheduler_error', $error_msg);
         } else {
-            error_log('✅ Tolliver: Action Scheduler library extracted successfully');
-            delete_option('402links_action_scheduler_error');
-            update_option('402links_action_scheduler_extracted', true);
+            // Validate extraction succeeded
+            if (file_exists($action_scheduler_file)) {
+                error_log('✅ Tolliver: Action Scheduler library extracted successfully');
+                error_log('✅ Tolliver: Verified file exists: ' . $action_scheduler_file);
+                delete_option('402links_action_scheduler_error');
+                update_option('402links_action_scheduler_extracted', current_time('mysql'));
+            } else {
+                error_log('⚠️ Tolliver: Extraction completed but action-scheduler.php not found');
+                update_option('402links_action_scheduler_error', 'Extraction completed but file not found');
+            }
         }
     } elseif (file_exists($action_scheduler_file)) {
         error_log('✅ Tolliver: Action Scheduler library already present');
-        update_option('402links_action_scheduler_extracted', true);
+        update_option('402links_action_scheduler_extracted', current_time('mysql'));
     } else {
         error_log('⚠️ Tolliver: Action Scheduler ZIP file not found at ' . $action_scheduler_zip);
-        update_option('402links_action_scheduler_error', 'ZIP file not found');
+        error_log('⚠️ Tolliver: Please ensure action-scheduler.zip exists in lib/ directory');
+        update_option('402links_action_scheduler_error', 'ZIP file not found at expected location');
     }
     
     // Flush rewrite rules for .well-known endpoint
