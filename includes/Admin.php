@@ -734,22 +734,31 @@ class Admin {
         }
         
         // SCENARIO 3: Everything is ready - sync to backend
-        error_log('402links: Site ID: ' . $site_id . ' - Syncing wallet to backend');
+        error_log('402links: Site ID: ' . $site_id . ' - Syncing settings to backend');
         
         $api = new API();
-        $result = $api->sync_wallet($site_id, $wallet);
+        $result = $api->sync_site_settings([
+            'default_price' => $default_price,
+            'payment_wallet' => $wallet
+        ]);
         
-        error_log('402links: Sync wallet API result: ' . json_encode($result));
+        error_log('402links: Sync settings API result: ' . json_encode($result));
         
         if ($result['success']) {
+            $links_updated = $result['links_updated'] ?? 0;
+            $message = $links_updated > 0 
+                ? "Configuration saved and synced successfully. Automatically updated prices for {$links_updated} existing link(s) to \${$default_price}."
+                : 'Configuration saved and synced successfully.';
+            
             wp_send_json_success([
-                'message' => 'Configuration saved and synced successfully',
+                'message' => $message,
                 'sync_success' => true,
-                'wallet' => $wallet
+                'wallet' => $wallet,
+                'links_updated' => $links_updated
             ]);
         } else {
             $sync_error = $result['error'] ?? 'Unknown sync error';
-            error_log('402links: Failed to sync wallet: ' . $sync_error);
+            error_log('402links: Failed to sync settings: ' . $sync_error);
             
             wp_send_json_success([
                 'message' => 'Configuration saved locally',
