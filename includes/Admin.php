@@ -900,7 +900,7 @@ class Admin {
         
         // Query Supabase to get all existing links for this site
         $api = new API();
-        $response = $api->request('GET', "/get-site-pages-with-links?site_id={$site_id}");
+        $response = $api->get_site_pages_with_links($site_id);
         
         if (!($response['success'] ?? false)) {
             error_log('[Link Repair] Failed to fetch existing links from database');

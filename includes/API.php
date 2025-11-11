@@ -640,6 +640,20 @@ class API {
     }
     
     /**
+     * Get site pages with their associated paid links
+     */
+    public function get_site_pages_with_links($site_id) {
+        if (!$site_id) {
+            return [
+                'success' => false,
+                'error' => 'Site ID is required'
+            ];
+        }
+        
+        return $this->request('GET', '/get-site-pages-with-links?site_id=' . $site_id);
+    }
+    
+    /**
      * Get bot registry from Supabase
      * Returns all active bots with their detection patterns
      */
