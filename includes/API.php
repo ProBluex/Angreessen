@@ -139,6 +139,36 @@ class API {
     }
     
     /**
+     * Bulk create links for multiple posts (Sprint 2 optimization)
+     */
+    public function bulk_create_links($posts_data) {
+        $site_id = get_option('402links_site_id');
+        
+        if (!$site_id) {
+            return [
+                'success' => false,
+                'error' => 'Site not registered'
+            ];
+        }
+        
+        if (empty($posts_data) || !is_array($posts_data)) {
+            return [
+                'success' => false,
+                'error' => 'No posts data provided'
+            ];
+        }
+        
+        error_log('🔵 [API] Bulk creating ' . count($posts_data) . ' links');
+        
+        $payload = [
+            'site_id' => $site_id,
+            'links' => $posts_data
+        ];
+        
+        return $this->request('POST', '/bulk-create-links', $payload);
+    }
+    
+    /**
      * Create a 402link for a WordPress post
      */
     public function create_link($post_id) {
