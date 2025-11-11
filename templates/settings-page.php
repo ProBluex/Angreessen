@@ -225,6 +225,15 @@ $is_connected = !empty($api_key) && !empty($site_id);
         
         <!-- Pagination Controls -->
         <div id="content-pagination" style="margin-top: 20px;"></div>
+        
+        <!-- Batch Processing History Section -->
+        <div class="agent-hub-section" style="margin-top: 30px;">
+            <h2>
+                <span class="dashicons dashicons-archive"></span>
+                Batch Processing History
+            </h2>
+            <div id="batch-history-container"></div>
+        </div>
     </div>
     
     <!-- Analytics Tab -->

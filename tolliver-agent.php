@@ -43,6 +43,12 @@ spl_autoload_register(function ($class) {
     }
 });
 
+// Load Action Scheduler library for background job processing
+$action_scheduler_path = AGENT_HUB_PLUGIN_DIR . 'lib/action-scheduler/action-scheduler.php';
+if (file_exists($action_scheduler_path)) {
+    require_once $action_scheduler_path;
+}
+
 // Load text domain at the correct time (WordPress 6.7+ requirement)
 add_action('init', function() {
     load_plugin_textdomain(
@@ -266,6 +272,22 @@ function agent_hub_activate() {
     // Track plugin activation state
     update_option('402links_plugin_active', true);
     update_option('402links_last_activated', current_time('mysql'));
+    
+    // Extract Action Scheduler library if not already extracted
+    $action_scheduler_zip = AGENT_HUB_PLUGIN_DIR . 'lib/action-scheduler.zip';
+    $action_scheduler_dir = AGENT_HUB_PLUGIN_DIR . 'lib/action-scheduler/';
+    $action_scheduler_file = $action_scheduler_dir . 'action-scheduler.php';
+    
+    if (file_exists($action_scheduler_zip) && !file_exists($action_scheduler_file)) {
+        WP_Filesystem();
+        $unzip_result = unzip_file($action_scheduler_zip, AGENT_HUB_PLUGIN_DIR . 'lib/');
+        
+        if (is_wp_error($unzip_result)) {
+            error_log('Tolliver: Failed to extract Action Scheduler library: ' . $unzip_result->get_error_message());
+        } else {
+            error_log('Tolliver: Action Scheduler library extracted successfully');
+        }
+    }
     
     // Flush rewrite rules for .well-known endpoint
     flush_rewrite_rules();
