@@ -30,6 +30,50 @@ class API {
     }
     
     /**
+     * Verify if agent has already paid for content (within 24h cache)
+     */
+    public function verify_agent_payment($site_id, $wordpress_post_id, $page_url, $user_agent, $ip_address) {
+        if (!$this->supabase_url || !$this->service_role_key) {
+            error_log('402links: Cannot verify agent payment - Supabase credentials missing');
+            return null;
+        }
+
+        $endpoint = $this->supabase_url . '/functions/v1/verify-agent-payment';
+        
+        $payload = [
+            'site_id' => $site_id,
+            'wordpress_post_id' => (int)$wordpress_post_id,
+            'page_url' => $page_url,
+            'user_agent' => $user_agent,
+            'ip_address' => $ip_address
+        ];
+
+        $response = wp_remote_post($endpoint, [
+            'headers' => [
+                'Authorization' => 'Bearer ' . $this->service_role_key,
+                'Content-Type' => 'application/json',
+                'apikey' => $this->service_role_key
+            ],
+            'body' => json_encode($payload),
+            'timeout' => 10
+        ]);
+
+        if (is_wp_error($response)) {
+            error_log('402links: verify-agent-payment request failed: ' . $response->get_error_message());
+            return null;
+        }
+
+        $body = json_decode(wp_remote_retrieve_body($response), true);
+        
+        if (isset($body['payment_verified']) && $body['payment_verified'] === true) {
+            error_log('402links: Agent payment verified (cached within 24h) - crawl_id: ' . ($body['crawl_id'] ?? 'unknown'));
+            return $body;
+        }
+
+        return null;
+    }
+    
+    /**
      * Register WordPress site with 402links backend
      */
     public function register_site() {

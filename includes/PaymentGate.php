@@ -239,10 +239,27 @@ class PaymentGate {
         }
         
         // ============= X402 402 RESPONSE FOR AI AGENTS =============
-        // If AI agent detected, send 402 Payment Required with X-402-* headers
+        // If AI agent detected, check for cached payment before sending 402
         if ($agent_check['is_agent']) {
-            error_log('402links: Agent detected - sending 402 response with payment requirements');
+            error_log('402links: Agent detected - checking for cached payment');
             
+            // Check if agent has already paid within last 24 hours
+            $site_id = get_option('402links_site_id');
+            $cached_payment = $api->verify_agent_payment(
+                $site_id,
+                $post->ID,
+                get_permalink($post->ID),
+                $user_agent,
+                $_SERVER['REMOTE_ADDR'] ?? ''
+            );
+            
+            if ($cached_payment && $cached_payment['payment_verified']) {
+                error_log('402links: Agent has cached payment - serving content immediately (crawl_id: ' . ($cached_payment['crawl_id'] ?? 'unknown') . ')');
+                // Allow WordPress to serve content normally
+                return;
+            }
+            
+            error_log('402links: No cached payment found - sending 402 response with payment requirements');
             $requirements = self::get_payment_requirements($post->ID);
             self::send_402_response($requirements);
             exit;
