@@ -30,6 +30,42 @@ class API {
     }
     
     /**
+     * Record agent visit to database (if agent doesn't exist, create it)
+     * 
+     * @param int $post_id WordPress post ID
+     * @param string $agent_name Agent name
+     * @param string $user_agent Full user agent string
+     * @return void
+     */
+    public function record_agent_visit($post_id, $agent_name, $user_agent) {
+        if (!$this->api_endpoint) {
+            error_log('402links: Cannot record agent visit - API endpoint not configured');
+            return;
+        }
+
+        $endpoint = $this->api_endpoint . '/record-agent-visit';
+        
+        $payload = [
+            'wordpress_post_id' => (int)$post_id,
+            'site_url' => get_site_url(),
+            'agent_name' => $agent_name,
+            'user_agent' => $user_agent,
+            'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
+            'page_url' => get_permalink($post_id)
+        ];
+
+        wp_remote_post($endpoint, [
+            'headers' => [
+                'Authorization' => 'Bearer ' . $this->api_key,
+                'Content-Type' => 'application/json'
+            ],
+            'body' => json_encode($payload),
+            'timeout' => 5,
+            'blocking' => false // Fire-and-forget
+        ]);
+    }
+    
+    /**
      * Verify if agent has already paid for content (within 24h cache)
      */
     public function verify_agent_payment($site_id, $wordpress_post_id, $page_url, $user_agent, $ip_address) {

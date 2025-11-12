@@ -6,10 +6,11 @@ class PaymentGate {
      * Intercept requests and apply 402 payment gate
      * Called on 'template_redirect' hook
      * 
-     * DUAL DETECTION: AI agents always see 402, humans see 402 only if blocked
+     * HUMAN-FIRST ARCHITECTURE: Detect humans, everything else is agent
+     * Flow: Human check → Payment check → 402 response → Violation tracking
      */
     public static function intercept_request() {
-        // Handle OPTIONS preflight requests for CORS
+        // ============= STEP 1: OPTIONS PREFLIGHT (CORS) =============
         if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
             header('Access-Control-Allow-Origin: *');
             header('Access-Control-Allow-Headers: X-PAYMENT, Content-Type, Authorization');
@@ -19,20 +20,21 @@ class PaymentGate {
             exit;
         }
         
-        // Skip if not singular post/page
-        if (!is_singular(['post', 'page'])) {
-            return;
-        }
-        
         global $post;
         
-        // Accept either meta key for backwards compatibility
+        // ============= STEP 2: PROTECTION CHECK =============
         $short_id = get_post_meta($post->ID, '_402links_short_id', true);
-        $link_id  = get_post_meta($post->ID, '_402links_id', true); // legacy fallback
         
-        $has_protection = !empty($short_id) || !empty($link_id);
+        if (empty($short_id)) {
+            return; // Not protected - serve content normally
+        }
         
-        // Skip if user is logged in admin
+        error_log('===== 402links PaymentGate: Protected Content Request =====');
+        error_log('Post ID: ' . $post->ID . ' | Title: ' . get_the_title($post->ID));
+        error_log('Short ID: ' . $short_id);
+        error_log('User-Agent: ' . ($_SERVER['HTTP_USER_AGENT'] ?? 'NONE'));
+        
+        // ============= STEP 3: ADMIN BYPASS =============
         if (current_user_can('manage_options')) {
             // If admin is viewing protected post, show preview notice
             if ($has_protection) {
@@ -75,157 +77,85 @@ class PaymentGate {
             return;
         }
         
-        error_log('===== 402links PaymentGate: Intercepting Request =====');
-        error_log('Post ID: ' . $post->ID);
-        error_log('Post Title: ' . get_the_title($post->ID));
-        error_log('User-Agent: ' . ($_SERVER['HTTP_USER_AGENT'] ?? 'NONE'));
-        
-        // Check if content is protected
-        if (!$has_protection) {
-            error_log('402links: NOT PROTECTED - No short_id/link_id meta found');
-            error_log('===== 402links PaymentGate: ALLOWING ACCESS =====');
-            return; // Not protected
-        }
-        
-        error_log('402links ID meta: ' . ($short_id ?: $link_id ?: 'NOT SET'));
-        
+        // ============= STEP 4: HUMAN DETECTION =============
         $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
-        $agent_check = AgentDetector::is_ai_agent($user_agent);
+        $human_check = HumanDetector::is_human($user_agent);
         
-        error_log('Agent Check Result: ' . json_encode($agent_check));
+        error_log('Human Detection: ' . json_encode($human_check));
         
-        // Check robots.txt compliance for AI agents
-        $violation_data = null;
-        if ($agent_check['is_agent']) {
-            $request_path = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?: '/';
-            $violation_check = AgentDetector::check_robots_txt_compliance($user_agent, $request_path);
+        // ============= STEP 5: HUMAN PATH =============
+        if ($human_check['is_human']) {
+            error_log('402links: HUMAN DETECTED');
             
-            if ($violation_check !== null) {
-                error_log('402links: ROBOTS.TXT VIOLATION DETECTED - ' . json_encode($violation_check));
-                $violation_data = $violation_check;
-                
-                // Report robots.txt violation immediately
-                API::report_violation([
-                    'wordpress_post_id' => $post->ID,
-                    'agent_name' => $agent_check['agent_name'] ?? 'Unknown',
-                    'user_agent' => $user_agent,
-                    'ip_address' => AgentDetector::get_client_ip(),
-                    'requested_url' => $_SERVER['REQUEST_URI'] ?? '',
-                    'violation_type' => 'robots_txt',
-                    'robots_txt_directive' => $violation_check['robots_txt_directive'] ?? null
-                ]);
-            } else {
-                error_log('402links: Robots.txt compliant or no rules found');
-            }
-        }
-        
-        // Determine if we should show 402
-        $should_block = false;
-        
-        if ($agent_check['is_agent']) {
-            error_log('402links: AGENT DETECTED - Will block');
-            $should_block = true;
-        } else {
-            // For humans, check the block_humans flag
+            // Check if humans are blocked for this content
             $block_humans = get_post_meta($post->ID, '_402links_block_humans', true);
-            error_log('Block Humans Meta: ' . ($block_humans ?: '0'));
             
             if ($block_humans === '1' || $block_humans === 1) {
-                error_log('402links: HUMAN BLOCKING ENABLED - Will block');
-                $should_block = true;
-            } else {
-                error_log('402links: HUMAN ALLOWED - Not blocking');
-            }
-        }
-        
-        if (!$should_block) {
-            error_log('===== 402links PaymentGate: ALLOWING ACCESS =====');
-            return; // Allow access
-        }
-        
-        error_log('===== 402links PaymentGate: BLOCKING REQUEST =====');
-        
-        // ============= CHECK FOR 402LINKS INVOICE RECEIPT =============
-        // If agent is returning from 402links.com with invoice receipt, validate it
-        $invoice_id = $_GET['invoice'] ?? '';
-        $verified = $_GET['verified'] ?? '';
-        
-        if ($invoice_id && $verified === 'true') {
-            error_log('402links: Validating invoice receipt from 402links.com redirect: ' . $invoice_id);
-            
-            // Call 402links API to confirm payment
-            $validation = self::validate_invoice($invoice_id, $post->ID, get_site_url());
-            
-            if ($validation['isValid']) {
-                error_log('402links: Invoice valid, granting access');
-                error_log('  - Transaction: ' . ($validation['transaction_hash'] ?? 'none'));
-                error_log('  - Amount: ' . ($validation['amount'] ?? 0) . ' ' . ($validation['currency'] ?? 'USDC'));
+                error_log('402links: Human blocking enabled - redirecting to 402links.com/p/' . $short_id);
                 
-                // Log the access
-                self::log_agent_access($post->ID, $invoice_id, $validation);
+                $return_url = get_permalink($post->ID);
+                $redirect_url = 'https://402links.com/p/' . $short_id . '?return_to=' . urlencode($return_url);
                 
-                // Increment usage count
-                self::increment_link_usage($post->ID);
-                
-                // ✅ ALLOW ACCESS - WordPress will serve content normally
-                error_log('===== 402links PaymentGate: INVOICE VERIFIED - SERVING CONTENT =====');
-                return; // Invoice valid, serve content
-            } else {
-                // Invoice validation failed - return 403 with clear error
-                $error_code = $validation['code'] ?? 'VALIDATION_FAILED';
-                $error_msg = $validation['error'] ?? 'Invoice validation failed';
-                
-                error_log('402links: Invoice validation failed: ' . $error_msg . ' (Code: ' . $error_code . ')');
-                
-                status_header(403);
-                header('Content-Type: application/json');
-                echo json_encode([
-                    'error' => 'Invoice validation failed',
-                    'code' => $error_code,
-                    'message' => $error_msg,
-                    'invoice_id' => $invoice_id
-                ]);
+                status_header(302);
+                header('Location: ' . $redirect_url);
                 exit;
             }
+            
+            error_log('402links: Human allowed - serving content');
+            return; // Serve content to human
         }
         
-        // Log the crawl attempt with violation data if present
-        AgentDetector::log_crawl($post->ID, $agent_check, 'pending', $violation_data);
+        // ============= STEP 6: AGENT PATH =============
+        error_log('402links: AGENT DETECTED (not human)');
         
-        // Check if blacklisted
-        $settings = get_option('402links_settings');
+        $agent_name = HumanDetector::extract_agent_name($user_agent);
+        error_log('402links: Agent name: ' . $agent_name);
+        
+        // Record agent visit (fire-and-forget)
+        $api = new API();
+        $api->record_agent_visit($post->ID, $agent_name, $user_agent);
+        
+        // Check if agent is blacklisted
         $site_id = get_option('402links_site_id');
         if (AgentDetector::is_blacklisted($user_agent, $site_id)) {
-            wp_die('Access denied: Agent blacklisted', 'Forbidden', ['response' => 403]);
+            error_log('402links: Agent is blacklisted - denying access');
+            status_header(403);
+            header('Content-Type: application/json');
+            echo json_encode([
+                'error' => 'Access denied',
+                'message' => 'This agent is blacklisted'
+            ]);
+            exit;
         }
         
-        // ============= X402 NATIVE PAYMENT FLOW =============
-        // Check for X-PAYMENT header (x402 protocol)
+        // ============= STEP 7: CHECK X-PAYMENT HEADER =============
         $payment_header = $_SERVER['HTTP_X_PAYMENT'] ?? '';
         
-        error_log('402links: X-PAYMENT header present: ' . (!empty($payment_header) ? 'YES' : 'NO'));
-        
         if (!empty($payment_header)) {
-            error_log('402links: Processing x402 payment with CDP facilitator...');
+            error_log('402links: X-PAYMENT header present - verifying payment');
             
-            // Get payment requirements for verification
             $requirements = self::get_payment_requirements($post->ID);
-            
-            // Verify payment with backend CDP facilitator
             $verification = self::verify_payment($payment_header, $requirements);
             
             if (!$verification['isValid']) {
-                error_log('402links: Payment verification FAILED - ' . ($verification['error'] ?? 'unknown error'));
-                self::send_402_response($requirements, $verification['error'] ?? 'Payment verification failed');
+                error_log('402links: Payment verification FAILED - ' . ($verification['error'] ?? 'unknown'));
+                
+                // VIOLATION: Agent provided invalid payment
+                self::report_violation($post->ID, $agent_name, $user_agent, 'invalid_payment');
+                
+                self::send_402_response($requirements, $verification['error'] ?? 'Invalid payment');
                 exit;
             }
             
-            error_log('402links: Payment verification SUCCEEDED - txHash: ' . ($verification['transaction'] ?? 'none'));
+            error_log('402links: Payment VERIFIED - txHash: ' . ($verification['transaction'] ?? 'none'));
             
-            // Log successful payment to Supabase and local DB
-            self::log_agent_payment($post->ID, $verification, $agent_check);
+            // Log successful payment
+            self::log_agent_payment($post->ID, $verification, [
+                'agent_name' => $agent_name,
+                'is_agent' => true
+            ]);
             
-            // Set settlement header for response
+            // Set settlement header
             add_filter('wp_headers', function($headers) use ($verification) {
                 if (isset($verification['settlement_header'])) {
                     $headers['X-PAYMENT-RESPONSE'] = $verification['settlement_header'];
@@ -233,63 +163,93 @@ class PaymentGate {
                 return $headers;
             });
             
-            // ✅ ALLOW ACCESS - WordPress will serve content normally
-            error_log('===== 402links PaymentGate: PAYMENT VERIFIED - SERVING CONTENT =====');
-            return; // Payment successful, serve content
-        }
-        
-        // ============= X402 402 RESPONSE FOR AI AGENTS =============
-        // If AI agent detected, check for cached payment before sending 402
-        if ($agent_check['is_agent']) {
-            error_log('402links: Agent detected - checking for cached payment');
-            
-            // Check if agent has already paid within last 24 hours
-            $site_id = get_option('402links_site_id');
-            $cached_payment = $api->verify_agent_payment(
-                $site_id,
-                $post->ID,
-                get_permalink($post->ID),
-                $user_agent,
-                $_SERVER['REMOTE_ADDR'] ?? ''
-            );
-            
-            if ($cached_payment && $cached_payment['payment_verified']) {
-                error_log('402links: Agent has cached payment - serving content immediately (crawl_id: ' . ($cached_payment['crawl_id'] ?? 'unknown') . ')');
-                // Allow WordPress to serve content normally
-                return;
-            }
-            
-            error_log('402links: No cached payment found - sending 402 response with payment requirements');
-            $requirements = self::get_payment_requirements($post->ID);
-            self::send_402_response($requirements);
+            // Serve JSON content
+            error_log('402links: Serving JSON content to agent');
+            self::serve_json_content($post->ID);
             exit;
         }
         
-        // ============= 402LINKS.COM REDIRECT FOR HUMANS =============
-        // For humans: redirect to 402links.com payment UI
-        $short_id = get_post_meta($post->ID, '_402links_short_id', true);
+        // ============= STEP 8: CHECK CACHED PAYMENT =============
+        error_log('402links: No X-PAYMENT header - checking for cached payment');
         
-        if ($short_id) {
-            error_log('402links: Redirecting human to 402links.com/p/' . $short_id);
+        $cached_payment = $api->verify_agent_payment(
+            $site_id,
+            $post->ID,
+            get_permalink($post->ID),
+            $user_agent,
+            $_SERVER['REMOTE_ADDR'] ?? ''
+        );
+        
+        if ($cached_payment && $cached_payment['payment_verified']) {
+            error_log('402links: Cached payment found (crawl_id: ' . ($cached_payment['crawl_id'] ?? 'unknown') . ')');
             
-            $return_url = get_permalink($post->ID);
-            $redirect_url = 'https://402links.com/p/' . $short_id . '?return_to=' . urlencode($return_url);
-            
-            status_header(302);
-            header('Location: ' . $redirect_url);
+            // Serve JSON content
+            self::serve_json_content($post->ID);
             exit;
-        } else {
-            error_log('402links: ERROR - Missing short_id for post ' . $post->ID);
-            
-            status_header(500);
+        }
+        
+        // ============= STEP 9: SEND 402 PAYMENT REQUIRED =============
+        error_log('402links: No payment found - sending 402 Payment Required');
+        
+        $requirements = self::get_payment_requirements($post->ID);
+        self::send_402_response($requirements);
+        exit;
+    }
+    
+    /**
+     * Serve JSON content to agent
+     * 
+     * @param int $post_id
+     */
+    private static function serve_json_content($post_id) {
+        $post = get_post($post_id);
+        
+        if (!$post) {
+            status_header(404);
             header('Content-Type: application/json');
-            echo json_encode([
-                'error' => 'Configuration error',
-                'message' => 'This content is not properly configured. Please contact the site administrator.',
-                'details' => 'Missing short_id for post ' . $post->ID
-            ]);
+            echo json_encode(['error' => 'Content not found']);
             exit;
         }
+        
+        $content = [
+            'id' => $post->ID,
+            'title' => get_the_title($post->ID),
+            'content' => apply_filters('the_content', $post->post_content),
+            'excerpt' => get_the_excerpt($post->ID),
+            'author' => get_the_author_meta('display_name', $post->post_author),
+            'published_at' => $post->post_date,
+            'modified_at' => $post->post_modified,
+            'url' => get_permalink($post->ID),
+            'word_count' => str_word_count(strip_tags($post->post_content))
+        ];
+        
+        status_header(200);
+        header('Content-Type: application/json');
+        header('Access-Control-Allow-Origin: *');
+        echo json_encode($content, JSON_PRETTY_PRINT);
+        exit;
+    }
+    
+    /**
+     * Report violation to backend
+     * 
+     * @param int $post_id
+     * @param string $agent_name
+     * @param string $user_agent
+     * @param string $violation_type
+     */
+    private static function report_violation($post_id, $agent_name, $user_agent, $violation_type) {
+        error_log('402links: VIOLATION DETECTED - ' . $violation_type);
+        
+        $api = new API();
+        $api->report_violation([
+            'wordpress_post_id' => $post_id,
+            'agent_name' => $agent_name,
+            'user_agent' => $user_agent,
+            'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
+            'requested_url' => $_SERVER['REQUEST_URI'] ?? '',
+            'violation_type' => $violation_type
+        ]);
     }
     
     /**
