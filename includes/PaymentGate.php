@@ -37,7 +37,7 @@ class PaymentGate {
         // ============= STEP 3: ADMIN BYPASS =============
         if (current_user_can('manage_options')) {
             // If admin is viewing protected post, show preview notice
-            if ($has_protection) {
+            if (!empty($short_id)) {
                 add_action('admin_bar_menu', function($wp_admin_bar) use ($post) {
                     $block_humans = get_post_meta($post->ID, '_402links_block_humans', true);
                     $protection_type = ($block_humans === '1' || $block_humans === 1) 
@@ -111,11 +111,7 @@ class PaymentGate {
         $agent_name = HumanDetector::extract_agent_name($user_agent);
         error_log('402links: Agent name: ' . $agent_name);
         
-        // Record agent visit (fire-and-forget)
-        $api = new API();
-        $api->record_agent_visit($post->ID, $agent_name, $user_agent);
-        
-        // Check if agent is blacklisted
+        // Check if agent is blacklisted FIRST (before recording)
         $site_id = get_option('402links_site_id');
         if (AgentDetector::is_blacklisted($user_agent, $site_id)) {
             error_log('402links: Agent is blacklisted - denying access');
@@ -127,6 +123,10 @@ class PaymentGate {
             ]);
             exit;
         }
+        
+        // Record agent visit (fire-and-forget, only if not blacklisted)
+        $api = new API();
+        $api->record_agent_visit($post->ID, $agent_name, $user_agent);
         
         // ============= STEP 7: CHECK X-PAYMENT HEADER =============
         $payment_header = $_SERVER['HTTP_X_PAYMENT'] ?? '';
@@ -190,6 +190,19 @@ class PaymentGate {
         
         // ============= STEP 9: SEND 402 PAYMENT REQUIRED =============
         error_log('402links: No payment found - sending 402 Payment Required');
+        
+        // Track repeated failed access attempts for brute force detection
+        $attempt_key = '402links_failed_attempts_' . md5($user_agent . $post->ID);
+        $failed_attempts = (int) get_transient($attempt_key);
+        
+        if ($failed_attempts >= 3) {
+            // VIOLATION: Agent is brute forcing
+            error_log('402links: VIOLATION - Brute force detected after ' . $failed_attempts . ' attempts');
+            self::report_violation($post->ID, $agent_name, $user_agent, 'brute_force_bypass');
+        }
+        
+        // Increment counter (expires in 1 hour)
+        set_transient($attempt_key, $failed_attempts + 1, 3600);
         
         $requirements = self::get_payment_requirements($post->ID);
         self::send_402_response($requirements);
@@ -428,9 +441,14 @@ class PaymentGate {
         header('X-402-Resource: ' . $requirements['resource']);
         header('X-402-Discovery: ' . get_site_url() . '/.well-known/402.json');
         
+        // Robots.txt reference (flow step d)
+        header('X-402-Robots: ' . get_site_url() . '/robots.txt');
+        header('X-Robots-Tag: noindex, nofollow');
+        header('Link: <' . get_site_url() . '/robots.txt>; rel="robots"');
+        
         // Advertise payment provider endpoint
         header('X-402-Provider: ' . ($requirements['resource'] ?? ''));
-        header('Link: <' . ($requirements['resource'] ?? '') . '>; rel="payment"');
+        header('Link: <' . ($requirements['resource'] ?? '') . '>; rel="payment", <' . get_site_url() . '/robots.txt>; rel="robots"');
         
         // Add CORS headers for x402 protocol
         header('Access-Control-Allow-Origin: *');
