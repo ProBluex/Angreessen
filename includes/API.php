@@ -69,12 +69,12 @@ class API {
      * Verify if agent has already paid for content (within 24h cache)
      */
     public function verify_agent_payment($site_id, $wordpress_post_id, $page_url, $user_agent, $ip_address) {
-        if (!$this->supabase_url || !$this->service_role_key) {
-            error_log('402links: Cannot verify agent payment - Supabase credentials missing');
+        if (!$this->api_endpoint || !$this->api_key) {
+            error_log('402links: Cannot verify agent payment - API credentials missing');
             return null;
         }
 
-        $endpoint = $this->supabase_url . '/functions/v1/verify-agent-payment';
+        $endpoint = $this->api_endpoint . '/verify-agent-payment';
         
         $payload = [
             'site_id' => $site_id,
@@ -86,9 +86,8 @@ class API {
 
         $response = wp_remote_post($endpoint, [
             'headers' => [
-                'Authorization' => 'Bearer ' . $this->service_role_key,
-                'Content-Type' => 'application/json',
-                'apikey' => $this->service_role_key
+                'Authorization' => 'Bearer ' . $this->api_key,
+                'Content-Type' => 'application/json'
             ],
             'body' => json_encode($payload),
             'timeout' => 10
