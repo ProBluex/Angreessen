@@ -484,7 +484,8 @@ class PaymentGate {
         
         // Force HTTP 402 in a protocol-agnostic way
         $code = 402;
-        http_response_code($code);
+        status_header($code);      // WordPress-native status handling
+        http_response_code($code); // PHP standard
         
         // For CGI/FastCGI (nginx/php-fpm) compatibility
         // (Apache handler ignores this safely; HTTP/2 will map via :status)
