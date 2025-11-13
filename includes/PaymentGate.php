@@ -323,16 +323,82 @@ class PaymentGate {
             'maxAmountRequired' => $maxAmountRequired,
             'payTo' => $payment_wallet,
             'resource' => $resource_url,
-            'description' => get_the_title($post_id),
-            'mimeType' => 'text/html',
-            'maxTimeoutSeconds' => 60,
+            'description' => sprintf(
+                'Access to "%s" - Premium WordPress content. Price: $%s USDC',
+                get_the_title($post_id),
+                number_format($price, 2)
+            ),
+            'mimeType' => 'application/json',
+            'maxTimeoutSeconds' => 900,
+            'outputSchema' => [
+                'input' => [
+                    'type' => 'http',
+                    'method' => 'GET',
+                    'discoverable' => true,
+                    'headerFields' => [
+                        'X-PAYMENT' => [
+                            'type' => 'string',
+                            'required' => true,
+                            'description' => 'Base64-encoded JSON PaymentPayload containing EIP-3009 signature and authorization'
+                        ]
+                    ]
+                ],
+                'output' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'id' => [
+                            'type' => 'number',
+                            'description' => 'WordPress post ID'
+                        ],
+                        'title' => [
+                            'type' => 'string',
+                            'description' => 'Post title'
+                        ],
+                        'content' => [
+                            'type' => 'string',
+                            'description' => 'Full post content (HTML)'
+                        ],
+                        'excerpt' => [
+                            'type' => 'string',
+                            'description' => 'Post excerpt/summary'
+                        ],
+                        'author' => [
+                            'type' => 'string',
+                            'description' => 'Author display name'
+                        ],
+                        'published_at' => [
+                            'type' => 'string',
+                            'description' => 'Publication date (ISO 8601)'
+                        ],
+                        'modified_at' => [
+                            'type' => 'string',
+                            'description' => 'Last modification date (ISO 8601)'
+                        ],
+                        'url' => [
+                            'type' => 'string',
+                            'description' => 'Permalink to the post'
+                        ],
+                        'word_count' => [
+                            'type' => 'number',
+                            'description' => 'Word count of content'
+                        ]
+                    ],
+                    'required' => ['id', 'title', 'content', 'url']
+                ]
+            ],
             'extra' => [
-                'name' => 'USDC',
+                'name' => 'USD Coin',
                 'version' => '2',
                 'bind_hash' => $bind_hash,
                 'invoice_id' => $invoice_id,
                 'post_id' => $post_id,
-                'site_url' => get_site_url()
+                'site_url' => get_site_url(),
+                'brand' => [
+                    'name' => '402links',
+                    'logo' => 'https://402links.com/assets/tolliver-character-Bn6kJH3V.png',
+                    'icon' => 'https://402links.com/assets/tolliver-character-Bn6kJH3V.png',
+                    'color' => '#0E7AFE'
+                ]
             ]
         ];
     }
@@ -440,6 +506,7 @@ class PaymentGate {
         header('X-402-PayTo: ' . $requirements['payTo']);
         header('X-402-Resource: ' . $requirements['resource']);
         header('X-402-Discovery: ' . get_site_url() . '/.well-known/402.json');
+        header('X-402-Discoverable: true');
         
         // Robots.txt reference (flow step d)
         header('X-402-Robots: ' . get_site_url() . '/robots.txt');
