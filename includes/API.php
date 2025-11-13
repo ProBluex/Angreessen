@@ -4,20 +4,11 @@ namespace AgentHub;
 class API {
     private $api_key;
     private $api_endpoint;
-    private $supabase_url;
-    private $service_role_key;
     
     public function __construct() {
         $this->api_key = get_option('402links_api_key');
         $settings = get_option('402links_settings');
         $this->api_endpoint = $settings['api_endpoint'] ?? 'https://api.402links.com/v1';
-        
-        // Initialize Supabase credentials
-        $this->supabase_url = 'https://cnionwnknwnzpwfuacse.supabase.co';
-        $this->service_role_key = get_option('402links_supabase_service_key');
-        
-        error_log('🟦 [API Constructor] Supabase URL: ' . ($this->supabase_url ?: 'NOT SET'));
-        error_log('🟦 [API Constructor] Service key: ' . ($this->service_role_key ? 'SET (length: ' . strlen($this->service_role_key) . ')' : 'NOT SET'));
     }
     
     // Public getters for parallel requests
@@ -810,97 +801,37 @@ class API {
     }
     
     /**
-     * Get top performing pages from Supabase
+     * Get top performing pages via API proxy
      */
     public function get_top_pages($timeframe = '30d', $limit = 10, $offset = 0) {
-        error_log('🟦 [API] === GET TOP PAGES START ===');
-        
         $site_id = get_option('402links_site_id');
-        error_log('🟦 [API] Site ID: ' . ($site_id ?: 'NOT SET'));
-        
-        // If site_id is missing, try to fetch it from Supabase
         if (!$site_id) {
-            error_log('🔵 [API] Site ID missing - attempting to fetch from Supabase');
-            $site_url = get_site_url();
-            
-            // Query Supabase to find this site
-            $fetch_url = $this->supabase_url . '/rest/v1/registered_sites?site_url=eq.' . urlencode($site_url);
-            $fetch_response = wp_remote_get(
-                $fetch_url,
-                [
-                    'headers' => [
-                        'Authorization' => 'Bearer ' . $this->service_role_key,
-                        'apikey' => $this->service_role_key,
-                        'Content-Type' => 'application/json'
-                    ]
-                ]
-            );
-            
-            if (!is_wp_error($fetch_response)) {
-                $body = json_decode(wp_remote_retrieve_body($fetch_response), true);
-                if (!empty($body) && isset($body[0]['id'])) {
-                    $site_id = $body[0]['id'];
-                    update_option('402links_site_id', $site_id);
-                    error_log('🟢 [API] Site ID fetched and stored: ' . $site_id);
-                }
-            }
+            error_log('[402links] get_top_pages: Site ID not found');
+            return ['success' => false, 'error' => 'Site not registered'];
         }
-        
-        if (!$site_id) {
-            error_log('🔴 [API] ERROR: Site not registered (no site_id)');
-            return [
-                'success' => false,
-                'error' => 'Site not registered'
-            ];
-        }
-        
-        $url = $this->supabase_url . '/functions/v1/agent-hub-top-pages?' . http_build_query([
+
+        // Build query params
+        $params = [
             'site_id' => $site_id,
             'limit' => $limit,
             'offset' => $offset
-        ]);
-        
-        error_log('🟦 [API] Edge function URL: ' . $url);
-        error_log('🟦 [API] Supabase URL base: ' . $this->supabase_url);
-        error_log('🟦 [API] Has service key: ' . (empty($this->service_role_key) ? 'NO' : 'YES (length: ' . strlen($this->service_role_key) . ')'));
-        
-        $response = wp_remote_get(
-            $url,
-            [
-                'headers' => [
-                    'Authorization' => 'Bearer ' . $this->service_role_key,
-                    'Content-Type' => 'application/json'
-                ],
-                'timeout' => 10
-            ]
-        );
-        
-        if (is_wp_error($response)) {
-            error_log('🔴 [API] WP Error: ' . $response->get_error_message());
+        ];
+
+        // Call proxied endpoint via WordPress API key authentication
+        $endpoint = '/agent-hub-top-pages?' . http_build_query($params);
+        $result = $this->request('GET', $endpoint);
+
+        if ($result && isset($result['pages'])) {
             return [
-                'success' => false,
-                'error' => $response->get_error_message()
+                'success' => true,
+                'pages' => $result['pages'],
+                'total' => $result['total'] ?? count($result['pages']),
+                'limit' => $limit,
+                'offset' => $offset
             ];
         }
-        
-        $status_code = wp_remote_retrieve_response_code($response);
-        $body_raw = wp_remote_retrieve_body($response);
-        error_log('🟢 [API] Response status: ' . $status_code);
-        error_log('🟢 [API] Response body (raw): ' . $body_raw);
-        
-        $body = json_decode($body_raw, true);
-        error_log('🟢 [API] Response body (parsed): ' . print_r($body, true));
-        
-        $pages_count = count($body['pages'] ?? []);
-        error_log('🟢 [API] Success! Returning ' . $pages_count . ' pages, total: ' . ($body['total'] ?? 0));
-        
-        return [
-            'success' => true,
-            'pages' => $body['pages'] ?? [],
-            'total' => $body['total'] ?? 0,
-            'limit' => $limit,
-            'offset' => $offset
-        ];
+
+        return ['success' => false, 'error' => 'Failed to fetch top pages'];
     }
     
     /**
