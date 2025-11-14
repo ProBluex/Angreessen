@@ -488,7 +488,7 @@ class PaymentGate {
         header('Vary: Accept, User-Agent');
         
         // Set headers with x402 discovery info
-        header('WWW-Authenticate: x402="' . $www_auth_payload . '"');
+        //header('WWW-Authenticate: x402="' . $www_auth_payload . '"');
         header('X-402-Version: 1');
         header('X-402-Scheme: exact');
         header('X-402-Network: ' . $requirements['network']);
