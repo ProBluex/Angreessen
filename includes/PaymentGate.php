@@ -487,8 +487,9 @@ class PaymentGate {
         header('Pragma: no-cache');
         header('Vary: Accept, User-Agent');
         
-        // Set headers with x402 discovery info
-        //header('WWW-Authenticate: x402="' . $www_auth_payload . '"');
+        // Use X-402-Authenticate instead of WWW-Authenticate to prevent nginx from overriding 402 to 401
+        // nginx enforces RFC 7235 which requires 401 when WWW-Authenticate is present
+        header('X-402-Authenticate: x402="' . $www_auth_payload . '"');
         header('X-402-Version: 1');
         header('X-402-Scheme: exact');
         header('X-402-Network: ' . $requirements['network']);
@@ -513,7 +514,7 @@ class PaymentGate {
         header('Access-Control-Allow-Origin: *');
         header('Access-Control-Allow-Headers: X-PAYMENT, Content-Type, Authorization');
         header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-        header('Access-Control-Expose-Headers: WWW-Authenticate, X-402-Version, X-402-Scheme, X-402-Network, X-402-Amount, X-402-Currency, X-402-Asset, X-402-PayTo, X-402-Resource, X-402-Discovery, X-402-Provider, Link, X-PAYMENT-RESPONSE');
+        header('Access-Control-Expose-Headers: X-402-Authenticate, X-402-Version, X-402-Scheme, X-402-Network, X-402-Amount, X-402-Currency, X-402-Asset, X-402-PayTo, X-402-Resource, X-402-Discovery, X-402-Provider, Link, X-PAYMENT-RESPONSE');
         
         // Force HTTP 402 AFTER all headers (prevents nginx override)
         $code = 402;
