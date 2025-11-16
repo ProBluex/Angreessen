@@ -6,7 +6,7 @@
  * Version:           3.17.7
  * Author: Tolliver Team
  * Author URI: https://402links.com
- * License: MIT
+ * License: GPLv2 or late
  */
 
 // Exit if accessed directly
