@@ -11,6 +11,7 @@ class Core {
             add_action('admin_menu', [Admin::class, 'register_menu']);
             add_action('admin_enqueue_scripts', [Admin::class, 'enqueue_assets']);
             add_action('add_meta_boxes', [Admin::class, 'add_meta_box']);
+            add_action('admin_notices', [Admin::class, 'show_setup_notice']);
             add_action('admin_notices', [Admin::class, 'show_provisioning_notice']);
         }
         
@@ -38,6 +39,7 @@ class Core {
         add_action('wp_ajax_agent_hub_toggle_human_access', [Admin::class, 'ajax_toggle_human_access']);
         add_action('wp_ajax_agent_hub_get_content', [Admin::class, 'ajax_get_content']);
         add_action('wp_ajax_agent_hub_bulk_generate', [Admin::class, 'ajax_bulk_generate']);
+        add_action('wp_ajax_agent_hub_complete_setup', [Admin::class, 'ajax_complete_setup']);
         
         // Batch processing AJAX handlers
         add_action('wp_ajax_agent_hub_start_batch_generation', [Admin::class, 'ajax_start_batch_generation']);

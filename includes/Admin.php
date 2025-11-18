@@ -50,6 +50,68 @@ class Admin {
     }
     
     /**
+     * Show setup wizard notice (requires user consent before provisioning)
+     */
+    public static function show_setup_notice() {
+        if (!get_option('402links_needs_setup')) {
+            return;
+        }
+        
+        $site_id = get_option('402links_site_id');
+        if ($site_id) {
+            // Already provisioned, clear flag
+            delete_option('402links_needs_setup');
+            return;
+        }
+        
+        ?>
+        <div class="notice notice-info is-dismissible" id="tolliver-setup-notice">
+            <h3>🚀 Welcome to Tolliver - Ai Agent Pay Collector!</h3>
+            <p><strong>Setup Required:</strong> This plugin requires connecting to 402links.com to enable AI agent payments.</p>
+            
+            <p><strong>What will be sent to 402links.com:</strong></p>
+            <ul style="list-style: disc; margin-left: 20px;">
+                <li>Your site URL, name, and admin email</li>
+                <li>WordPress version and plugin version</li>
+                <li>Post/page data when you create paid links</li>
+                <li>AI agent access logs and payment transactions</li>
+            </ul>
+            
+            <p>By clicking "Complete Setup", you agree to the <a href="https://402links.com/terms" target="_blank">402links Terms of Service</a> and <a href="https://402links.com/privacy" target="_blank">Privacy Policy</a>.</p>
+            
+            <p>
+                <button type="button" class="button button-primary" id="tolliver-complete-setup">Complete Setup</button>
+                <a href="<?php echo admin_url('plugins.php'); ?>" class="button">Skip for Now</a>
+            </p>
+        </div>
+        
+        <script>
+        jQuery(document).ready(function($) {
+            $('#tolliver-complete-setup').on('click', function() {
+                var button = $(this);
+                button.prop('disabled', true).text('Setting up...');
+                
+                $.post(ajaxurl, {
+                    action: 'agent_hub_complete_setup',
+                    nonce: '<?php echo wp_create_nonce("tolliver_setup"); ?>'
+                }, function(response) {
+                    if (response.success) {
+                        $('#tolliver-setup-notice').html('<p>✅ Setup complete! Site ID: <code>' + response.data.site_id + '</code></p>');
+                        setTimeout(function() {
+                            location.reload();
+                        }, 2000);
+                    } else {
+                        alert('Setup failed: ' + response.data.message);
+                        button.prop('disabled', false).text('Complete Setup');
+                    }
+                });
+            });
+        });
+        </script>
+        <?php
+    }
+    
+    /**
      * Register admin menu
      */
     public static function register_menu() {
@@ -1141,6 +1203,33 @@ class Admin {
             wp_send_json_success($result);
         } else {
             wp_send_json_error($result);
+        }
+    }
+    
+    /**
+     * AJAX handler for completing setup (triggers provisioning)
+     */
+    public static function ajax_complete_setup() {
+        check_ajax_referer('tolliver_setup', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Unauthorized']);
+        }
+        
+        // Trigger provisioning
+        require_once AGENT_HUB_PLUGIN_DIR . 'includes/Installer.php';
+        $result = Installer::manual_provision();
+        
+        if ($result['success']) {
+            delete_option('402links_needs_setup');
+            wp_send_json_success([
+                'site_id' => $result['site_id'],
+                'message' => 'Setup completed successfully'
+            ]);
+        } else {
+            wp_send_json_error([
+                'message' => $result['error'] ?? 'Unknown error'
+            ]);
         }
     }
 }

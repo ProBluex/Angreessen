@@ -3,7 +3,7 @@ namespace AgentHub;
 
 class Installer {
     /**
-     * Plugin activation hook - auto-provision the site
+     * Plugin activation hook - set flag for deferred provisioning
      */
     public static function activate() {
         // Check if already provisioned
@@ -11,12 +11,13 @@ class Installer {
         $existing_site_id = get_option('402links_site_id');
         
         if ($existing_key && $existing_site_id) {
-            error_log('402links: Already provisioned, skipping auto-provision');
+            error_log('402links: Already provisioned');
             return;
         }
         
-        // Auto-provision the site
-        self::auto_provision();
+        // Set flag for deferred setup (user consent required)
+        update_option('402links_needs_setup', true);
+        error_log('402links: Plugin activated. Setup required on first admin visit.');
     }
     
     /**
@@ -64,6 +65,17 @@ class Installer {
                 update_option('402links_provisioning_error', 'Failed after ' . $max_attempts . ' attempts. Last error: ' . $result['error']);
             }
         }
+        
+        // Final fallback: plugin still works, just not connected
+        update_option('402links_needs_setup', true);
+        error_log('402links: Provisioning failed but plugin activated successfully');
+    }
+    
+    /**
+     * Manual provisioning (triggered by user consent)
+     */
+    public static function manual_provision() {
+        return self::auto_provision();
     }
     
     /**
