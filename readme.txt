@@ -76,6 +76,32 @@ The plugin automatically exposes payment metadata through the x402 protocol that
 For support, visit: https://402links.com/support
 Documentation: https://402links.com/docs
 
+== External Services ==
+
+This plugin relies on the 402links.com service to enable AI agent payments and content monetization. 
+
+**What data is transmitted:**
+* Site URL, site name, and admin email (during initial setup)
+* WordPress version and plugin version (for compatibility)
+* Post/page titles, URLs, and pricing information (when creating paid links)
+* AI agent user-agents and IP addresses (when agents access protected content)
+* Payment transaction metadata (when payments are processed)
+
+**When connections occur:**
+* During plugin activation (automatic site registration)
+* When you create or update paid links for posts/pages
+* When AI agents request protected content
+* When viewing analytics and access logs in the admin dashboard
+
+**Service Information:**
+* Service URL: https://402links.com
+* Privacy Policy: https://402links.com/privacy
+* Terms of Service: https://402links.com/terms
+
+**Important:** By using this plugin, you agree to the 402links.com Terms of Service and Privacy Policy. The plugin will not function without connecting to 402links.com services.
+
+For more information about the x402 protocol used by this plugin, visit: https://github.com/coinbase/x402
+
 == Privacy Policy ==
 
 This plugin collects anonymous usage data including:
