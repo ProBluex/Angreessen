@@ -40,17 +40,17 @@ class Installer {
                     update_option('402links_site_id', $result['site_id']);
                     update_option('402links_provisioned_url', get_site_url());
                     
-                    error_log('402links: Auto-provisioning successful! Site ID: ' . $result['site_id']);
-                    update_option('402links_provisioning_success', true);
-                    return;
+                error_log('402links: Auto-provisioning successful! Site ID: ' . $result['site_id']);
+                update_option('402links_provisioning_success', true);
+                return $result;
                 } elseif (isset($result['already_provisioned']) && $result['already_provisioned']) {
                     // Site was already provisioned
                     update_option('402links_site_id', $result['site_id']);
                     update_option('402links_api_key_id', $result['api_key_id']);
                     
-                    error_log('402links: Site already provisioned: ' . $result['site_id']);
-                    update_option('402links_provisioning_info', 'Site was already registered. Please contact support if you need your API key.');
-                    return;
+                error_log('402links: Site already provisioned: ' . $result['site_id']);
+                update_option('402links_provisioning_info', 'Site was already registered. Please contact support if you need your API key.');
+                return $result;
                 }
             }
             
@@ -69,6 +69,11 @@ class Installer {
         // Final fallback: plugin still works, just not connected
         update_option('402links_needs_setup', true);
         error_log('402links: Provisioning failed but plugin activated successfully');
+        
+        return [
+            'success' => false,
+            'error' => get_option('402links_provisioning_error', 'Unknown provisioning error')
+        ];
     }
     
     /**
