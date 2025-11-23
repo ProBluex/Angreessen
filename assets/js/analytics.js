@@ -301,14 +301,16 @@
   /* ------------------ API Calls ------------------ */
 
   function loadAnalyticsData() {
-    debugLog("📊 [Analytics] ==================== LOAD ANALYTICS START ====================");
-    debugLog("📊 [Analytics] Timestamp:", new Date().toISOString());
+    console.log("🚀 [INIT] ==================== LOAD ANALYTICS START ====================");
+    console.log("🚀 [INIT] Timestamp:", new Date().toISOString());
+    console.log("🚀 [INIT] loadAnalyticsData() called");
     
     // Set timestamp IMMEDIATELY to prevent duplicate calls
     lastAnalyticsLoad = Date.now();
     
     const timeframe = $("#analytics-timeframe").val() || "30d";
-    debugLog("📊 [Analytics] Selected timeframe:", timeframe);
+    console.log("🚀 [INIT] Timeframe:", timeframe);
+    console.log("🚀 [INIT] Plugin URL:", w.agentHubData?.pluginUrl);
     
     // Try browser cache first (show immediately, then fetch fresh in background)
     const cachedData = getAnalyticsCache(timeframe);
@@ -358,7 +360,10 @@
 
   function loadEcosystemData(timeframe) {
     const seq = ++ecoSeq;  // Single-flight lock
-    debugLog("🌍 [ECOSYSTEM] Direct call for timeframe:", timeframe, "seq:", seq);
+    console.log("🌍 [ECOSYSTEM] ==================== FUNCTION CALLED ====================");
+    console.log("🌍 [ECOSYSTEM] Function called with timeframe:", timeframe, "seq:", seq);
+    console.log("🌍 [ECOSYSTEM] Plugin URL:", w.agentHubData?.pluginUrl);
+    console.log("🌍 [ECOSYSTEM] agentHubData exists:", !!w.agentHubData);
     
     const $buyers = $("#stat-ecosystem-buyers");
     const $sellers = $("#stat-ecosystem-sellers");
@@ -373,12 +378,17 @@
     
     // Abort previous request if exists
     if (rqEcosystem && rqEcosystem.abort) {
-      debugLog("⚪ [ECOSYSTEM] Aborting previous ecosystem request");
+      console.log("⚪ [ECOSYSTEM] Aborting previous ecosystem request");
       rqEcosystem.abort();
     }
     
+    const ajaxUrl = w.agentHubData.pluginUrl + 'ecosystem-data.php';
+    console.log("🌍 [ECOSYSTEM] ==================== MAKING AJAX REQUEST ====================");
+    console.log("🌍 [ECOSYSTEM] AJAX URL:", ajaxUrl);
+    console.log("🌍 [ECOSYSTEM] Request data:", { timeframe, nonce: w.agentHubData.nonce });
+    
     rqEcosystem = $.ajax({
-      url: w.agentHubData.pluginUrl + 'ecosystem-data.php',
+      url: ajaxUrl,
       method: 'POST',
       data: { 
         timeframe: timeframe,
@@ -386,16 +396,26 @@
       },
       timeout: 10000,  // Reduced timeout with PHP fallback
       success: function(response) {
+        console.log("📥 [ECOSYSTEM] ==================== SUCCESS CALLBACK FIRED ====================");
+        console.log("📥 [ECOSYSTEM] Raw response:", response);
+        console.log("📥 [ECOSYSTEM] response.success:", response.success);
+        console.log("📥 [ECOSYSTEM] response.data:", response.data);
+        console.log("📥 [ECOSYSTEM] typeof response:", typeof response);
+        
         // Ignore stale responses
         if (seq !== ecoSeq) {
-          debugLog("⚪ [ECOSYSTEM] Ignoring stale response seq:", seq, "current:", ecoSeq);
+          console.log("⚪ [ECOSYSTEM] Ignoring stale response seq:", seq, "current:", ecoSeq);
           return;
         }
         
-        debugLog("✅ [ECOSYSTEM] Response received seq:", seq);
+        console.log("✅ [ECOSYSTEM] Response received seq:", seq, "- Processing...");
         
         if (response.success && response.data) {
           const data = response.data;
+          console.log("✅ [ECOSYSTEM] Data object:", data);
+          console.log("✅ [ECOSYSTEM] bucketed_data exists:", !!data.bucketed_data);
+          console.log("✅ [ECOSYSTEM] bucketed_data length:", data.bucketed_data?.length);
+          console.log("✅ [ECOSYSTEM] First bucket sample:", data.bucketed_data?.[0]);
           
           // Update DOM with values
           $buyers.text(formatLargeNumber(data.unique_buyers || 0));
@@ -408,8 +428,25 @@
           
           // Render sparklines if we have bucketed data
           if (data.bucketed_data && data.bucketed_data.length) {
-            renderSparklines(data.bucketed_data);
-            renderMarketOverviewChart(data.bucketed_data);
+            console.log("🎨 [ECOSYSTEM] ==================== CALLING RENDER FUNCTIONS ====================");
+            console.log("🎨 [ECOSYSTEM] About to call renderSparklines with data length:", data.bucketed_data.length);
+            
+            try {
+              renderSparklines(data.bucketed_data);
+              console.log("✅ [ECOSYSTEM] renderSparklines() completed");
+            } catch (err) {
+              console.error("❌ [ECOSYSTEM] renderSparklines() error:", err);
+            }
+            
+            try {
+              renderMarketOverviewChart(data.bucketed_data);
+              console.log("✅ [ECOSYSTEM] renderMarketOverviewChart() completed");
+            } catch (err) {
+              console.error("❌ [ECOSYSTEM] renderMarketOverviewChart() error:", err);
+            }
+          } else {
+            console.warn("⚠️ [ECOSYSTEM] No bucketed_data to render charts!");
+            console.log("⚠️ [ECOSYSTEM] bucketed_data:", data.bucketed_data);
           }
         } else {
           // Soft failure: prefer cache over error
@@ -1135,5 +1172,9 @@
     $("#facilitators-error").show();
   }
 
-  log("Module loaded");
+  console.log("✅ [ANALYTICS] ==================== MODULE INITIALIZED ====================");
+  console.log("✅ [ANALYTICS] Module loaded successfully");
+  console.log("✅ [ANALYTICS] agentHubData exists:", !!w.agentHubData);
+  console.log("✅ [ANALYTICS] jQuery version:", $.fn.jquery);
+  console.log("✅ [ANALYTICS] Chart.js available:", typeof w.Chart !== "undefined");
 })(window, document, jQuery);
