@@ -178,26 +178,49 @@
   /* ------------------ Chart.js loader (idempotent) ------------------ */
 
   function ensureChartJS(cb) {
-    if (typeof w.Chart !== "undefined") {
-      console.log('✅ Chart.js already loaded');
-      return cb?.();
+    // Chart.js is preloaded by WordPress, check if it's ready
+    if (typeof w.Chart !== "undefined" && w.Chart) {
+      console.log('✅ Chart.js already loaded and ready');
+      if (cb) {
+        setTimeout(() => cb(), 0); // Defer to next tick
+      }
+      return;
     }
+    
+    // Wait for Chart.js to load (max 10 seconds)
+    let attempts = 0;
+    const maxAttempts = 100;
+    const checkInterval = setInterval(() => {
+      attempts++;
+      if (typeof w.Chart !== "undefined" && w.Chart) {
+        clearInterval(checkInterval);
+        console.log('✅ Chart.js loaded after', attempts * 100, 'ms');
+        if (cb) cb();
+      } else if (attempts >= maxAttempts) {
+        clearInterval(checkInterval);
+        console.error("🔴 Chart.js failed to load after 10 seconds");
+        // Try loading from CDN as fallback
+        loadChartJSFromCDN(cb);
+      }
+    }, 100);
+  }
+  
+  function loadChartJSFromCDN(cb) {
     if (d.getElementById("chartjs-umd")) {
-      console.log('⏳ Chart.js loading...');
-      return d.getElementById("chartjs-umd").addEventListener("load", () => {
-        console.log('✅ Chart.js loaded from existing script');
-        cb?.();
-      });
+      console.warn('⚠️ Chart.js script tag already exists');
+      return;
     }
-    console.log('📥 Loading Chart.js from CDN...');
+    console.log('📥 Loading Chart.js from CDN as fallback...');
     const s = d.createElement("script");
     s.id = "chartjs-umd";
     s.src = CHARTJS_SRC;
     s.onload = () => {
-      console.log("✅ Chart.js loaded successfully");
-      cb?.();
+      console.log("✅ Chart.js loaded from CDN successfully");
+      if (cb) cb();
     };
-    s.onerror = () => console.error("🔴 Failed to load Chart.js from CDN");
+    s.onerror = () => {
+      console.error("🔴 Failed to load Chart.js from CDN");
+    };
     d.head.appendChild(s);
   }
 
@@ -770,48 +793,69 @@
   function renderSparkline(canvasId, labels, data, color) {
     const canvas = d.getElementById(canvasId);
     if (!canvas) {
-      console.warn(`[Sparkline] Canvas #${canvasId} not found`);
+      console.error(`[Sparkline] ❌ Canvas #${canvasId} not found in DOM`);
+      return;
+    }
+    
+    if (!w.Chart) {
+      console.error(`[Sparkline] ❌ Chart.js not available on window object`);
+      return;
+    }
+    
+    if (!data || data.length === 0) {
+      console.warn(`[Sparkline] ⚠️ No data for ${canvasId}`);
       return;
     }
     
     // Destroy existing chart
     if (sparklineCharts[canvasId]) {
-      sparklineCharts[canvasId].destroy();
+      try {
+        sparklineCharts[canvasId].destroy();
+      } catch (e) {
+        console.warn(`[Sparkline] Failed to destroy existing chart ${canvasId}:`, e);
+      }
     }
     
-    console.log(`✅ [Sparkline] Rendering ${canvasId} with ${data.length} data points`);
-    sparklineCharts[canvasId] = new w.Chart(canvas, {
-      type: 'line',
-      data: {
-        labels: labels,
-        datasets: [{
-          data: data,
-          borderColor: color,
-          backgroundColor: color + '20',
-          borderWidth: 2,
-          fill: true,
-          tension: 0.4,
-          pointRadius: 0,
-          pointHoverRadius: 0,
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: { enabled: false }
+    console.log(`✅ [Sparkline] Rendering ${canvasId} with ${data.length} data points, Chart.js version:`, w.Chart.version);
+    
+    try {
+    try {
+      sparklineCharts[canvasId] = new w.Chart(canvas, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            data: data,
+            borderColor: color,
+            backgroundColor: color + '20',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.4,
+            pointRadius: 0,
+            pointHoverRadius: 0,
+          }]
         },
-        scales: {
-          x: { display: false },
-          y: { display: false }
-        },
-        interaction: {
-          intersect: false,
-          mode: 'index'
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { enabled: false }
+          },
+          scales: {
+            x: { display: false },
+            y: { display: false }
+          },
+          interaction: {
+            intersect: false,
+            mode: 'index'
+          }
         }
-      }
-    });
+      });
+      console.log(`✅ [Sparkline] Successfully created chart for ${canvasId}`);
+    } catch (error) {
+      console.error(`🔴 [Sparkline] Failed to create chart for ${canvasId}:`, error);
+    }
   }
   
   /* ------------------ Facilitators ------------------ */
@@ -962,12 +1006,17 @@
     const canvas = d.getElementById(canvasId);
     
     if (!canvas) {
-      console.warn(`Canvas #${canvasId} not found`);
+      console.error(`[Facilitator] ❌ Canvas #${canvasId} not found in DOM`);
+      return;
+    }
+    
+    if (!w.Chart) {
+      console.error(`[Facilitator] ❌ Chart.js not available on window object`);
       return;
     }
     
     if (!bucketedData || bucketedData.length === 0) {
-      console.warn(`No bucketed data for facilitator ${index}`);
+      console.warn(`[Facilitator] ⚠️ No bucketed data for facilitator ${index}`);
       return;
     }
     
@@ -977,11 +1026,17 @@
       
       // Destroy existing chart
       if (facilitatorCharts[canvasId]) {
-        facilitatorCharts[canvasId].destroy();
+        try {
+          facilitatorCharts[canvasId].destroy();
+        } catch (e) {
+          console.warn(`[Facilitator] Failed to destroy existing chart ${canvasId}:`, e);
+        }
       }
       
-      console.log(`✅ [Facilitator] Rendering chart ${canvasId} with ${data.length} data points`);
-      facilitatorCharts[canvasId] = new w.Chart(canvas, {
+      console.log(`✅ [Facilitator] Rendering chart ${canvasId} with ${data.length} data points, Chart.js version:`, w.Chart.version);
+      
+      try {
+        facilitatorCharts[canvasId] = new w.Chart(canvas, {
         type: 'line',
         data: {
           labels: labels,
@@ -1044,6 +1099,10 @@
           }
         }
       });
+      console.log(`✅ [Facilitator] Successfully created chart for ${canvasId}`);
+    } catch (error) {
+      console.error(`🔴 [Facilitator] Failed to create chart for ${canvasId}:`, error);
+    }
     });
   }
   
