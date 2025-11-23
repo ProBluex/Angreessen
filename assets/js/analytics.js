@@ -764,86 +764,136 @@
   /* ------------------ Sparklines ------------------ */
   
   function renderSparklines(bucketedData) {
+    console.log('🎨 [SPARKLINES] ========== RENDER SPARKLINES CALLED ==========');
+    console.log('🎨 [SPARKLINES] bucketedData:', bucketedData);
+    console.log('🎨 [SPARKLINES] bucketedData is array:', Array.isArray(bucketedData));
+    console.log('🎨 [SPARKLINES] bucketedData length:', bucketedData?.length);
+    
     if (!bucketedData || !bucketedData.length) {
-      console.warn('No bucketed data for sparklines');
+      console.warn('⚠️ [SPARKLINES] No bucketed data for sparklines');
       return;
     }
     
+    console.log('🎨 [SPARKLINES] Data validation passed, calling ensureChartJS...');
+    console.log('🎨 [SPARKLINES] Chart.js available?', typeof w.Chart !== 'undefined');
+    
     ensureChartJS(() => {
-      // Support multiple field name formats
-      const labels = bucketedData.map(b => formatDate(b.bucket_start || b.timestamp || b.date));
+      console.log('✅ [SPARKLINES] ========== INSIDE ensureChartJS CALLBACK ==========');
+      console.log('✅ [SPARKLINES] Chart.js is now available:', typeof w.Chart !== 'undefined');
+      console.log('✅ [SPARKLINES] w.Chart:', w.Chart);
       
-      // Transactions sparkline
-      renderSparkline('sparkline-transactions', labels, 
-        bucketedData.map(b => Number(b.total_transactions || b.transactions || 0)), 
-        COLORS.tx
-      );
-      
-      // Volume sparkline - ALREADY IN DOLLARS from bucketed endpoint
-      renderSparkline('sparkline-volume', labels, 
-        bucketedData.map(b => Number(b.volume || b.total_amount || 0)), 
-        COLORS.vol
-      );
-      
-      // Buyers sparkline
-      renderSparkline('sparkline-buyers', labels, 
-        bucketedData.map(b => Number(b.unique_buyers || b.buyers || 0)), 
-        COLORS.buyers
-      );
-      
-      // Sellers sparkline
-      renderSparkline('sparkline-sellers', labels, 
-        bucketedData.map(b => Number(b.unique_sellers || b.sellers || 0)), 
-        COLORS.sellers
-      );
+      try {
+        // Support multiple field name formats
+        const labels = bucketedData.map(b => formatDate(b.bucket_start || b.timestamp || b.date));
+        console.log('✅ [SPARKLINES] Labels generated:', labels);
+        
+        // Transactions sparkline
+        console.log('🎨 [SPARKLINES] Rendering transactions sparkline...');
+        const txData = bucketedData.map(b => Number(b.total_transactions || b.transactions || 0));
+        console.log('🎨 [SPARKLINES] Transaction data:', txData);
+        renderSparkline('sparkline-transactions', labels, txData, COLORS.tx);
+        
+        // Volume sparkline - ALREADY IN DOLLARS from bucketed endpoint
+        console.log('🎨 [SPARKLINES] Rendering volume sparkline...');
+        const volData = bucketedData.map(b => Number(b.volume || b.total_amount || 0));
+        console.log('🎨 [SPARKLINES] Volume data:', volData);
+        renderSparkline('sparkline-volume', labels, volData, COLORS.vol);
+        
+        // Buyers sparkline
+        console.log('🎨 [SPARKLINES] Rendering buyers sparkline...');
+        const buyersData = bucketedData.map(b => Number(b.unique_buyers || b.buyers || 0));
+        console.log('🎨 [SPARKLINES] Buyers data:', buyersData);
+        renderSparkline('sparkline-buyers', labels, buyersData, COLORS.buyers);
+        
+        // Sellers sparkline
+        console.log('🎨 [SPARKLINES] Rendering sellers sparkline...');
+        const sellersData = bucketedData.map(b => Number(b.unique_sellers || b.sellers || 0));
+        console.log('🎨 [SPARKLINES] Sellers data:', sellersData);
+        renderSparkline('sparkline-sellers', labels, sellersData, COLORS.sellers);
+        
+        console.log('✅ [SPARKLINES] ========== ALL SPARKLINES RENDERED ==========');
+      } catch (error) {
+        console.error('🔴 [SPARKLINES] ERROR in callback:', error);
+        console.error('🔴 [SPARKLINES] Error stack:', error.stack);
+      }
     });
   }
   
   function renderSparkline(canvasId, labels, data, color) {
+    console.log(`📊 [SPARKLINE-${canvasId}] ========== START ==========`);
+    console.log(`📊 [SPARKLINE-${canvasId}] Canvas ID:`, canvasId);
+    console.log(`📊 [SPARKLINE-${canvasId}] Labels count:`, labels?.length);
+    console.log(`📊 [SPARKLINE-${canvasId}] Data count:`, data?.length);
+    console.log(`📊 [SPARKLINE-${canvasId}] Color:`, color);
+    console.log(`📊 [SPARKLINE-${canvasId}] Chart.js available:`, typeof w.Chart !== 'undefined');
+    
+    // Check if canvas exists in DOM
     const canvas = d.getElementById(canvasId);
+    console.log(`📊 [SPARKLINE-${canvasId}] Canvas element found:`, !!canvas);
+    console.log(`📊 [SPARKLINE-${canvasId}] Canvas element:`, canvas);
+    
     if (!canvas) {
-      console.warn(`[Sparkline] Canvas #${canvasId} not found`);
+      console.error(`🔴 [SPARKLINE-${canvasId}] Canvas #${canvasId} not found in DOM!`);
+      console.log(`🔴 [SPARKLINE-${canvasId}] All canvas elements in document:`, 
+        Array.from(d.querySelectorAll('canvas')).map(c => c.id)
+      );
       return;
     }
     
     // Destroy existing chart
     if (sparklineCharts[canvasId]) {
+      console.log(`📊 [SPARKLINE-${canvasId}] Destroying existing chart`);
       sparklineCharts[canvasId].destroy();
     }
     
-    console.log(`✅ [Sparkline] Rendering ${canvasId} with ${data.length} data points`);
-    sparklineCharts[canvasId] = new w.Chart(canvas, {
-      type: 'line',
-      data: {
-        labels: labels,
-        datasets: [{
-          data: data,
-          borderColor: color,
-          backgroundColor: color + '20',
-          borderWidth: 2,
-          fill: true,
-          tension: 0.4,
-          pointRadius: 0,
-          pointHoverRadius: 0,
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: { enabled: false }
+    try {
+      console.log(`📊 [SPARKLINE-${canvasId}] Creating new Chart instance...`);
+      console.log(`📊 [SPARKLINE-${canvasId}] Canvas context:`, canvas.getContext('2d'));
+      
+      sparklineCharts[canvasId] = new w.Chart(canvas, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            data: data,
+            borderColor: color,
+            backgroundColor: color + '20',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.4,
+            pointRadius: 0,
+            pointHoverRadius: 0,
+          }]
         },
-        scales: {
-          x: { display: false },
-          y: { display: false }
-        },
-        interaction: {
-          intersect: false,
-          mode: 'index'
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { enabled: false }
+          },
+          scales: {
+            x: { display: false },
+            y: { display: false }
+          },
+          interaction: {
+            intersect: false,
+            mode: 'index'
+          }
         }
-      }
-    });
+      });
+      
+      console.log(`✅ [SPARKLINE-${canvasId}] Chart created successfully!`);
+      console.log(`✅ [SPARKLINE-${canvasId}] Chart instance:`, sparklineCharts[canvasId]);
+      console.log(`📊 [SPARKLINE-${canvasId}] ========== END ==========`);
+      
+    } catch (error) {
+      console.error(`🔴 [SPARKLINE-${canvasId}] ERROR creating chart:`, error);
+      console.error(`🔴 [SPARKLINE-${canvasId}] Error message:`, error.message);
+      console.error(`🔴 [SPARKLINE-${canvasId}] Error stack:`, error.stack);
+      console.error(`🔴 [SPARKLINE-${canvasId}] Canvas:`, canvas);
+      console.error(`🔴 [SPARKLINE-${canvasId}] w.Chart:`, w.Chart);
+    }
   }
   
   /* ------------------ Facilitators ------------------ */
