@@ -178,17 +178,47 @@
   /* ------------------ Chart.js loader (idempotent) ------------------ */
 
   function ensureChartJS(cb) {
+    // Check if Chart.js is already loaded
     if (typeof w.Chart !== "undefined") {
       console.log('✅ Chart.js already loaded');
       return cb?.();
     }
-    if (d.getElementById("chartjs-umd")) {
-      console.log('⏳ Chart.js loading...');
-      return d.getElementById("chartjs-umd").addEventListener("load", () => {
+    
+    // Check if script tag exists
+    const existingScript = d.getElementById("chartjs-umd");
+    if (existingScript) {
+      console.log('⏳ Chart.js script tag exists, checking if loaded...');
+      
+      // CRITICAL FIX: Check if script has already loaded by checking w.Chart again
+      // The script might have loaded between our first check and finding the element
+      if (typeof w.Chart !== "undefined") {
+        console.log('✅ Chart.js loaded during check');
+        return cb?.();
+      }
+      
+      // Script exists but hasn't loaded yet - wait for it
+      console.log('⏳ Waiting for Chart.js to load...');
+      existingScript.addEventListener("load", () => {
         console.log('✅ Chart.js loaded from existing script');
         cb?.();
       });
+      
+      // FALLBACK: Also poll for Chart.js in case load event was missed
+      const pollInterval = setInterval(() => {
+        if (typeof w.Chart !== "undefined") {
+          console.log('✅ Chart.js detected via polling');
+          clearInterval(pollInterval);
+          cb?.();
+        }
+      }, 50); // Check every 50ms
+      
+      // Clear polling after 5 seconds to prevent infinite loop
+      setTimeout(() => clearInterval(pollInterval), 5000);
+      
+      return;
     }
+    
+    // Script doesn't exist - load it
     console.log('📥 Loading Chart.js from CDN...');
     const s = d.createElement("script");
     s.id = "chartjs-umd";
@@ -197,7 +227,9 @@
       console.log("✅ Chart.js loaded successfully");
       cb?.();
     };
-    s.onerror = () => console.error("🔴 Failed to load Chart.js from CDN");
+    s.onerror = () => {
+      console.error("🔴 Failed to load Chart.js from CDN");
+    };
     d.head.appendChild(s);
   }
 
