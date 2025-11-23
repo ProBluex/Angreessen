@@ -28,9 +28,17 @@
   };
   
   const FACILITATOR_COLORS = {
-    'Coinbase Commerce': '#0052FF',
-    'PayAI': '#10B981',
-    'Daydreams': '#F59E0B'
+    'Node 1': '#0052FF',
+    'Node 2': '#10B981',
+    'Node 3': '#F59E0B'
+  };
+  
+  // Map API names to display names
+  const FACILITATOR_NAME_MAP = {
+    'Coinbase Commerce': 'Node 1',
+    'Coinbase': 'Node 1',
+    'PayAI': 'Node 2',
+    'Daydreams': 'Node 3'
   };
   
   let sparklineCharts = {};
@@ -155,8 +163,17 @@
     // Convert from minor units (wei/cents) to dollars
     const dollars = n / 1e6;
     
-    if (dollars >= 1_000_000) return "$" + (dollars / 1_000_000).toFixed(2) + "M";
-    if (dollars >= 1_000) return "$" + (dollars / 1_000).toFixed(2) + "K";
+    // Show M for millions
+    if (dollars >= 1_000_000) {
+      const millions = dollars / 1_000_000;
+      return "$" + millions.toFixed(2) + "M";
+    }
+    // Show K for thousands
+    if (dollars >= 1_000) {
+      const thousands = dollars / 1_000;
+      return "$" + thousands.toFixed(2) + "K";
+    }
+    // Show full amount for under $1000
     return cf.format(dollars);
   };
 
@@ -180,24 +197,16 @@
   function ensureChartJS(cb) {
     // Check if Chart.js is already loaded
     if (typeof w.Chart !== "undefined") {
-      console.log('✅ Chart.js already loaded');
       return cb?.();
     }
     
     // Check if script tag exists
     const existingScript = d.getElementById("chartjs-umd");
     if (existingScript) {
-      console.log('⏳ Chart.js script tag exists, checking if loaded...');
-      
-      // CRITICAL FIX: Check if script has already loaded by checking w.Chart again
-      // The script might have loaded between our first check and finding the element
+      // Check if script has already loaded by checking w.Chart again
       if (typeof w.Chart !== "undefined") {
-        console.log('✅ Chart.js loaded during check');
         return cb?.();
       }
-      
-      // Script exists but hasn't loaded yet - wait for it
-      console.log('⏳ Waiting for Chart.js to load...');
       existingScript.addEventListener("load", () => {
         console.log('✅ Chart.js loaded from existing script');
         cb?.();
@@ -301,16 +310,10 @@
   /* ------------------ API Calls ------------------ */
 
   function loadAnalyticsData() {
-    console.log("🚀 [INIT] ==================== LOAD ANALYTICS START ====================");
-    console.log("🚀 [INIT] Timestamp:", new Date().toISOString());
-    console.log("🚀 [INIT] loadAnalyticsData() called");
-    
     // Set timestamp IMMEDIATELY to prevent duplicate calls
     lastAnalyticsLoad = Date.now();
     
     const timeframe = $("#analytics-timeframe").val() || "30d";
-    console.log("🚀 [INIT] Timeframe:", timeframe);
-    console.log("🚀 [INIT] Plugin URL:", w.agentHubData?.pluginUrl);
     
     // Try browser cache first (show immediately, then fetch fresh in background)
     const cachedData = getAnalyticsCache(timeframe);
@@ -360,10 +363,6 @@
 
   function loadEcosystemData(timeframe) {
     const seq = ++ecoSeq;  // Single-flight lock
-    console.log("🌍 [ECOSYSTEM] ==================== FUNCTION CALLED ====================");
-    console.log("🌍 [ECOSYSTEM] Function called with timeframe:", timeframe, "seq:", seq);
-    console.log("🌍 [ECOSYSTEM] Plugin URL:", w.agentHubData?.pluginUrl);
-    console.log("🌍 [ECOSYSTEM] agentHubData exists:", !!w.agentHubData);
     
     const $buyers = $("#stat-ecosystem-buyers");
     const $sellers = $("#stat-ecosystem-sellers");
@@ -378,14 +377,10 @@
     
     // Abort previous request if exists
     if (rqEcosystem && rqEcosystem.abort) {
-      console.log("⚪ [ECOSYSTEM] Aborting previous ecosystem request");
       rqEcosystem.abort();
     }
     
     const ajaxUrl = w.agentHubData.pluginUrl + 'ecosystem-data.php';
-    console.log("🌍 [ECOSYSTEM] ==================== MAKING AJAX REQUEST ====================");
-    console.log("🌍 [ECOSYSTEM] AJAX URL:", ajaxUrl);
-    console.log("🌍 [ECOSYSTEM] Request data:", { timeframe, nonce: w.agentHubData.nonce });
     
     rqEcosystem = $.ajax({
       url: ajaxUrl,
@@ -396,26 +391,13 @@
       },
       timeout: 10000,  // Reduced timeout with PHP fallback
       success: function(response) {
-        console.log("📥 [ECOSYSTEM] ==================== SUCCESS CALLBACK FIRED ====================");
-        console.log("📥 [ECOSYSTEM] Raw response:", response);
-        console.log("📥 [ECOSYSTEM] response.success:", response.success);
-        console.log("📥 [ECOSYSTEM] response.data:", response.data);
-        console.log("📥 [ECOSYSTEM] typeof response:", typeof response);
-        
         // Ignore stale responses
         if (seq !== ecoSeq) {
-          console.log("⚪ [ECOSYSTEM] Ignoring stale response seq:", seq, "current:", ecoSeq);
           return;
         }
         
-        console.log("✅ [ECOSYSTEM] Response received seq:", seq, "- Processing...");
-        
         if (response.success && response.data) {
           const data = response.data;
-          console.log("✅ [ECOSYSTEM] Data object:", data);
-          console.log("✅ [ECOSYSTEM] bucketed_data exists:", !!data.bucketed_data);
-          console.log("✅ [ECOSYSTEM] bucketed_data length:", data.bucketed_data?.length);
-          console.log("✅ [ECOSYSTEM] First bucket sample:", data.bucketed_data?.[0]);
           
           // Update DOM with values
           $buyers.text(formatLargeNumber(data.unique_buyers || 0));
@@ -428,31 +410,22 @@
           
           // Render sparklines if we have bucketed data
           if (data.bucketed_data && data.bucketed_data.length) {
-            console.log("🎨 [ECOSYSTEM] ==================== CALLING RENDER FUNCTIONS ====================");
-            console.log("🎨 [ECOSYSTEM] About to call renderSparklines with data length:", data.bucketed_data.length);
-            
             try {
               renderSparklines(data.bucketed_data);
-              console.log("✅ [ECOSYSTEM] renderSparklines() completed");
             } catch (err) {
-              console.error("❌ [ECOSYSTEM] renderSparklines() error:", err);
+              console.error("[ECOSYSTEM] renderSparklines() error:", err);
             }
             
             try {
               renderMarketOverviewChart(data.bucketed_data);
-              console.log("✅ [ECOSYSTEM] renderMarketOverviewChart() completed");
             } catch (err) {
-              console.error("❌ [ECOSYSTEM] renderMarketOverviewChart() error:", err);
+              console.error("[ECOSYSTEM] renderMarketOverviewChart() error:", err);
             }
-          } else {
-            console.warn("⚠️ [ECOSYSTEM] No bucketed_data to render charts!");
-            console.log("⚠️ [ECOSYSTEM] bucketed_data:", data.bucketed_data);
           }
         } else {
           // Soft failure: prefer cache over error
           const cached = getAnalyticsCache(timeframe);
           if (cached?.ecosystem) {
-            debugWarn("⚠️ [ECOSYSTEM] Using cached data (live fetch failed)");
             const data = cached.ecosystem;
             $buyers.text(formatLargeNumber(data.unique_buyers || 0));
             $sellers.text(formatLargeNumber(data.unique_sellers || 0));
@@ -801,92 +774,49 @@
   /* ------------------ Sparklines ------------------ */
   
   function renderSparklines(bucketedData) {
-    console.log('🎨 [SPARKLINES] ========== RENDER SPARKLINES CALLED ==========');
-    console.log('🎨 [SPARKLINES] bucketedData:', bucketedData);
-    console.log('🎨 [SPARKLINES] bucketedData is array:', Array.isArray(bucketedData));
-    console.log('🎨 [SPARKLINES] bucketedData length:', bucketedData?.length);
-    
     if (!bucketedData || !bucketedData.length) {
-      console.warn('⚠️ [SPARKLINES] No bucketed data for sparklines');
       return;
     }
     
-    console.log('🎨 [SPARKLINES] Data validation passed, calling ensureChartJS...');
-    console.log('🎨 [SPARKLINES] Chart.js available?', typeof w.Chart !== 'undefined');
-    
     ensureChartJS(() => {
-      console.log('✅ [SPARKLINES] ========== INSIDE ensureChartJS CALLBACK ==========');
-      console.log('✅ [SPARKLINES] Chart.js is now available:', typeof w.Chart !== 'undefined');
-      console.log('✅ [SPARKLINES] w.Chart:', w.Chart);
-      
       try {
         // Support multiple field name formats
         const labels = bucketedData.map(b => formatDate(b.bucket_start || b.timestamp || b.date));
-        console.log('✅ [SPARKLINES] Labels generated:', labels);
         
         // Transactions sparkline
-        console.log('🎨 [SPARKLINES] Rendering transactions sparkline...');
         const txData = bucketedData.map(b => Number(b.total_transactions || b.transactions || 0));
-        console.log('🎨 [SPARKLINES] Transaction data:', txData);
         renderSparkline('sparkline-transactions', labels, txData, COLORS.tx);
         
-        // Volume sparkline - ALREADY IN DOLLARS from bucketed endpoint
-        console.log('🎨 [SPARKLINES] Rendering volume sparkline...');
+        // Volume sparkline
         const volData = bucketedData.map(b => Number(b.volume || b.total_amount || 0));
-        console.log('🎨 [SPARKLINES] Volume data:', volData);
         renderSparkline('sparkline-volume', labels, volData, COLORS.vol);
         
         // Buyers sparkline
-        console.log('🎨 [SPARKLINES] Rendering buyers sparkline...');
         const buyersData = bucketedData.map(b => Number(b.unique_buyers || b.buyers || 0));
-        console.log('🎨 [SPARKLINES] Buyers data:', buyersData);
         renderSparkline('sparkline-buyers', labels, buyersData, COLORS.buyers);
         
         // Sellers sparkline
-        console.log('🎨 [SPARKLINES] Rendering sellers sparkline...');
         const sellersData = bucketedData.map(b => Number(b.unique_sellers || b.sellers || 0));
-        console.log('🎨 [SPARKLINES] Sellers data:', sellersData);
         renderSparkline('sparkline-sellers', labels, sellersData, COLORS.sellers);
-        
-        console.log('✅ [SPARKLINES] ========== ALL SPARKLINES RENDERED ==========');
       } catch (error) {
-        console.error('🔴 [SPARKLINES] ERROR in callback:', error);
-        console.error('🔴 [SPARKLINES] Error stack:', error.stack);
+        console.error('[SPARKLINES] Error:', error);
       }
     });
   }
   
   function renderSparkline(canvasId, labels, data, color) {
-    console.log(`📊 [SPARKLINE-${canvasId}] ========== START ==========`);
-    console.log(`📊 [SPARKLINE-${canvasId}] Canvas ID:`, canvasId);
-    console.log(`📊 [SPARKLINE-${canvasId}] Labels count:`, labels?.length);
-    console.log(`📊 [SPARKLINE-${canvasId}] Data count:`, data?.length);
-    console.log(`📊 [SPARKLINE-${canvasId}] Color:`, color);
-    console.log(`📊 [SPARKLINE-${canvasId}] Chart.js available:`, typeof w.Chart !== 'undefined');
-    
-    // Check if canvas exists in DOM
     const canvas = d.getElementById(canvasId);
-    console.log(`📊 [SPARKLINE-${canvasId}] Canvas element found:`, !!canvas);
-    console.log(`📊 [SPARKLINE-${canvasId}] Canvas element:`, canvas);
     
     if (!canvas) {
-      console.error(`🔴 [SPARKLINE-${canvasId}] Canvas #${canvasId} not found in DOM!`);
-      console.log(`🔴 [SPARKLINE-${canvasId}] All canvas elements in document:`, 
-        Array.from(d.querySelectorAll('canvas')).map(c => c.id)
-      );
       return;
     }
     
     // Destroy existing chart
     if (sparklineCharts[canvasId]) {
-      console.log(`📊 [SPARKLINE-${canvasId}] Destroying existing chart`);
       sparklineCharts[canvasId].destroy();
     }
     
     try {
-      console.log(`📊 [SPARKLINE-${canvasId}] Creating new Chart instance...`);
-      console.log(`📊 [SPARKLINE-${canvasId}] Canvas context:`, canvas.getContext('2d'));
-      
       sparklineCharts[canvasId] = new w.Chart(canvas, {
         type: 'line',
         data: {
@@ -919,17 +849,8 @@
           }
         }
       });
-      
-      console.log(`✅ [SPARKLINE-${canvasId}] Chart created successfully!`);
-      console.log(`✅ [SPARKLINE-${canvasId}] Chart instance:`, sparklineCharts[canvasId]);
-      console.log(`📊 [SPARKLINE-${canvasId}] ========== END ==========`);
-      
     } catch (error) {
-      console.error(`🔴 [SPARKLINE-${canvasId}] ERROR creating chart:`, error);
-      console.error(`🔴 [SPARKLINE-${canvasId}] Error message:`, error.message);
-      console.error(`🔴 [SPARKLINE-${canvasId}] Error stack:`, error.stack);
-      console.error(`🔴 [SPARKLINE-${canvasId}] Canvas:`, canvas);
-      console.error(`🔴 [SPARKLINE-${canvasId}] w.Chart:`, w.Chart);
+      console.error(`[SPARKLINE] Error creating ${canvasId}:`, error);
     }
   }
   
@@ -937,8 +858,6 @@
   
   function loadFacilitatorData() {
     const timeframe = $("#analytics-timeframe").val() || "30d";
-    
-    debugLog("🏢 [Facilitators] Loading facilitator data for timeframe:", timeframe);
     
     $("#facilitators-loading").show();
     $("#facilitators-grid").hide();
@@ -958,19 +877,14 @@
       }),
       timeout: 10000,
       success: function(response) {
-        debugLog("✅ [Facilitators] Response received:", response);
-        
         if (response && response.data && response.data.items) {
           const facilitators = response.data.items.slice(0, 3);
-          debugLog("🏢 [Facilitators] Top 3 facilitators:", facilitators);
           renderFacilitators(facilitators, timeframe);
         } else {
-          debugWarn("⚠️ [Facilitators] Invalid response format");
           showFacilitatorsError();
         }
       },
       error: function(xhr, status, error) {
-        console.error("🔴 [Facilitators] Request failed:", status, error);
         showFacilitatorsError();
       }
     });
@@ -986,10 +900,12 @@
     $("#facilitators-error").hide();
     $("#facilitators-grid").show().empty();
     
-    const colors = [FACILITATOR_COLORS['Coinbase Commerce'], FACILITATOR_COLORS['PayAI'], FACILITATOR_COLORS['Daydreams']];
+    const colors = [FACILITATOR_COLORS['Node 1'], FACILITATOR_COLORS['Node 2'], FACILITATOR_COLORS['Node 3']];
     
     facilitators.forEach((fac, index) => {
-      const name = fac.facilitator?.name || 'Unknown';
+      const apiName = fac.facilitator?.name || 'Unknown';
+      // Map API names to display names
+      const name = FACILITATOR_NAME_MAP[apiName] || `Node ${index + 1}`;
       const addresses = fac.facilitator_addresses || [];
       const transactions = Number(fac.tx_count || 0);
       const volume = Number(fac.total_amount || 0);
@@ -1071,7 +987,7 @@
         }
       },
       error: function(xhr, status, error) {
-        console.error("🔴 [Facilitator Chart] Request failed for facilitator", index, ":", error);
+        // Silent failure
       }
     });
   }
@@ -1081,12 +997,10 @@
     const canvas = d.getElementById(canvasId);
     
     if (!canvas) {
-      console.warn(`Canvas #${canvasId} not found`);
       return;
     }
     
     if (!bucketedData || bucketedData.length === 0) {
-      console.warn(`No bucketed data for facilitator ${index}`);
       return;
     }
     
@@ -1098,8 +1012,6 @@
       if (facilitatorCharts[canvasId]) {
         facilitatorCharts[canvasId].destroy();
       }
-      
-      console.log(`✅ [Facilitator] Rendering chart ${canvasId} with ${data.length} data points`);
       facilitatorCharts[canvasId] = new w.Chart(canvas, {
         type: 'line',
         data: {
@@ -1172,9 +1084,4 @@
     $("#facilitators-error").show();
   }
 
-  console.log("✅ [ANALYTICS] ==================== MODULE INITIALIZED ====================");
-  console.log("✅ [ANALYTICS] Module loaded successfully");
-  console.log("✅ [ANALYTICS] agentHubData exists:", !!w.agentHubData);
-  console.log("✅ [ANALYTICS] jQuery version:", $.fn.jquery);
-  console.log("✅ [ANALYTICS] Chart.js available:", typeof w.Chart !== "undefined");
 })(window, document, jQuery);

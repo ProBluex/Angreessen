@@ -241,7 +241,7 @@ $is_connected = !empty($api_key) && !empty($site_id);
         
         <!-- Ecosystem Stats Cards with Sparklines -->
         <div class="analytics-section">
-            <h3>x402 Ecosystem Overview</h3>
+            <h3>HTTP 402 Ecosystem</h3>
             <div class="agent-hub-stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
                 <div class="stat-card stat-card-with-sparkline">
                     <div class="stat-header">
