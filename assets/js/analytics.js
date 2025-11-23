@@ -150,10 +150,14 @@
 
   const formatCurrency = (amount) => {
     const n = Number(amount || 0);
-    if (!Number.isFinite(n)) return "$0.000";
-    if (n >= 1_000_000) return "$" + (n / 1_000_000).toFixed(1) + "M";
-    if (n >= 1_000) return "$" + (n / 1_000).toFixed(1) + "K";
-    return cf.format(n);
+    if (!Number.isFinite(n)) return "$0.00";
+    
+    // Convert from minor units (wei/cents) to dollars
+    const dollars = n / 1e6;
+    
+    if (dollars >= 1_000_000) return "$" + (dollars / 1_000_000).toFixed(2) + "M";
+    if (dollars >= 1_000) return "$" + (dollars / 1_000).toFixed(2) + "K";
+    return cf.format(dollars);
   };
 
   const formatMoney = (amount) => {
@@ -174,16 +178,26 @@
   /* ------------------ Chart.js loader (idempotent) ------------------ */
 
   function ensureChartJS(cb) {
-    if (typeof w.Chart !== "undefined") return cb?.();
-    if (d.getElementById("chartjs-umd")) return d.getElementById("chartjs-umd").addEventListener("load", () => cb?.());
+    if (typeof w.Chart !== "undefined") {
+      console.log('✅ Chart.js already loaded');
+      return cb?.();
+    }
+    if (d.getElementById("chartjs-umd")) {
+      console.log('⏳ Chart.js loading...');
+      return d.getElementById("chartjs-umd").addEventListener("load", () => {
+        console.log('✅ Chart.js loaded from existing script');
+        cb?.();
+      });
+    }
+    console.log('📥 Loading Chart.js from CDN...');
     const s = d.createElement("script");
     s.id = "chartjs-umd";
     s.src = CHARTJS_SRC;
     s.onload = () => {
-      log("Chart.js loaded");
+      console.log("✅ Chart.js loaded successfully");
       cb?.();
     };
-    s.onerror = () => console.error("[Analytics] Failed to load Chart.js");
+    s.onerror = () => console.error("🔴 Failed to load Chart.js from CDN");
     d.head.appendChild(s);
   }
 
@@ -514,16 +528,23 @@
       return;
     }
 
+    if (!bucketedData || bucketedData.length === 0) {
+      console.warn("[Analytics] No bucketed data for market chart");
+      showEmptyChartState();
+      return;
+    }
+
     // Wait if Chart.js not ready yet
     if (typeof w.Chart === "undefined") {
-      log("Chart.js not ready; retrying...");
+      console.log("Chart.js not ready; retrying...");
       return setTimeout(() => renderMarketOverviewChart(bucketedData), 200);
     }
 
     // Destroy previous chart to prevent leaks
     if (marketChart) marketChart.destroy();
 
-    const labels = bucketedData.map((d) => formatDate(d.date));
+    // Support multiple field formats
+    const labels = bucketedData.map((d) => formatDate(d.bucket_start || d.timestamp || d.date));
     const datasets = [];
 
     const coalesce = (v) => {
@@ -534,7 +555,7 @@
     if (activeMetrics.transactions) {
       datasets.push({
         label: "Transactions",
-        data: bucketedData.map((d) => coalesce(d.transactions)),
+        data: bucketedData.map((d) => coalesce(d.total_transactions || d.transactions)),
         borderColor: COLORS.tx,
         backgroundColor: "rgba(0, 208, 145, 0.10)",
         yAxisID: "y",
@@ -545,10 +566,10 @@
     if (activeMetrics.volume) {
       datasets.push({
         label: "Volume (USDC)",
-        data: bucketedData.map((d) => coalesce(d.volume)),
+        data: bucketedData.map((d) => coalesce(d.volume || d.total_amount)),
         borderColor: COLORS.vol,
         backgroundColor: "rgba(139, 92, 246, 0.10)",
-        yAxisID: "y1",
+        yAxisID: "y",
         tension: 0.35,
         pointRadius: 0,
       });
@@ -556,7 +577,7 @@
     if (activeMetrics.buyers) {
       datasets.push({
         label: "Buyers",
-        data: bucketedData.map((d) => coalesce(d.buyers)),
+        data: bucketedData.map((d) => coalesce(d.unique_buyers || d.buyers)),
         borderColor: COLORS.buyers,
         backgroundColor: "rgba(59, 130, 246, 0.10)",
         yAxisID: "y",
@@ -567,7 +588,7 @@
     if (activeMetrics.sellers) {
       datasets.push({
         label: "Sellers",
-        data: bucketedData.map((d) => coalesce(d.sellers)),
+        data: bucketedData.map((d) => coalesce(d.unique_sellers || d.sellers)),
         borderColor: COLORS.sellers,
         backgroundColor: "rgba(245, 158, 11, 0.10)",
         yAxisID: "y",
@@ -711,18 +732,22 @@
   /* ------------------ Sparklines ------------------ */
   
   function renderSparklines(bucketedData) {
-    if (!bucketedData || !bucketedData.length) return;
+    if (!bucketedData || !bucketedData.length) {
+      console.warn('No bucketed data for sparklines');
+      return;
+    }
     
     ensureChartJS(() => {
-      const labels = bucketedData.map(b => formatDate(b.bucket_start || b.timestamp));
+      // Support multiple field name formats
+      const labels = bucketedData.map(b => formatDate(b.bucket_start || b.timestamp || b.date));
       
       // Transactions sparkline
       renderSparkline('sparkline-transactions', labels, 
-        bucketedData.map(b => Number(b.total_transactions || 0)), 
+        bucketedData.map(b => Number(b.total_transactions || b.transactions || 0)), 
         COLORS.tx
       );
       
-      // Volume sparkline
+      // Volume sparkline - ALREADY IN DOLLARS from bucketed endpoint
       renderSparkline('sparkline-volume', labels, 
         bucketedData.map(b => Number(b.volume || b.total_amount || 0)), 
         COLORS.vol
@@ -730,13 +755,13 @@
       
       // Buyers sparkline
       renderSparkline('sparkline-buyers', labels, 
-        bucketedData.map(b => Number(b.unique_buyers || 0)), 
+        bucketedData.map(b => Number(b.unique_buyers || b.buyers || 0)), 
         COLORS.buyers
       );
       
       // Sellers sparkline
       renderSparkline('sparkline-sellers', labels, 
-        bucketedData.map(b => Number(b.unique_sellers || 0)), 
+        bucketedData.map(b => Number(b.unique_sellers || b.sellers || 0)), 
         COLORS.sellers
       );
     });
@@ -931,11 +956,20 @@
   function renderFacilitatorChart(index, bucketedData, color) {
     const canvasId = `facilitator-chart-${index}`;
     const canvas = d.getElementById(canvasId);
-    if (!canvas) return;
+    
+    if (!canvas) {
+      console.warn(`Canvas #${canvasId} not found`);
+      return;
+    }
+    
+    if (!bucketedData || bucketedData.length === 0) {
+      console.warn(`No bucketed data for facilitator ${index}`);
+      return;
+    }
     
     ensureChartJS(() => {
-      const labels = bucketedData.map(b => formatDate(b.bucket_start || b.timestamp));
-      const data = bucketedData.map(b => Number(b.total_transactions || 0));
+      const labels = bucketedData.map(b => formatDate(b.bucket_start || b.timestamp || b.date));
+      const data = bucketedData.map(b => Number(b.total_transactions || b.transactions || 0));
       
       // Destroy existing chart
       if (facilitatorCharts[canvasId]) {
