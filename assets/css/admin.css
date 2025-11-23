@@ -505,7 +505,7 @@
     gap: 16px;
     background: white;
     border-radius: 12px;
-    padding: 20px;
+    padding: 24px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     transition: all 0.2s ease;
     border: 1px solid var(--border);
@@ -518,8 +518,20 @@
 
 .stat-header {
     display: flex;
-    gap: 12px;
+    gap: 16px;
     align-items: flex-start;
+}
+
+.stat-header .stat-value {
+    font-size: 32px !important;
+    font-weight: 700 !important;
+    line-height: 1.2 !important;
+}
+
+.stat-header .stat-label {
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    margin-bottom: 8px !important;
 }
 
 .stat-trend {

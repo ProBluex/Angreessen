@@ -769,14 +769,18 @@
   
   function renderSparkline(canvasId, labels, data, color) {
     const canvas = d.getElementById(canvasId);
-    if (!canvas) return;
+    if (!canvas) {
+      console.warn(`[Sparkline] Canvas #${canvasId} not found`);
+      return;
+    }
     
     // Destroy existing chart
     if (sparklineCharts[canvasId]) {
       sparklineCharts[canvasId].destroy();
     }
     
-    sparklineCharts[canvasId] = new Chart(canvas, {
+    console.log(`✅ [Sparkline] Rendering ${canvasId} with ${data.length} data points`);
+    sparklineCharts[canvasId] = new w.Chart(canvas, {
       type: 'line',
       data: {
         labels: labels,
@@ -976,7 +980,8 @@
         facilitatorCharts[canvasId].destroy();
       }
       
-      facilitatorCharts[canvasId] = new Chart(canvas, {
+      console.log(`✅ [Facilitator] Rendering chart ${canvasId} with ${data.length} data points`);
+      facilitatorCharts[canvasId] = new w.Chart(canvas, {
         type: 'line',
         data: {
           labels: labels,
