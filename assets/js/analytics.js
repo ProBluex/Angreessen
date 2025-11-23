@@ -26,6 +26,15 @@
     buyers: "#3B82F6",
     sellers: "#F59E0B",
   };
+  
+  const FACILITATOR_COLORS = {
+    'Coinbase Commerce': '#0052FF',
+    'PayAI': '#10B981',
+    'Daydreams': '#F59E0B'
+  };
+  
+  let sparklineCharts = {};
+  let facilitatorCharts = {};
 
   let marketChart = null;
   let analyticsRefreshInterval = null;
@@ -190,6 +199,7 @@
     if ($('[data-tab="analytics"]').hasClass("active")) {
       loadAnalyticsData();
       loadTopPages();
+      loadFacilitatorData();
       startAnalyticsAutoRefresh();
     }
 
@@ -203,6 +213,7 @@
         // Slight defer to allow tab DOM to paint
         setTimeout(loadAnalyticsData, 60);
         setTimeout(loadTopPages, 60);
+        setTimeout(loadFacilitatorData, 60);
       }
       startAnalyticsAutoRefresh();
     });
@@ -211,6 +222,7 @@
     $(d).on("change", "#analytics-timeframe", function () {
       loadAnalyticsData();
       loadTopPages();
+      loadFacilitatorData();
     });
 
     // Metric toggles
@@ -348,8 +360,9 @@
           // Cache the data with timeframe
           setAnalyticsCache(timeframe, { ecosystem: data });
           
-          // Update chart if we have bucketed data
+          // Render sparklines if we have bucketed data
           if (data.bucketed_data && data.bucketed_data.length) {
+            renderSparklines(data.bucketed_data);
             renderMarketOverviewChart(data.bucketed_data);
           }
         } else {
@@ -694,6 +707,312 @@
     renderMarketOverviewChart,
     startAnalyticsAutoRefresh,
   };
+
+  /* ------------------ Sparklines ------------------ */
+  
+  function renderSparklines(bucketedData) {
+    if (!bucketedData || !bucketedData.length) return;
+    
+    ensureChartJS(() => {
+      const labels = bucketedData.map(b => formatDate(b.bucket_start || b.timestamp));
+      
+      // Transactions sparkline
+      renderSparkline('sparkline-transactions', labels, 
+        bucketedData.map(b => Number(b.total_transactions || 0)), 
+        COLORS.tx
+      );
+      
+      // Volume sparkline
+      renderSparkline('sparkline-volume', labels, 
+        bucketedData.map(b => Number(b.volume || b.total_amount || 0)), 
+        COLORS.vol
+      );
+      
+      // Buyers sparkline
+      renderSparkline('sparkline-buyers', labels, 
+        bucketedData.map(b => Number(b.unique_buyers || 0)), 
+        COLORS.buyers
+      );
+      
+      // Sellers sparkline
+      renderSparkline('sparkline-sellers', labels, 
+        bucketedData.map(b => Number(b.unique_sellers || 0)), 
+        COLORS.sellers
+      );
+    });
+  }
+  
+  function renderSparkline(canvasId, labels, data, color) {
+    const canvas = d.getElementById(canvasId);
+    if (!canvas) return;
+    
+    // Destroy existing chart
+    if (sparklineCharts[canvasId]) {
+      sparklineCharts[canvasId].destroy();
+    }
+    
+    sparklineCharts[canvasId] = new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          data: data,
+          borderColor: color,
+          backgroundColor: color + '20',
+          borderWidth: 2,
+          fill: true,
+          tension: 0.4,
+          pointRadius: 0,
+          pointHoverRadius: 0,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { enabled: false }
+        },
+        scales: {
+          x: { display: false },
+          y: { display: false }
+        },
+        interaction: {
+          intersect: false,
+          mode: 'index'
+        }
+      }
+    });
+  }
+  
+  /* ------------------ Facilitators ------------------ */
+  
+  function loadFacilitatorData() {
+    const timeframe = $("#analytics-timeframe").val() || "30d";
+    
+    debugLog("🏢 [Facilitators] Loading facilitator data for timeframe:", timeframe);
+    
+    $("#facilitators-loading").show();
+    $("#facilitators-grid").hide();
+    $("#facilitators-error").hide();
+    
+    $.ajax({
+      url: w.agentHubData.supabaseUrl + '/functions/v1/x402scan-trpc-proxy',
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + w.agentHubData.supabaseAnonKey,
+        'Content-Type': 'application/json'
+      },
+      data: JSON.stringify({
+        endpoint: 'facilitators',
+        timeframe: timeframe,
+        chain: 'base'
+      }),
+      timeout: 10000,
+      success: function(response) {
+        debugLog("✅ [Facilitators] Response received:", response);
+        
+        if (response && response.data && response.data.items) {
+          const facilitators = response.data.items.slice(0, 3);
+          debugLog("🏢 [Facilitators] Top 3 facilitators:", facilitators);
+          renderFacilitators(facilitators, timeframe);
+        } else {
+          debugWarn("⚠️ [Facilitators] Invalid response format");
+          showFacilitatorsError();
+        }
+      },
+      error: function(xhr, status, error) {
+        console.error("🔴 [Facilitators] Request failed:", status, error);
+        showFacilitatorsError();
+      }
+    });
+  }
+  
+  function renderFacilitators(facilitators, timeframe) {
+    if (!facilitators || facilitators.length === 0) {
+      showFacilitatorsError();
+      return;
+    }
+    
+    $("#facilitators-loading").hide();
+    $("#facilitators-error").hide();
+    $("#facilitators-grid").show().empty();
+    
+    const colors = [FACILITATOR_COLORS['Coinbase Commerce'], FACILITATOR_COLORS['PayAI'], FACILITATOR_COLORS['Daydreams']];
+    
+    facilitators.forEach((fac, index) => {
+      const name = fac.facilitator?.name || 'Unknown';
+      const addresses = fac.facilitator_addresses || [];
+      const transactions = Number(fac.tx_count || 0);
+      const volume = Number(fac.total_amount || 0);
+      const buyers = Number(fac.unique_buyers || 0);
+      const sellers = Number(fac.unique_sellers || 0);
+      const color = colors[index] || '#666';
+      
+      // Truncate addresses
+      const displayAddresses = addresses.slice(0, 2).map(addr => 
+        addr.substring(0, 6) + '...' + addr.substring(addr.length - 4)
+      );
+      
+      if (addresses.length > 2) {
+        displayAddresses.push(`+${addresses.length - 2} more`);
+      }
+      
+      const card = `
+        <div class="facilitator-card">
+          <div class="facilitator-header">
+            <div class="facilitator-logo" style="background: ${color};">
+              ${name.charAt(0)}
+            </div>
+            <div class="facilitator-info">
+              <h4 class="facilitator-name">${esc(name)}</h4>
+              <div class="facilitator-addresses">
+                ${displayAddresses.map(addr => `<span class="facilitator-address">${esc(addr)}</span>`).join('')}
+              </div>
+            </div>
+          </div>
+          <div class="facilitator-chart">
+            <canvas id="facilitator-chart-${index}"></canvas>
+          </div>
+          <div class="facilitator-stats-grid">
+            <div class="facilitator-stat">
+              <div class="facilitator-stat-label">Requests</div>
+              <div class="facilitator-stat-value">${formatLargeNumber(transactions)}</div>
+            </div>
+            <div class="facilitator-stat">
+              <div class="facilitator-stat-label">Volume</div>
+              <div class="facilitator-stat-value">${formatCurrency(volume)}</div>
+            </div>
+            <div class="facilitator-stat">
+              <div class="facilitator-stat-label">Buyers</div>
+              <div class="facilitator-stat-value">${formatLargeNumber(buyers)}</div>
+            </div>
+            <div class="facilitator-stat">
+              <div class="facilitator-stat-label">Sellers</div>
+              <div class="facilitator-stat-value">${formatLargeNumber(sellers)}</div>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      $("#facilitators-grid").append(card);
+      
+      // Render chart for this facilitator
+      loadFacilitatorChart(index, fac.facilitator_id, color, timeframe);
+    });
+  }
+  
+  function loadFacilitatorChart(index, facilitatorId, color, timeframe) {
+    $.ajax({
+      url: w.agentHubData.supabaseUrl + '/functions/v1/x402scan-trpc-proxy',
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + w.agentHubData.supabaseAnonKey,
+        'Content-Type': 'application/json'
+      },
+      data: JSON.stringify({
+        endpoint: 'bucketed',
+        timeframe: timeframe,
+        chain: 'base',
+        facilitatorIds: [facilitatorId]
+      }),
+      timeout: 10000,
+      success: function(response) {
+        if (response && response.data && response.data.items) {
+          renderFacilitatorChart(index, response.data.items, color);
+        }
+      },
+      error: function(xhr, status, error) {
+        console.error("🔴 [Facilitator Chart] Request failed for facilitator", index, ":", error);
+      }
+    });
+  }
+  
+  function renderFacilitatorChart(index, bucketedData, color) {
+    const canvasId = `facilitator-chart-${index}`;
+    const canvas = d.getElementById(canvasId);
+    if (!canvas) return;
+    
+    ensureChartJS(() => {
+      const labels = bucketedData.map(b => formatDate(b.bucket_start || b.timestamp));
+      const data = bucketedData.map(b => Number(b.total_transactions || 0));
+      
+      // Destroy existing chart
+      if (facilitatorCharts[canvasId]) {
+        facilitatorCharts[canvasId].destroy();
+      }
+      
+      facilitatorCharts[canvasId] = new Chart(canvas, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            data: data,
+            borderColor: color,
+            backgroundColor: color + '20',
+            borderWidth: 3,
+            fill: true,
+            tension: 0.4,
+            pointRadius: 0,
+            pointHoverRadius: 4,
+            pointHoverBackgroundColor: color,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              mode: 'index',
+              intersect: false,
+              callbacks: {
+                label: function(context) {
+                  return formatNumber(context.parsed.y) + ' txns';
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              display: true,
+              grid: { display: false },
+              ticks: {
+                maxRotation: 0,
+                autoSkipPadding: 20,
+                font: { size: 10 },
+                color: '#999'
+              }
+            },
+            y: {
+              display: true,
+              grid: { 
+                color: '#f0f0f0',
+                drawBorder: false
+              },
+              ticks: {
+                font: { size: 10 },
+                color: '#999',
+                callback: function(value) {
+                  return formatLargeNumber(value);
+                }
+              }
+            }
+          },
+          interaction: {
+            intersect: false,
+            mode: 'index'
+          }
+        }
+      });
+    });
+  }
+  
+  function showFacilitatorsError() {
+    $("#facilitators-loading").hide();
+    $("#facilitators-grid").hide();
+    $("#facilitators-error").show();
+  }
 
   log("Module loaded");
 })(window, document, jQuery);

@@ -239,49 +239,85 @@ $is_connected = !empty($api_key) && !empty($site_id);
             </select>
         </div>
         
-        <!-- Ecosystem Stats Cards -->
+        <!-- Ecosystem Stats Cards with Sparklines -->
         <div class="analytics-section">
             <h3>x402 Ecosystem Overview</h3>
             <div class="agent-hub-stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
-                <div class="stat-card stat-card-analytics">
-                    <div class="stat-icon stat-icon-flat">
-                        <span class="dashicons dashicons-groups"></span>
+                <div class="stat-card stat-card-with-sparkline">
+                    <div class="stat-header">
+                        <div class="stat-icon stat-icon-flat">
+                            <span class="dashicons dashicons-chart-bar"></span>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-label">Total Transactions</div>
+                            <div class="stat-value" id="stat-ecosystem-transactions">0</div>
+                            <div class="stat-trend" id="trend-transactions"></div>
+                        </div>
                     </div>
-                    <div class="stat-content">
-                        <div class="stat-label">Active Buyers</div>
-                        <div class="stat-value" id="stat-ecosystem-buyers">0</div>
-                    </div>
-                </div>
-                
-                <div class="stat-card stat-card-analytics">
-                    <div class="stat-icon stat-icon-flat">
-                        <span class="dashicons dashicons-store"></span>
-                    </div>
-                    <div class="stat-content">
-                        <div class="stat-label">Active Sellers</div>
-                        <div class="stat-value" id="stat-ecosystem-sellers">0</div>
+                    <div class="sparkline-container">
+                        <canvas id="sparkline-transactions"></canvas>
                     </div>
                 </div>
                 
-                <div class="stat-card stat-card-analytics">
-                    <div class="stat-icon stat-icon-flat">
-                        <span class="dashicons dashicons-chart-bar"></span>
+                <div class="stat-card stat-card-with-sparkline">
+                    <div class="stat-header">
+                        <div class="stat-icon stat-icon-flat">
+                            <span class="dashicons dashicons-money-alt"></span>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-label">Total Volume</div>
+                            <div class="stat-value" id="stat-market-revenue">$0.000</div>
+                            <div class="stat-trend" id="trend-volume"></div>
+                        </div>
                     </div>
-                    <div class="stat-content">
-                        <div class="stat-label">Total Transactions</div>
-                        <div class="stat-value" id="stat-ecosystem-transactions">0</div>
+                    <div class="sparkline-container">
+                        <canvas id="sparkline-volume"></canvas>
                     </div>
                 </div>
                 
-                <div class="stat-card stat-card-analytics">
-                    <div class="stat-icon stat-icon-flat">
-                        <span class="dashicons dashicons-money-alt"></span>
+                <div class="stat-card stat-card-with-sparkline">
+                    <div class="stat-header">
+                        <div class="stat-icon stat-icon-flat">
+                            <span class="dashicons dashicons-groups"></span>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-label">Unique Buyers</div>
+                            <div class="stat-value" id="stat-ecosystem-buyers">0</div>
+                            <div class="stat-trend" id="trend-buyers"></div>
+                        </div>
                     </div>
-                    <div class="stat-content">
-                        <div class="stat-label">Market Revenue</div>
-                        <div class="stat-value" id="stat-market-revenue">$0.000</div>
+                    <div class="sparkline-container">
+                        <canvas id="sparkline-buyers"></canvas>
                     </div>
                 </div>
+                
+                <div class="stat-card stat-card-with-sparkline">
+                    <div class="stat-header">
+                        <div class="stat-icon stat-icon-flat">
+                            <span class="dashicons dashicons-store"></span>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-label">Unique Sellers</div>
+                            <div class="stat-value" id="stat-ecosystem-sellers">0</div>
+                            <div class="stat-trend" id="trend-sellers"></div>
+                        </div>
+                    </div>
+                    <div class="sparkline-container">
+                        <canvas id="sparkline-sellers"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Top Facilitators Section -->
+        <div class="analytics-section">
+            <h3>Top Facilitators</h3>
+            <div id="facilitators-loading" style="text-align: center; padding: 40px;">
+                <span class="spinner is-active"></span> Loading facilitators...
+            </div>
+            <div id="facilitators-grid" class="facilitators-grid" style="display: none;"></div>
+            <div id="facilitators-error" style="display: none; text-align: center; padding: 40px; color: #999;">
+                No facilitator data available
             </div>
         </div>
         
