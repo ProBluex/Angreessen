@@ -967,6 +967,21 @@
   }
   
   function loadFacilitatorChart(index, facilitatorId, color, timeframe) {
+    console.log(`🎯 [FACILITATOR-${index}] ========== loadFacilitatorChart CALLED ==========`);
+    console.log(`🎯 [FACILITATOR-${index}] index:`, index);
+    console.log(`🎯 [FACILITATOR-${index}] facilitatorId:`, facilitatorId);
+    console.log(`🎯 [FACILITATOR-${index}] color:`, color);
+    console.log(`🎯 [FACILITATOR-${index}] timeframe:`, timeframe);
+    console.log(`🎯 [FACILITATOR-${index}] Making AJAX request to:`, w.agentHubData.supabaseUrl + '/functions/v1/x402scan-trpc-proxy');
+    
+    const requestBody = {
+      endpoint: 'bucketed',
+      timeframe: timeframe,
+      chain: 'base',
+      facilitatorIds: [facilitatorId]
+    };
+    console.log(`🎯 [FACILITATOR-${index}] Request body:`, JSON.stringify(requestBody));
+    
     $.ajax({
       url: w.agentHubData.supabaseUrl + '/functions/v1/x402scan-trpc-proxy',
       method: 'POST',
@@ -974,39 +989,109 @@
         'Authorization': 'Bearer ' + w.agentHubData.supabaseAnonKey,
         'Content-Type': 'application/json'
       },
-      data: JSON.stringify({
-        endpoint: 'bucketed',
-        timeframe: timeframe,
-        chain: 'base',
-        facilitatorIds: [facilitatorId]
-      }),
+      data: JSON.stringify(requestBody),
       timeout: 10000,
       success: function(response) {
+        console.log(`🎯 [FACILITATOR-${index}] ========== AJAX SUCCESS ==========`);
+        console.log(`🎯 [FACILITATOR-${index}] Raw response:`, response);
+        console.log(`🎯 [FACILITATOR-${index}] response.success:`, response.success);
+        console.log(`🎯 [FACILITATOR-${index}] response.data:`, response.data);
+        console.log(`🎯 [FACILITATOR-${index}] response.data type:`, typeof response.data);
+        console.log(`🎯 [FACILITATOR-${index}] response.data is array:`, Array.isArray(response.data));
+        
+        if (response.data) {
+          console.log(`🎯 [FACILITATOR-${index}] response.data keys:`, Object.keys(response.data));
+          console.log(`🎯 [FACILITATOR-${index}] response.data.items exists:`, !!response.data.items);
+          
+          if (response.data.items) {
+            console.log(`🎯 [FACILITATOR-${index}] response.data.items length:`, response.data.items.length);
+            console.log(`🎯 [FACILITATOR-${index}] response.data.items[0]:`, response.data.items[0]);
+          }
+          
+          // Check if data is directly an array
+          if (Array.isArray(response.data)) {
+            console.log(`🎯 [FACILITATOR-${index}] response.data is direct array with length:`, response.data.length);
+            console.log(`🎯 [FACILITATOR-${index}] response.data[0]:`, response.data[0]);
+          }
+        }
+        
         if (response && response.data && response.data.items) {
+          console.log(`🎯 [FACILITATOR-${index}] ✅ Calling renderFacilitatorChart with items`);
           renderFacilitatorChart(index, response.data.items, color);
+        } else {
+          console.log(`🎯 [FACILITATOR-${index}] ❌ NO data.items - checking alternatives`);
+          
+          // Try direct array
+          if (Array.isArray(response.data)) {
+            console.log(`🎯 [FACILITATOR-${index}] ⚠️ data is array, attempting render with direct data`);
+            renderFacilitatorChart(index, response.data, color);
+          } else {
+            console.log(`🎯 [FACILITATOR-${index}] ❌ Cannot render - no valid data structure`);
+          }
         }
       },
       error: function(xhr, status, error) {
-        // Silent failure
+        console.log(`🎯 [FACILITATOR-${index}] ========== AJAX ERROR ==========`);
+        console.log(`🎯 [FACILITATOR-${index}] xhr:`, xhr);
+        console.log(`🎯 [FACILITATOR-${index}] status:`, status);
+        console.log(`🎯 [FACILITATOR-${index}] error:`, error);
+        console.log(`🎯 [FACILITATOR-${index}] responseText:`, xhr.responseText);
       }
     });
   }
   
   function renderFacilitatorChart(index, bucketedData, color) {
+    console.log(`📊 [RENDER-${index}] ========== renderFacilitatorChart CALLED ==========`);
+    console.log(`📊 [RENDER-${index}] index:`, index);
+    console.log(`📊 [RENDER-${index}] bucketedData:`, bucketedData);
+    console.log(`📊 [RENDER-${index}] bucketedData type:`, typeof bucketedData);
+    console.log(`📊 [RENDER-${index}] bucketedData is array:`, Array.isArray(bucketedData));
+    console.log(`📊 [RENDER-${index}] color:`, color);
+    
     const canvasId = `facilitator-chart-${index}`;
     const canvas = d.getElementById(canvasId);
     
+    console.log(`📊 [RENDER-${index}] canvasId:`, canvasId);
+    console.log(`📊 [RENDER-${index}] canvas element found:`, !!canvas);
+    
     if (!canvas) {
+      console.log(`📊 [RENDER-${index}] ❌ Canvas not found`);
       return;
     }
     
+    if (!bucketedData) {
+      console.log(`📊 [RENDER-${index}] ❌ bucketedData is null/undefined`);
+      return;
+    }
+    
+    if (Array.isArray(bucketedData)) {
+      console.log(`📊 [RENDER-${index}] bucketedData length:`, bucketedData.length);
+      if (bucketedData.length > 0) {
+        console.log(`📊 [RENDER-${index}] First bucket:`, bucketedData[0]);
+        console.log(`📊 [RENDER-${index}] First bucket keys:`, Object.keys(bucketedData[0]));
+      }
+    }
+    
     if (!bucketedData || bucketedData.length === 0) {
+      console.log(`📊 [RENDER-${index}] ❌ bucketedData empty array`);
       return;
     }
     
     ensureChartJS(() => {
-      const labels = bucketedData.map(b => formatDate(b.bucket_start || b.timestamp || b.date));
-      const data = bucketedData.map(b => Number(b.total_transactions || b.transactions || 0));
+      console.log(`📊 [RENDER-${index}] ✅ Chart.js loaded, processing data...`);
+      
+      const labels = bucketedData.map(b => {
+        const label = formatDate(b.bucket_start || b.timestamp || b.date);
+        return label;
+      });
+      const data = bucketedData.map(b => {
+        const value = Number(b.total_transactions || b.transactions || 0);
+        return value;
+      });
+      
+      console.log(`📊 [RENDER-${index}] Labels:`, labels);
+      console.log(`📊 [RENDER-${index}] Data:`, data);
+      console.log(`📊 [RENDER-${index}] Creating chart...`);
       
       // Destroy existing chart
       if (facilitatorCharts[canvasId]) {
@@ -1075,6 +1160,8 @@
           }
         }
       });
+      
+      console.log(`📊 [RENDER-${index}] ✅ Chart created successfully`);
     });
   }
   
