@@ -385,34 +385,9 @@
   $DOM.timeframeSel.on("change", () => hub.loadAnalytics());
 
   /* ---------- Auto-Refresh (visibility-aware) ---------- */
-
-  (function () {
-    let timer = null;
-    const T = 30000;
-
-    const tick = () => {
-      const tab = $(".tab-button.active").data("tab");
-      if (!tab) return;
-      if (tab === "content") hub.loadContent();
-      if (tab === "analytics") hub.loadAnalytics();
-      // overview handled elsewhere
-      // console.debug('[402links] Auto-refreshed', tab, 'at', new Date().toLocaleTimeString());
-    };
-
-    const start = () => {
-      if (!timer) timer = setInterval(tick, T);
-    };
-    const stop = () => {
-      if (timer) {
-        clearInterval(timer);
-        timer = null;
-      }
-    };
-
-    const visibilityHandler = () => (d.hidden ? stop() : start());
-    d.addEventListener("visibilitychange", visibilityHandler);
-    $(w).on("beforeunload", stop);
-
-    start();
-  })();
+  // DISABLED - Auto-refresh removed for My Content tab to prevent disruptive page reloads.
+  // Users can use the manual "Refresh" button to reload content when needed.
+  // Content loads on: initial page load, tab switch, and after generating links.
+  
+  debugLog('[admin.js] Auto-refresh disabled for content tab - users can use Refresh button');
 })(window, document, jQuery);
