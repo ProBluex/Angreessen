@@ -17,6 +17,10 @@
     let filteredContent = [];
     let sortColumn = 'published';
     let sortDirection = 'desc';
+    let currentPage = 1;
+    let totalPages = 1;
+    let totalPosts = 0;
+    let perPage = 20; // Default to 20 posts per page
     
     /**
      * Initialize content manager when DOM is ready
@@ -26,7 +30,16 @@
         
         // Load content when tab is clicked
         $(document).on('click', '[data-tab="my-content"]', function() {
-            setTimeout(loadContent, 100);
+            setTimeout(() => loadContent(1), 100);
+        });
+        
+        // Pagination click handlers
+        $(document).on('click', '.content-page-link', function(e) {
+            e.preventDefault();
+            const page = $(this).data('page');
+            if (page && page !== currentPage) {
+                loadContent(page);
+            }
         });
         
         // Search functionality
@@ -59,25 +72,35 @@
         // Filter by link status
         $(document).on('change', '#content-link-filter', handleLinkFilter);
         
+        // Refresh button
+        $(document).on('click', '#refresh-content', function() {
+            loadContent(currentPage);
+        });
+        
         debugLog('[ContentManager] Event handlers registered');
     });
     
     /**
-     * Load content from WordPress
+     * Load content from WordPress with pagination
      */
-    function loadContent() {
-        debugLog('[ContentManager] Loading content list');
+    function loadContent(page = 1) {
+        debugLog('[ContentManager] Loading content list - Page:', page);
+        
+        currentPage = page;
         
         $.ajax({
             url: agentHubData.ajaxUrl,
             type: 'POST',
             data: {
                 action: 'agent_hub_get_content',
-                nonce: agentHubData.nonce
+                nonce: agentHubData.nonce,
+                page: page,
+                per_page: perPage
             },
             beforeSend: function() {
                 $('.content-loading').show();
                 $('#content-table-container').hide();
+                $('#content-pagination').hide();
             },
             success: function(response) {
                 debugLog('[ContentManager] Content loaded:', response);
@@ -85,8 +108,19 @@
                 if (response.success && response.data.content) {
                     currentContent = response.data.content;
                     filteredContent = [...currentContent];
+                    
+                    // Update pagination info
+                    if (response.data.pagination) {
+                        currentPage = response.data.pagination.current_page;
+                        totalPages = response.data.pagination.total_pages;
+                        totalPosts = response.data.pagination.total_posts;
+                        debugLog('[ContentManager] Pagination:', currentPage, 'of', totalPages, '- Total posts:', totalPosts);
+                    }
+                    
                     renderContent();
+                    renderPagination();
                     updateStats();
+                    updatePostCountIndicator();
                 } else {
                     console.error('[ContentManager] Failed to load content:', response);
                     showError('Failed to load content');
@@ -99,6 +133,7 @@
             complete: function() {
                 $('.content-loading').hide();
                 $('#content-table-container').show();
+                $('#content-pagination').show();
             }
         });
     }
@@ -295,7 +330,7 @@
                 const message = `Generated ${completed} links successfully` + 
                                (failed > 0 ? `, ${failed} failed` : '');
                 showToast('Bulk Generation Complete', message, completed > 0 ? 'success' : 'error');
-                loadContent(); // Reload content
+                loadContent(currentPage); // Reload current page
                 return;
             }
             
@@ -353,7 +388,7 @@
             success: function(response) {
                 if (response.success) {
                     showToast('Success', 'Link generated successfully!', 'success');
-                    loadContent(); // Reload content
+                    loadContent(currentPage); // Reload current page
                 } else {
                     showToast('Error', response.data?.message || 'Failed to generate link', 'error');
                 }
@@ -473,6 +508,62 @@
         $('#stat-total-content').text(formatNumber(total));
         $('#stat-protected-content').text(formatNumber(protectedCount));
         $('#stat-unprotected-content').text(formatNumber(unprotected));
+    }
+    
+    /**
+     * Update post count indicator
+     */
+    function updatePostCountIndicator() {
+        const startIndex = (currentPage - 1) * perPage + 1;
+        const endIndex = Math.min(currentPage * perPage, totalPosts);
+        const countText = `Showing ${startIndex}-${endIndex} of ${formatNumber(totalPosts)} posts`;
+        $('#post-count-indicator').text(countText);
+    }
+    
+    /**
+     * Render pagination controls
+     */
+    function renderPagination() {
+        const container = $('#content-pagination');
+        container.empty();
+        
+        if (totalPages <= 1) {
+            return;
+        }
+        
+        const paginationHtml = [];
+        paginationHtml.push('<div class="tablenav-pages">');
+        paginationHtml.push(`<span class="displaying-num">${formatNumber(totalPosts)} items</span>`);
+        paginationHtml.push('<span class="pagination-links">');
+        
+        // First page
+        if (currentPage > 1) {
+            paginationHtml.push(`<a class="first-page button content-page-link" data-page="1" href="#">«</a>`);
+            paginationHtml.push(`<a class="prev-page button content-page-link" data-page="${currentPage - 1}" href="#">‹</a>`);
+        } else {
+            paginationHtml.push('<span class="tablenav-pages-navspan button disabled" aria-hidden="true">«</span>');
+            paginationHtml.push('<span class="tablenav-pages-navspan button disabled" aria-hidden="true">‹</span>');
+        }
+        
+        // Page numbers
+        paginationHtml.push('<span class="paging-input">');
+        paginationHtml.push(`<span class="tablenav-paging-text">${currentPage} of <span class="total-pages">${totalPages}</span></span>`);
+        paginationHtml.push('</span>');
+        
+        // Last page
+        if (currentPage < totalPages) {
+            paginationHtml.push(`<a class="next-page button content-page-link" data-page="${currentPage + 1}" href="#">›</a>`);
+            paginationHtml.push(`<a class="last-page button content-page-link" data-page="${totalPages}" href="#">»</a>`);
+        } else {
+            paginationHtml.push('<span class="tablenav-pages-navspan button disabled" aria-hidden="true">›</span>');
+            paginationHtml.push('<span class="tablenav-pages-navspan button disabled" aria-hidden="true">»</span>');
+        }
+        
+        paginationHtml.push('</span>');
+        paginationHtml.push('</div>');
+        
+        container.html(paginationHtml.join(''));
+        debugLog('[ContentManager] Rendered pagination:', currentPage, 'of', totalPages);
     }
     
     /**
