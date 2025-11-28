@@ -1,10 +1,10 @@
 <?php
 /**
- * Plugin Name: Tolliver - Ai Agent Pay Collector
+ * Plugin Name: Marc Angreessen Agent - AI Pay Collector
  * Plugin URI: https://402links.com
  * Description: Convert any WordPress page into a paid API endpoint using HTTP 402 - requiring payment before AI agents access your content.
  * Version:           3.24.4
- * Author: Tolliver Team
+ * Author: 402links Team
  * Author URI: https://402links.com
  * License: GPLv2 or later
  */
@@ -94,7 +94,7 @@ if ($should_init_puc) {
             
             if (defined('WP_DEBUG') && WP_DEBUG) {
                 $context = wp_doing_cron() ? 'wp-cron' : (is_admin() ? 'admin' : 'other');
-                error_log("Tolliver PUC: Initialized at file scope (context: {$context})");
+                error_log("Angreessen PUC: Initialized at file scope (context: {$context})");
             }
         }
     }
@@ -127,7 +127,7 @@ add_action('admin_init', function() {
     if (isset($_GET['tolliver_cache_cleared'])) {
         add_action('admin_notices', function() {
             echo '<div class="notice notice-success is-dismissible">';
-            echo '<p><strong>Tolliver:</strong> Update cache cleared! Please check for updates again.</p>';
+            echo '<p><strong>Angreessen:</strong> Update cache cleared! Please check for updates again.</p>';
             echo '</div>';
         });
     }
@@ -165,7 +165,7 @@ add_action('admin_init', function() {
                     delete_site_transient('update_plugins');
                     
                     if (defined('WP_DEBUG') && WP_DEBUG) {
-                        error_log("Tolliver: Auto-cleared stale cache (current: {$current_version}, GitHub: {$latest_version})");
+                        error_log("Angreessen: Auto-cleared stale cache (current: {$current_version}, GitHub: {$latest_version})");
                     }
                 }
             }
@@ -197,13 +197,13 @@ add_action('admin_footer', function() {
         ?>
         <script>
         jQuery(document).ready(function($) {
-            // Add custom check button for Tolliver updates
+            // Add custom check button for Angreessen updates
             const clearCacheUrl = '<?php echo wp_nonce_url(admin_url('admin.php?tolliver_clear_update_cache=1'), 'tolliver-clear-cache'); ?>';
             
             $('<a>', {
                 href: clearCacheUrl,
                 class: 'button button-secondary',
-                text: 'Check Tolliver Updates',
+                text: 'Check Angreessen Updates',
                 css: {
                     marginLeft: '10px',
                     marginTop: '10px'

@@ -7,10 +7,10 @@ $is_connected = !empty($api_key) && !empty($site_id);
 
 <div class="wrap agent-hub-dashboard">
     <h1 style="display: flex; align-items: center; gap: 12px;">
-        <img src="<?php echo AGENT_HUB_PLUGIN_URL; ?>assets/images/tolliver-logo.png" 
-             alt="Tolliver Logo" 
-             style="width: 64px; height: 64px; border-radius: 50%; object-fit: cover;">
-        Tolliver - Ai Agent Pay Collector
+        <img src="<?php echo AGENT_HUB_PLUGIN_URL; ?>assets/images/angreessen-logo.png" 
+             alt="Marc Angreessen Logo" 
+             style="width: 64px; height: 64px; border-radius: 50%; object-fit: cover; object-position: center; transform: scale(1.5);">
+        Marc Angreessen Agent - AI Pay Collector
     </h1>
     
     <div class="agent-hub-connection-status">
@@ -175,7 +175,7 @@ $is_connected = !empty($api_key) && !empty($site_id);
         <div class="agent-hub-info-box">
             <h3>
                 <span class="dashicons dashicons-info-outline"></span> 
-                About Tolliver - Ai Agent Pay Collector
+                About Marc Angreessen
             </h3>
             <p>This plugin automatically detects AI agents (like GPTBot, ClaudeBot, etc.) accessing your WordPress content and requires payment via the x402 protocol before granting access.</p>
             
@@ -471,7 +471,7 @@ $is_connected = !empty($api_key) && !empty($site_id);
     <!-- Contact Us Tab -->
     <div id="tab-contact" class="tab-content">
         <div class="contact-intro">
-            <h2>About Tolliver Plugin</h2>
+            <h2>About Marc Angreessen Agent Plugin</h2>
             <div class="contact-description">
                 <p>This plugin is developed by the team at <a href="https://402links.com" target="_blank">402links.com</a> by using the emerging "HTTP 402 Payment Required" standard. Leveraging novel advancements in agentic payment technologies, the plugin enables websites to convert any page or endpoint into a monetizable digital SKU. This means that both humans and AI agents can seamlessly pay for access, data, or functionality - directly through standard web requests - with instant settlement in stablecoins on the Base blockchain.</p>
                 
