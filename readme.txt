@@ -1,4 +1,4 @@
-=== Marc Angreessen Agent - AI Pay Collector ===
+=== Tolliver - Ai Agent Pay Collector ===
 Contributors: 402links, ProBluex
 Tags: payment, ai, agent, monetization, x402, paywall
 Requires at least: 5.0
@@ -10,7 +10,7 @@ Automatically monetize WordPress content with AI agent payments via x402 protoco
 
 == Description ==
 
-Marc Angreessen Agent - AI Pay Collector enables seamless monetization of WordPress content through the x402 payment protocol. AI agents can automatically discover and pay for access to premium content on wordpress using micropayments.Read more on x402 here: https://github.com/coinbase/x402.
+Tolliver - Ai Agent Pay Collector enables seamless monetization of WordPress content through the x402 payment protocol. AI agents can automatically discover and pay for access to premium content on wordpress using micropayments.Read more on x402 here: https://github.com/coinbase/x402.
 
 **Key Features:**
 
@@ -33,7 +33,7 @@ Marc Angreessen Agent - AI Pay Collector enables seamless monetization of WordPr
 
 1. Upload the plugin files to `/wp-content/plugins/tolliver-agent/`
 2. Activate the plugin through the 'Plugins' screen in WordPress
-3. Configure your payment wallet address in Settings → Angreessen
+3. Configure your payment wallet address in Settings → Tolliver
 4. Start marking content as premium with custom pricing
 
 == Frequently Asked Questions ==

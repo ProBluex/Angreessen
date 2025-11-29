@@ -1,5 +1,5 @@
 /**
- * Analytics & Charts for Marc Angreessen Agent - AI Pay Collector
+ * Analytics & Charts for Tolliver - AI Agent Pay Collector
  * (hardened, lean, collision-safe)
  */
 (function (w, d, $) {

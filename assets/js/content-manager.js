@@ -1,5 +1,5 @@
 /**
- * Content Manager for Marc Angreessen Agent - AI Pay Collector
+ * Content Manager for Tolliver - Ai Agent Pay Collector
  * Handles content table interactions, filtering, sorting, and bulk operations
  */
 

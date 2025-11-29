@@ -17,9 +17,9 @@ class Admin {
             $site_id = get_option('402links_site_id');
             ?>
             <div class="notice notice-success is-dismissible">
-                <p><strong>🎉 Marc Angreessen Agent:</strong> Your site has been automatically registered! 
+                <p><strong>🎉 Tolliver - Ai Agent Pay Collector:</strong> Your site has been automatically registered! 
                 Site ID: <code><?php echo esc_html($site_id); ?></code></p>
-                <p>Configure your payment wallet in the <a href="<?php echo admin_url('admin.php?page=agent-hub'); ?>">Angreessen dashboard</a> to start protecting and monetizing your content.</p>
+                <p>Configure your payment wallet in the <a href="<?php echo admin_url('admin.php?page=agent-hub'); ?>">Tolliver dashboard</a> to start protecting and monetizing your content.</p>
             </div>
             <?php
             delete_option('402links_provisioning_success');
@@ -30,7 +30,7 @@ class Admin {
         if ($info) {
             ?>
             <div class="notice notice-info is-dismissible">
-                <p><strong>ℹ️ Angreessen:</strong> <?php echo esc_html($info); ?></p>
+                <p><strong>ℹ️ Tolliver:</strong> <?php echo esc_html($info); ?></p>
             </div>
             <?php
             delete_option('402links_provisioning_info');
@@ -41,7 +41,7 @@ class Admin {
         if ($error) {
             ?>
             <div class="notice notice-error is-dismissible">
-                <p><strong>⚠️ Angreessen:</strong> Auto-provisioning failed: <?php echo esc_html($error); ?></p>
+                <p><strong>⚠️ Tolliver:</strong> Auto-provisioning failed: <?php echo esc_html($error); ?></p>
                 <p>You can manually register at <a href="https://402links.com" target="_blank">402links.com</a> or contact support for assistance.</p>
             </div>
             <?php
@@ -66,7 +66,7 @@ class Admin {
         
         ?>
         <div class="notice notice-info is-dismissible" id="tolliver-setup-notice">
-            <h3>🚀 Welcome to Marc Angreessen Agent - AI Pay Collector!</h3>
+            <h3>🚀 Welcome to Tolliver - Ai Agent Pay Collector!</h3>
             <p><strong>Setup Required:</strong> This plugin requires connecting to 402links.com to enable AI agent payments.</p>
             
             <p><strong>What will be sent to 402links.com:</strong></p>
@@ -80,14 +80,14 @@ class Admin {
             <p>By clicking "Complete Setup", you agree to the <a href="https://402links.com/terms" target="_blank">402links Terms of Service</a> and <a href="https://402links.com/privacy" target="_blank">Privacy Policy</a>.</p>
             
             <p>
-                <button type="button" class="button button-primary" id="angreessen-complete-setup">Complete Setup</button>
+                <button type="button" class="button button-primary" id="tolliver-complete-setup">Complete Setup</button>
                 <a href="<?php echo admin_url('plugins.php'); ?>" class="button">Skip for Now</a>
             </p>
         </div>
         
         <script>
         jQuery(document).ready(function($) {
-            $('#angreessen-complete-setup').on('click', function() {
+            $('#tolliver-complete-setup').on('click', function() {
                 var button = $(this);
                 button.prop('disabled', true).text('Setting up...');
                 
@@ -116,8 +116,8 @@ class Admin {
      */
     public static function register_menu() {
         add_menu_page(
-            'Marc Angreessen Agent - AI Pay Collector',
-            'Angreessen',
+            'Tolliver - Ai Agent Pay Collector',
+            'Tolliver',
             'manage_options',
             'agent-hub',
             [self::class, 'render_dashboard'],
