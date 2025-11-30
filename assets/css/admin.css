@@ -735,6 +735,157 @@
     border-radius: var(--radius-md);
     border: 1px solid var(--border-subtle);
     box-shadow: var(--shadow-sm);
+    margin-bottom: 24px;
+}
+
+/* ============================================
+   Facilitators Grid
+   ============================================ */
+.facilitators-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 24px;
+}
+
+.facilitator-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 24px;
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.facilitator-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.facilitator-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.facilitator-logo {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 20px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.facilitator-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.facilitator-name {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 8px 0;
+}
+
+.facilitator-addresses {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.facilitator-address {
+    font-size: 11px;
+    font-family: monospace;
+    color: var(--text-secondary);
+    background: var(--bg-app);
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.facilitator-chart {
+    height: 200px;
+    margin-bottom: 20px;
+    position: relative;
+}
+
+.facilitator-chart canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.facilitator-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.facilitator-stat {
+    background: var(--bg-app);
+    padding: 12px;
+    border-radius: var(--radius-sm);
+    text-align: center;
+}
+
+.facilitator-stat-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+}
+
+.facilitator-stat-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+/* ============================================
+   Stat Cards with Sparklines
+   ============================================ */
+.stat-card-with-sparkline {
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+}
+
+.stat-card-with-sparkline .stat-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.sparkline-container {
+    height: 60px;
+    width: 100%;
+    position: relative;
+}
+
+.sparkline-container canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.stat-trend {
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 4px;
+}
+
+.stat-trend.positive {
+    color: var(--success-text);
+}
+
+.stat-trend.negative {
+    color: var(--error-text);
 }
 
 .analytics-section h3 {
