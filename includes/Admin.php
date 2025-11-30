@@ -149,6 +149,15 @@ class Admin {
             AGENT_HUB_VERSION
         );
         
+        // Feather Icons library
+        wp_enqueue_script(
+            'feather-icons',
+            'https://unpkg.com/feather-icons@4.29.0/dist/feather.min.js',
+            [],
+            '4.29.0',
+            true
+        );
+        
         // Preload Chart.js for faster Analytics rendering
         wp_enqueue_script(
             'chartjs',

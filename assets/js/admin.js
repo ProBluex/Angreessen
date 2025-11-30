@@ -390,4 +390,10 @@
   // Content loads on: initial page load, tab switch, and after generating links.
   
   debugLog('[admin.js] Auto-refresh disabled for content tab - users can use Refresh button');
+  
+  /* ---------- Initialize Feather Icons ---------- */
+  if (typeof feather !== 'undefined') {
+    feather.replace();
+    debugLog('[admin.js] Feather icons initialized');
+  }
 })(window, document, jQuery);

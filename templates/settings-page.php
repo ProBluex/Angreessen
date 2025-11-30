@@ -6,49 +6,48 @@ $is_connected = !empty($api_key) && !empty($site_id);
 ?>
 
 <div class="wrap agent-hub-dashboard">
-    <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px;">
-        <img src="<?php echo AGENT_HUB_PLUGIN_URL; ?>assets/images/angreessen-logo.png" 
-             alt="Agent Angreessen Logo" 
-             style="width: 96px; height: 96px; border-radius: 50%; object-fit: cover; object-position: center 20%; transform: scale(1.4);">
-        <div>
-            <h1 style="margin: 0; font-size: 32px; line-height: 1.2;">Agent Angreessen</h1>
-            <p style="margin: 4px 0 0 0; font-size: 16px; color: #666; font-weight: 400;">Ai Agent Pay Collector</p>
-        </div>
-    </div>
-    
-    <div class="agent-hub-connection-status">
-        <?php if ($is_connected): ?>
-            <span class="status-badge connected">
-                <span class="dashicons dashicons-yes-alt"></span>
-                Connected
-            </span>
-        <?php else: ?>
-            <span class="status-badge disconnected">
-                <span class="dashicons dashicons-warning"></span>
-                Not Connected
-            </span>
-        <?php endif; ?>
+    <!-- Modern Header -->
+    <div class="angreessen-header">
+        <header class="angreessen-header-inner">
+            <!-- Brand Section -->
+            <div class="header-brand">
+                <div class="brand-logo-wrapper">
+                    <img src="<?php echo AGENT_HUB_PLUGIN_URL; ?>assets/images/angreessen-logo.png" 
+                         alt="Agent Angreessen" class="brand-logo">
+                </div>
+                <div class="brand-info">
+                    <span class="brand-name">Agent Angreessen</span>
+                    <span class="brand-tagline">AI Agent Pay Collector</span>
+                </div>
+            </div>
+            
+            <!-- Connection Status -->
+            <div class="connection-pill <?php echo $is_connected ? 'connected' : 'disconnected'; ?>">
+                <span class="status-dot"></span>
+                <?php echo $is_connected ? 'Connected' : 'Offline'; ?>
+            </div>
+        </header>
     </div>
     
     <div class="agent-hub-tabs">
         <button class="tab-button active" data-tab="overview">
-            <span class="dashicons dashicons-dashboard"></span>
+            <i data-feather="grid"></i>
             Overview
         </button>
         <button class="tab-button" data-tab="content">
-            <span class="dashicons dashicons-admin-page"></span>
+            <i data-feather="file-text"></i>
             My Content
         </button>
         <button class="tab-button" data-tab="analytics">
-            <span class="dashicons dashicons-chart-line"></span>
+            <i data-feather="trending-up"></i>
             Analytics
         </button>
         <button class="tab-button" data-tab="violations">
-            <span class="dashicons dashicons-shield-alt"></span>
+            <i data-feather="shield-off"></i>
             Violations
         </button>
         <button class="tab-button" data-tab="contact">
-            <span class="dashicons dashicons-email"></span>
+            <i data-feather="mail"></i>
             Contact Us
         </button>
     </div>
@@ -58,7 +57,7 @@ $is_connected = !empty($api_key) && !empty($site_id);
         <div class="agent-hub-stats-grid">
             <div class="stat-card stat-card-overview">
                 <div class="stat-icon stat-icon-flat">
-                    <span class="dashicons dashicons-visibility"></span>
+                    <i data-feather="eye"></i>
                 </div>
                 <div class="stat-content">
                     <div class="stat-label">Total AI Agent Crawls</div>
@@ -68,7 +67,7 @@ $is_connected = !empty($api_key) && !empty($site_id);
             
             <div class="stat-card stat-card-overview">
                 <div class="stat-icon stat-icon-flat">
-                    <span class="dashicons dashicons-yes-alt"></span>
+                    <i data-feather="check-circle"></i>
                 </div>
                 <div class="stat-content">
                     <div class="stat-label">Paid Crawls</div>
@@ -78,7 +77,7 @@ $is_connected = !empty($api_key) && !empty($site_id);
             
             <div class="stat-card stat-card-overview">
                 <div class="stat-icon stat-icon-flat">
-                    <span class="dashicons dashicons-money-alt"></span>
+                    <i data-feather="dollar-sign"></i>
                 </div>
                 <div class="stat-content">
                     <div class="stat-label">Total Revenue</div>
@@ -88,7 +87,7 @@ $is_connected = !empty($api_key) && !empty($site_id);
             
             <div class="stat-card stat-card-overview">
                 <div class="stat-icon stat-icon-flat">
-                    <span class="dashicons dashicons-admin-page"></span>
+                    <i data-feather="lock"></i>
                 </div>
                 <div class="stat-content">
                     <div class="stat-label">Protected Pages</div>
@@ -98,19 +97,19 @@ $is_connected = !empty($api_key) && !empty($site_id);
         </div>
         
         <div class="agent-hub-config-card">
-            <h3><span class="dashicons dashicons-admin-settings"></span> Configuration</h3>
+            <h3><i data-feather="settings"></i> Configuration</h3>
             
             <?php if ($site_id): ?>
                 <div class="config-site-id">
                     <span class="site-id-label">Site ID:</span>
                     <?php if ($is_connected): ?>
                         <span class="site-id-badge connected">
-                            <span class="dashicons dashicons-yes-alt"></span>
+                            <i data-feather="check-circle"></i>
                             <code><?php echo esc_html($site_id); ?></code>
                         </span>
                     <?php else: ?>
                         <span class="site-id-badge disconnected">
-                            <span class="dashicons dashicons-warning"></span>
+                            <i data-feather="alert-circle"></i>
                             <code><?php echo esc_html($site_id); ?></code>
                         </span>
                     <?php endif; ?>
@@ -168,7 +167,7 @@ $is_connected = !empty($api_key) && !empty($site_id);
                 
                 <div class="config-actions">
                     <button type="button" id="save-overview-config" class="button button-primary">
-                        <span class="dashicons dashicons-saved"></span>
+                        <i data-feather="save"></i>
                         Save Configuration
                     </button>
                 </div>
@@ -177,7 +176,7 @@ $is_connected = !empty($api_key) && !empty($site_id);
         
         <div class="agent-hub-info-box">
             <h3>
-                <span class="dashicons dashicons-info-outline"></span> 
+                <i data-feather="info"></i> 
                 About Agent Angreessen - Ai Agent Pay Collector
             </h3>
             <p>This plugin automatically detects AI agents (like GPTBot, ClaudeBot, etc.) accessing your WordPress content and requires payment via the x402 protocol before granting access.</p>
@@ -197,11 +196,11 @@ $is_connected = !empty($api_key) && !empty($site_id);
     <div id="tab-content" class="tab-content">
         <div class="content-toolbar">
             <button id="bulk-generate-links" class="button button-primary">
-                <span class="dashicons dashicons-update"></span>
+                <i data-feather="refresh-cw"></i>
                 Generate Paid Links (Posts Only)
             </button>
             <button id="refresh-content" class="button">
-                <span class="dashicons dashicons-update-alt"></span>
+                <i data-feather="refresh-cw"></i>
                 Refresh
             </button>
             <span id="post-count-indicator" style="margin-left: 15px; font-weight: 500; color: #666;"></span>
@@ -249,7 +248,7 @@ $is_connected = !empty($api_key) && !empty($site_id);
                 <div class="stat-card stat-card-with-sparkline">
                     <div class="stat-header">
                         <div class="stat-icon stat-icon-flat">
-                            <span class="dashicons dashicons-chart-bar"></span>
+                            <i data-feather="bar-chart-2"></i>
                         </div>
                         <div class="stat-content">
                             <div class="stat-label">Total Transactions</div>
@@ -265,7 +264,7 @@ $is_connected = !empty($api_key) && !empty($site_id);
                 <div class="stat-card stat-card-with-sparkline">
                     <div class="stat-header">
                         <div class="stat-icon stat-icon-flat">
-                            <span class="dashicons dashicons-money-alt"></span>
+                            <i data-feather="dollar-sign"></i>
                         </div>
                         <div class="stat-content">
                             <div class="stat-label">Total Volume</div>
@@ -281,7 +280,7 @@ $is_connected = !empty($api_key) && !empty($site_id);
                 <div class="stat-card stat-card-with-sparkline">
                     <div class="stat-header">
                         <div class="stat-icon stat-icon-flat">
-                            <span class="dashicons dashicons-groups"></span>
+                            <i data-feather="users"></i>
                         </div>
                         <div class="stat-content">
                             <div class="stat-label">Unique Buyers</div>
@@ -297,7 +296,7 @@ $is_connected = !empty($api_key) && !empty($site_id);
                 <div class="stat-card stat-card-with-sparkline">
                     <div class="stat-header">
                         <div class="stat-icon stat-icon-flat">
-                            <span class="dashicons dashicons-store"></span>
+                            <i data-feather="shopping-bag"></i>
                         </div>
                         <div class="stat-content">
                             <div class="stat-label">Unique Sellers</div>
@@ -365,7 +364,7 @@ $is_connected = !empty($api_key) && !empty($site_id);
     <div id="tab-violations" class="tab-content">
         <div class="violations-header">
             <h2>
-                <span class="dashicons dashicons-shield-alt"></span>
+                <i data-feather="shield-off"></i>
                 Agent Violations Dashboard
             </h2>
             <p class="violations-description">Track and monitor AI agents that violate robots.txt rules, ignore 402 payment requirements, or attempt unauthorized access to your content.</p>
@@ -374,7 +373,7 @@ $is_connected = !empty($api_key) && !empty($site_id);
         <div class="agent-hub-stats-grid">
             <div class="stat-card stat-card-violations">
                 <div class="stat-icon stat-icon-flat">
-                    <span class="dashicons dashicons-warning"></span>
+                    <i data-feather="alert-triangle"></i>
                 </div>
                 <div class="stat-content">
                     <div class="stat-label">Total Violations</div>
@@ -384,7 +383,7 @@ $is_connected = !empty($api_key) && !empty($site_id);
             
             <div class="stat-card stat-card-violations">
                 <div class="stat-icon stat-icon-flat">
-                    <span class="dashicons dashicons-shield-alt"></span>
+                    <i data-feather="shield"></i>
                 </div>
                 <div class="stat-content">
                     <div class="stat-label">Robots.txt Violations</div>
@@ -394,7 +393,7 @@ $is_connected = !empty($api_key) && !empty($site_id);
             
             <div class="stat-card stat-card-violations">
                 <div class="stat-icon stat-icon-flat">
-                    <span class="dashicons dashicons-money-alt"></span>
+                    <i data-feather="dollar-sign"></i>
                 </div>
                 <div class="stat-content">
                     <div class="stat-label">Unpaid Access Attempts</div>
@@ -404,7 +403,7 @@ $is_connected = !empty($api_key) && !empty($site_id);
             
             <div class="stat-card stat-card-violations">
                 <div class="stat-icon stat-icon-flat">
-                    <span class="dashicons dashicons-groups"></span>
+                    <i data-feather="users"></i>
                 </div>
                 <div class="stat-content">
                     <div class="stat-label">Unique Violating Agents</div>
