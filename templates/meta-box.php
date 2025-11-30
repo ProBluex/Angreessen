@@ -85,8 +85,8 @@ $stats = $wpdb->get_row($wpdb->prepare(
                 <span class="dashicons dashicons-warning"></span>
                 <strong>No Monetization Link</strong>
             </div>
-            <p>This page is not yet protected by Tolliver.</p>
-            <button type="button" 
+            <p>This page is not yet protected by Agent Angreessen.</p>
+            <button type="button"
                     class="button button-primary" 
                     onclick="generateLinkFromMetaBox(<?php echo $post->ID; ?>)">
                 Generate Monetization Link
