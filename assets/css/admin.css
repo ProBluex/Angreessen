@@ -166,7 +166,7 @@
 
 /* Modern Header */
 .angreessen-header {
-    margin: 0 0 24px 0;
+    margin: 0;
     font-family: 'Inter', sans-serif;
 }
 
@@ -177,9 +177,9 @@
     height: 72px;
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(12px);
-    border-bottom: 1px solid var(--border);
+    border-bottom: none;
     padding: 0 32px;
-    border-radius: 16px;
+    border-radius: 16px 16px 0 0;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
     margin-bottom: 0;
 }
