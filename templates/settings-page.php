@@ -6,12 +6,15 @@ $is_connected = !empty($api_key) && !empty($site_id);
 ?>
 
 <div class="wrap agent-hub-dashboard">
-    <h1 style="display: flex; align-items: center; gap: 12px;">
+    <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px;">
         <img src="<?php echo AGENT_HUB_PLUGIN_URL; ?>assets/images/angreessen-logo.png" 
              alt="Agent Angreessen Logo" 
-             style="width: 64px; height: 64px; border-radius: 50%; object-fit: cover;">
-        Agent Angreessen - Ai Agent Pay Collector
-    </h1>
+             style="width: 96px; height: 96px; border-radius: 50%; object-fit: cover; object-position: center 20%; transform: scale(1.4);">
+        <div>
+            <h1 style="margin: 0; font-size: 32px; line-height: 1.2;">Agent Angreessen</h1>
+            <p style="margin: 4px 0 0 0; font-size: 16px; color: #666; font-weight: 400;">Ai Agent Pay Collector</p>
+        </div>
+    </div>
     
     <div class="agent-hub-connection-status">
         <?php if ($is_connected): ?>
