@@ -191,9 +191,9 @@
 }
 
 .brand-logo-wrapper {
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
+    width: 72px;
+    height: 72px;
+    border-radius: 16px;
     overflow: hidden;
     box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
 }
@@ -213,14 +213,14 @@
 }
 
 .brand-name {
-    font-size: 20px;
+    font-size: 28px;
     font-weight: 700;
     color: var(--foreground);
     letter-spacing: -0.02em;
 }
 
 .brand-tagline {
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 500;
     color: var(--foreground-muted);
     text-transform: uppercase;
