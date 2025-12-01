@@ -700,7 +700,7 @@ class Admin {
             
             $content_list[] = [
                 'id' => $post_id,
-                'title' => get_the_title($post_id),
+                'title' => Helpers::get_clean_title($post_id),
                 'url' => get_permalink($post_id),
                 'type' => $post->post_type,
                 'link_id' => $link_id,

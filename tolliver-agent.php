@@ -43,6 +43,9 @@ spl_autoload_register(function ($class) {
     }
 });
 
+// Load helper functions
+require_once AGENT_HUB_PLUGIN_DIR . 'includes/Helpers.php';
+
 // Load text domain at the correct time (WordPress 6.7+ requirement)
 add_action('init', function() {
     load_plugin_textdomain(

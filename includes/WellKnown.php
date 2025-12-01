@@ -120,7 +120,7 @@ class WellKnown {
             
             $pages[] = [
                 'url' => get_permalink($post->ID),
-                'title' => get_the_title($post->ID),
+                'title' => Helpers::get_clean_title($post->ID),
                 'price' => floatval($price),
                 'type' => $post->post_type,
                 'modified' => $post->post_modified

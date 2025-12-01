@@ -257,7 +257,7 @@ class API {
         $json_content = [
             'version' => '1.0',
             'content_type' => 'blog_post',
-            'title' => get_the_title($post_id),
+            'title' => Helpers::get_clean_title($post_id),
             'body' => wp_strip_all_tags($post->post_content), // Strip HTML for clean text
             'excerpt' => $excerpt,
             'author' => $author,
@@ -271,7 +271,7 @@ class API {
         
         $payload = [
             'post_id' => $post_id,
-            'title' => get_the_title($post_id),
+            'title' => Helpers::get_clean_title($post_id),
             'url' => get_permalink($post_id),
             'price' => floatval($price),
             'site_url' => get_site_url(),
@@ -356,7 +356,7 @@ class API {
             $json_content = [
                 'version' => '1.0',
                 'content_type' => 'blog_post',
-                'title' => get_the_title($post_id),
+                'title' => Helpers::get_clean_title($post_id),
                 'body' => wp_strip_all_tags($post->post_content),
                 'excerpt' => $excerpt,
                 'author' => $author,
@@ -370,7 +370,7 @@ class API {
             
             $payload = [
                 'post_id' => $post_id,
-                'title' => get_the_title($post_id),
+                'title' => Helpers::get_clean_title($post_id),
                 'url' => get_permalink($post_id),
                 'price' => floatval($price),
                 'site_url' => get_site_url(),
@@ -532,7 +532,7 @@ class API {
         $json_content = [
             'version' => '1.0',
             'content_type' => 'blog_post',
-            'title' => get_the_title($post_id),
+            'title' => Helpers::get_clean_title($post_id),
             'body' => wp_strip_all_tags($post->post_content),
             'excerpt' => $excerpt,
             'author' => $author,
@@ -548,7 +548,7 @@ class API {
             'site_url' => get_site_url(),
             'link_id' => $link_id,
             'post_id' => $post_id,
-            'title' => get_the_title($post_id),
+            'title' => Helpers::get_clean_title($post_id),
             'url' => get_permalink($post_id),
             'price' => floatval($price),
             'excerpt' => $excerpt,

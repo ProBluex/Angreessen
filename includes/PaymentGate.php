@@ -30,7 +30,7 @@ class PaymentGate {
         }
         
         error_log('===== 402links PaymentGate: Protected Content Request =====');
-        error_log('Post ID: ' . $post->ID . ' | Title: ' . get_the_title($post->ID));
+        error_log('Post ID: ' . $post->ID . ' | Title: ' . Helpers::get_clean_title($post->ID));
         error_log('Short ID: ' . $short_id);
         error_log('User-Agent: ' . ($_SERVER['HTTP_USER_AGENT'] ?? 'NONE'));
         
@@ -226,7 +226,7 @@ class PaymentGate {
         
         $content = [
             'id' => $post->ID,
-            'title' => get_the_title($post->ID),
+            'title' => Helpers::get_clean_title($post->ID),
             'content' => apply_filters('the_content', $post->post_content),
             'excerpt' => get_the_excerpt($post->ID),
             'author' => get_the_author_meta('display_name', $post->post_author),
@@ -325,7 +325,7 @@ class PaymentGate {
             'resource' => $resource_url,
             'description' => sprintf(
                 'Access to "%s" - Premium WordPress content. Price: $%s USDC',
-                get_the_title($post_id),
+                Helpers::get_clean_title($post_id),
                 number_format($price, 2)
             ),
             'mimeType' => 'application/json',
