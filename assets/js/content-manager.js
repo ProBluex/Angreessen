@@ -77,6 +77,40 @@
             loadContent(currentPage);
         });
         
+        // Retry link button for failed posts
+        $(document).on('click', '.retry-link-btn', function(e) {
+            e.preventDefault();
+            const postId = $(this).data('post-id');
+            const btn = $(this);
+            
+            debugLog('[ContentManager] Retrying link generation for post', postId);
+            
+            btn.prop('disabled', true).text('Retrying...');
+            
+            $.ajax({
+                url: agentHubData.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'agent_hub_generate_link',
+                    nonce: agentHubData.nonce,
+                    post_id: postId
+                },
+                success: function(response) {
+                    if (response.success) {
+                        showToast('Success', 'Link generated successfully!', 'success');
+                        loadContent(currentPage);
+                    } else {
+                        showToast('Error', response.data?.message || 'Failed to generate link', 'error');
+                        btn.prop('disabled', false).text('Retry');
+                    }
+                },
+                error: function() {
+                    showToast('Error', 'Network error occurred', 'error');
+                    btn.prop('disabled', false).text('Retry');
+                }
+            });
+        });
+        
         debugLog('[ContentManager] Event handlers registered');
     });
     
@@ -159,7 +193,11 @@
         sorted.forEach(item => {
             const linkStatus = item.has_link 
                 ? '<span style="color:#00D091;">✓ Protected</span>' 
-                : '<span style="color:#999;">Not Protected</span>';
+                : `<span style="color:#999;">Not Protected</span>
+                   <button class="retry-link-btn button-link" data-post-id="${item.id}" 
+                           style="margin-left:8px; padding:2px 8px; font-size:11px; cursor:pointer; background:#2563EB; color:white; border:none; border-radius:4px;">
+                     Retry
+                   </button>`;
             
             // Human access toggle
             const toggleChecked = item.block_humans ? 'checked' : '';

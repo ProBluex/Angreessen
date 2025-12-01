@@ -132,7 +132,13 @@
     $("#stat-total").text(total);
     $("#stat-processed").text(processed);
     $("#stat-success").text(successful);
-    $("#stat-failed").text(failed);
+    
+    // Show failed count with retry hint if failures exist
+    if (failed > 0) {
+      $("#stat-failed").html(`${failed} <small style="color:#666; font-size:10px;">(retry in table)</small>`);
+    } else {
+      $("#stat-failed").text(failed);
+    }
 
     // Show close button when complete
     if (progress.status === "completed") {
