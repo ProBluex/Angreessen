@@ -50,7 +50,7 @@ if (empty($site_id)) {
 }
 
 // Check last-known-good cache
-$cache_key = 'tolliver_ecosystem_last_good_' . $timeframe;
+$cache_key = 'angreessen_ecosystem_last_good_' . $timeframe;
 $cached = get_transient($cache_key);
 
 // Direct call to wordpress-ecosystem-stats edge function

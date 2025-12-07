@@ -31,7 +31,7 @@ Agent Angreessen - Ai Agent Pay Collector enables seamless monetization of WordP
 
 == Installation ==
 
-1. Upload the plugin files to `/wp-content/plugins/tolliver-agent/`
+1. Upload the plugin files to `/wp-content/plugins/agent-angreessen/`
 2. Activate the plugin through the 'Plugins' screen in WordPress
 3. Configure your payment wallet address in Settings → Angreessen
 4. Start marking content as premium with custom pricing

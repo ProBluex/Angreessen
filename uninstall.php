@@ -1,6 +1,6 @@
 <?php
 /**
- * Uninstall script for Tolliver - Ai Agent Pay Collector
+ * Uninstall script for Agent Angreessen - Ai Agent Pay Collector
  * Fired when the plugin is uninstalled
  */
 
@@ -35,11 +35,11 @@ delete_option('402links_last_activated');
 delete_option('402links_last_deactivated');
 
 // Delete plugin update checker options
-delete_option('external_updates-tolliver-agent');
-delete_option('tolliver_debug_updater');
+delete_option('external_updates-agent-angreessen');
+delete_option('angreessen_debug_updater');
 
-// Clean up any remaining 402links or tolliver options (safety net)
-$wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '402links%' OR option_name LIKE '%tolliver%'");
+// Clean up any remaining 402links or angreessen options (safety net)
+$wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '402links%' OR option_name LIKE '%angreessen%'");
 
 // Delete all post meta
 $wpdb->query("DELETE FROM {$wpdb->postmeta} WHERE meta_key LIKE '_402links_%'");

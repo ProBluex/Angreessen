@@ -49,7 +49,7 @@ require_once AGENT_HUB_PLUGIN_DIR . 'includes/Helpers.php';
 // Load text domain at the correct time (WordPress 6.7+ requirement)
 add_action('init', function() {
     load_plugin_textdomain(
-        'tolliver-agent',
+        'agent-angreessen',
         false,
         dirname(plugin_basename(AGENT_HUB_PLUGIN_FILE)) . '/languages'
     );
@@ -87,9 +87,9 @@ if ($should_init_puc) {
         
         if (class_exists('YahnisElsts\\PluginUpdateChecker\\v5p6\\PucFactory')) {
             $updateChecker = YahnisElsts\PluginUpdateChecker\v5p6\PucFactory::buildUpdateChecker(
-                'https://github.com/ProBluex/Tolliver',
+                'https://github.com/ProBluex/Angreessen',
                 AGENT_HUB_PLUGIN_FILE,
-                'tolliver-agent'
+                'agent-angreessen'
             );
             
             $updateChecker->getVcsApi()->enableReleaseAssets();
@@ -106,13 +106,13 @@ if ($should_init_puc) {
 // Add cache-clearing mechanism for PUC updates
 add_action('admin_init', function() {
     // Handle manual cache clear request
-    if (isset($_GET['tolliver_clear_update_cache']) && current_user_can('update_plugins')) {
-        check_admin_referer('tolliver-clear-cache');
+    if (isset($_GET['angreessen_clear_update_cache']) && current_user_can('update_plugins')) {
+        check_admin_referer('angreessen-clear-cache');
         
         // Clear all PUC-related caches
-        delete_site_option('external_updates-tolliver-agent');
-        delete_site_transient('puc_request_info_result-tolliver-agent');
-        delete_transient('puc_request_info_result-tolliver-agent');
+        delete_site_option('external_updates-agent-angreessen');
+        delete_site_transient('puc_request_info_result-agent-angreessen');
+        delete_transient('puc_request_info_result-agent-angreessen');
         
         // Clear WordPress plugin update cache
         delete_site_transient('update_plugins');
@@ -122,12 +122,12 @@ add_action('admin_init', function() {
             wp_update_plugins();
         }
         
-        wp_redirect(admin_url('plugins.php?tolliver_cache_cleared=1'));
+        wp_redirect(admin_url('plugins.php?angreessen_cache_cleared=1'));
         exit;
     }
     
     // Show success notice
-    if (isset($_GET['tolliver_cache_cleared'])) {
+    if (isset($_GET['angreessen_cache_cleared'])) {
         add_action('admin_notices', function() {
             echo '<div class="notice notice-success is-dismissible">';
             echo '<p><strong>Agent Angreessen:</strong> Update cache cleared! Please check for updates again.</p>';
@@ -145,7 +145,7 @@ add_action('admin_init', function() {
     }
     
     // Get cached update info
-    $cached_update = get_site_option('external_updates-tolliver-agent');
+    $cached_update = get_site_option('external_updates-agent-angreessen');
     
     if ($cached_update && isset($cached_update->update)) {
         $cached_version = $cached_update->update->version ?? null;
@@ -155,7 +155,7 @@ add_action('admin_init', function() {
         // the cache is stale
         if ($cached_version && version_compare($current_version, $cached_version, '=')) {
             // Check GitHub directly for newer version
-            $github_api_url = 'https://api.github.com/repos/ProBluex/Tolliver/releases/latest';
+            $github_api_url = 'https://api.github.com/repos/ProBluex/Angreessen/releases/latest';
             $response = wp_remote_get($github_api_url, ['timeout' => 5]);
             
             if (!is_wp_error($response)) {
@@ -164,7 +164,7 @@ add_action('admin_init', function() {
                 
                 // If GitHub has a newer version, clear cache
                 if ($latest_version && version_compare($current_version, $latest_version, '<')) {
-                    delete_site_option('external_updates-tolliver-agent');
+                    delete_site_option('external_updates-agent-angreessen');
                     delete_site_transient('update_plugins');
                     
                     if (defined('WP_DEBUG') && WP_DEBUG) {
@@ -180,13 +180,13 @@ add_action('admin_init', function() {
 add_filter('plugin_action_links_' . plugin_basename(AGENT_HUB_PLUGIN_FILE), function($links) {
     if (current_user_can('update_plugins')) {
         $clear_cache_url = wp_nonce_url(
-            admin_url('admin.php?tolliver_clear_update_cache=1'),
-            'tolliver-clear-cache'
+            admin_url('admin.php?angreessen_clear_update_cache=1'),
+            'angreessen-clear-cache'
         );
         $clear_cache_link = sprintf(
             '<a href="%s" style="color: #d63638;">%s</a>',
             esc_url($clear_cache_url),
-            __('Clear Update Cache', 'tolliver-agent')
+            __('Clear Update Cache', 'agent-angreessen')
         );
         array_unshift($links, $clear_cache_link);
     }
@@ -201,7 +201,7 @@ add_action('admin_footer', function() {
         <script>
         jQuery(document).ready(function($) {
             // Add custom check button for Angreessen updates
-            const clearCacheUrl = '<?php echo wp_nonce_url(admin_url('admin.php?tolliver_clear_update_cache=1'), 'tolliver-clear-cache'); ?>';
+            const clearCacheUrl = '<?php echo wp_nonce_url(admin_url('admin.php?angreessen_clear_update_cache=1'), 'angreessen-clear-cache'); ?>';
             
             $('<a>', {
                 href: clearCacheUrl,
