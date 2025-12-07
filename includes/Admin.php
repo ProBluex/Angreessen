@@ -65,7 +65,7 @@ class Admin {
         }
         
         ?>
-        <div class="notice notice-info is-dismissible" id="tolliver-setup-notice">
+        <div class="notice notice-info is-dismissible" id="angreessen-setup-notice">
             <h3>🚀 Welcome to Agent Angreessen - Ai Agent Pay Collector!</h3>
             <p><strong>Setup Required:</strong> This plugin requires connecting to 402links.com to enable AI agent payments.</p>
             
@@ -80,23 +80,23 @@ class Admin {
             <p>By clicking "Complete Setup", you agree to the <a href="https://402links.com/terms" target="_blank">402links Terms of Service</a> and <a href="https://402links.com/privacy" target="_blank">Privacy Policy</a>.</p>
             
             <p>
-                <button type="button" class="button button-primary" id="tolliver-complete-setup">Complete Setup</button>
+                <button type="button" class="button button-primary" id="angreessen-complete-setup">Complete Setup</button>
                 <a href="<?php echo admin_url('plugins.php'); ?>" class="button">Skip for Now</a>
             </p>
         </div>
         
         <script>
         jQuery(document).ready(function($) {
-            $('#tolliver-complete-setup').on('click', function() {
+            $('#angreessen-complete-setup').on('click', function() {
                 var button = $(this);
                 button.prop('disabled', true).text('Setting up...');
                 
                 $.post(ajaxurl, {
                     action: 'agent_hub_complete_setup',
-                    nonce: '<?php echo wp_create_nonce("tolliver_setup"); ?>'
+                    nonce: '<?php echo wp_create_nonce("angreessen_setup"); ?>'
                 }, function(response) {
                     if (response.success) {
-                        $('#tolliver-setup-notice').html('<p>✅ Setup complete! Site ID: <code>' + response.data.site_id + '</code></p>');
+                        $('#angreessen-setup-notice').html('<p>✅ Setup complete! Site ID: <code>' + response.data.site_id + '</code></p>');
                         setTimeout(function() {
                             location.reload();
                         }, 2000);
@@ -1221,7 +1221,7 @@ class Admin {
      * AJAX handler for completing setup (triggers provisioning)
      */
     public static function ajax_complete_setup() {
-        check_ajax_referer('tolliver_setup', 'nonce');
+        check_ajax_referer('angreessen_setup', 'nonce');
         
         if (!current_user_can('manage_options')) {
             wp_send_json_error(['message' => 'Unauthorized']);

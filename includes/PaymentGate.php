@@ -395,8 +395,8 @@ class PaymentGate {
                 'site_url' => get_site_url(),
                 'brand' => [
                     'name' => '402links',
-                    'logo' => 'https://402links.com/assets/tolliver-character-Bn6kJH3V.png',
-                    'icon' => 'https://402links.com/assets/tolliver-character-Bn6kJH3V.png',
+                    'logo' => 'https://402links.com/assets/angreessen-character-BP8HCaEf.png',
+                    'icon' => 'https://402links.com/assets/angreessen-character-BP8HCaEf.png',
                     'color' => '#0E7AFE'
                 ]
             ]
