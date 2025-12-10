@@ -571,7 +571,7 @@ class Admin {
                     'unpaid_crawls'  => $site_metrics['unpaid_crawls']  ?? 0,
                     'total_revenue'  => $site_metrics['total_revenue']  ?? 0.0,
                     'conversion_rate'=> $site_metrics['conversion_rate']?? 0.0,
-                    'protected_pages'=> $protected_pages_count,
+                    'protected_pages'=> ($protected_pages_count > 0) ? $protected_pages_count : ($site_metrics['protected_pages'] ?? 0),
                     // Keep bucket for charts if endpoint returns it
                     'bucketed_data'  => $site_data['bucketed_data']  ?? []
                 ],
