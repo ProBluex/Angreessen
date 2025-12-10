@@ -281,7 +281,14 @@ class PaymentGate {
         }
         $price = floatval($price);
         
-        $payment_wallet = $settings['payment_wallet'] ?? '';
+        // CRITICAL: Use agent_payment_wallet (splitter address) for 402 responses
+        // This is the address synced from backend with 99/1 revenue split
+        // Fallback to payment_wallet only if agent_payment_wallet not yet synced
+        $payment_wallet = get_option('402links_agent_payment_wallet');
+        if (empty($payment_wallet)) {
+            $payment_wallet = $settings['payment_wallet'] ?? '';
+            error_log('402links PaymentGate: agent_payment_wallet not set, using fallback wallet');
+        }
         
         // Validate wallet is configured before sending 402 response
         if (empty($payment_wallet)) {

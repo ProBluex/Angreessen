@@ -316,6 +316,13 @@ class Admin {
             ]);
             
             error_log('🟦 [Admin] Synced settings to Supabase: ' . json_encode($sync_result));
+            
+            // CRITICAL: Store the agent_payment_wallet (splitter address) returned from backend
+            // This is the address agents should pay to (99% creator / 1% platform split)
+            if (isset($sync_result['data']['agent_payment_wallet'])) {
+                update_option('402links_agent_payment_wallet', $sync_result['data']['agent_payment_wallet']);
+                error_log('🟦 [Admin] Stored agent_payment_wallet: ' . $sync_result['data']['agent_payment_wallet']);
+            }
         }
         
         $message = 'Settings saved successfully';
@@ -385,6 +392,13 @@ class Admin {
         if ($result['success']) {
             if (isset($result['site_id'])) {
                 update_option('402links_site_id', $result['site_id']);
+            }
+            
+            // CRITICAL: Store the agent_payment_wallet from registration response
+            // This is the splitter address that agents should pay to
+            if (isset($result['agent_payment_wallet'])) {
+                update_option('402links_agent_payment_wallet', $result['agent_payment_wallet']);
+                error_log('🟦 [Admin] Stored agent_payment_wallet from registration: ' . $result['agent_payment_wallet']);
             }
             
             // Auto-generate 402links for all published content
