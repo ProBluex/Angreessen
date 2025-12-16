@@ -22,6 +22,11 @@ class PaymentGate {
         
         global $post;
         
+        // Early exit if no post context (e.g., .well-known endpoints, 404s, search pages)
+        if (!$post || !isset($post->ID)) {
+            return;
+        }
+        
         // ============= STEP 2: PROTECTION CHECK =============
         $short_id = get_post_meta($post->ID, '_402links_short_id', true);
         

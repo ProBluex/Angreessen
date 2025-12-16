@@ -57,7 +57,7 @@ class WellKnown {
                     'network' => $network,
                     'maxAmountRequired' => (string)$price_atomic,
                     'asset' => $usdc_address,
-                    'payTo' => $settings['payment_wallet'] ?? '',
+                    'payTo' => get_option('402links_agent_payment_wallet') ?: ($settings['payment_wallet'] ?? ''),
                     'resource' => $page['url'],
                     'description' => $page['title'],
                     'mimeType' => 'text/html',
