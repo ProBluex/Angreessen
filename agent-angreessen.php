@@ -3,7 +3,7 @@
  * Plugin Name: Agent Angreessen - Ai Agent Pay Collector
  * Plugin URI: https://402links.com
  * Description: Convert any WordPress page into a paid API endpoint using HTTP 402 - requiring payment before AI agents access your content.
- * Version:           3.25.6
+ * Version:           3.25.7
  * Author: Agent Angreessen Team
  * Author URI: https://402links.com
  * License: GPLv2 or later
@@ -20,7 +20,7 @@ if (!function_exists('get_file_data')) {
     require_once(ABSPATH . 'wp-includes/functions.php');
 }
 $header = get_file_data(__FILE__, ['Version' => 'Version'], 'plugin');
-define('AGENT_HUB_VERSION', $header['Version'] ?: '3.25.6');
+define('AGENT_HUB_VERSION', $header['Version'] ?: '3.25.7');
 define('AGENT_HUB_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('AGENT_HUB_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('AGENT_HUB_PLUGIN_FILE', __FILE__);
@@ -269,6 +269,9 @@ function agent_hub_activate() {
     // Track plugin activation state
     update_option('402links_plugin_active', true);
     update_option('402links_last_activated', current_time('mysql'));
+    
+    // Register rewrite rules BEFORE flushing
+    \AgentHub\WellKnown::register_rewrite_rules();
     
     // Flush rewrite rules for .well-known endpoint
     flush_rewrite_rules();

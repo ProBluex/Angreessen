@@ -3,7 +3,7 @@ Contributors: 402links, ProBluex
 Tags: payment, ai, agent, monetization, x402, paywall
 Requires at least: 5.0
 Tested up to: 6.7
-Stable tag: 3.25.6
+Stable tag: 3.25.7
 License: GPLv2 or later
 
 Automatically monetize WordPress content with AI agent payments via x402 protocol.
@@ -62,6 +62,12 @@ The plugin automatically exposes payment metadata through the x402 protocol that
 4. Agent access logs
 
 == Changelog ==
+
+= 3.25.7 =
+* Fixed .well-known endpoints with universal REQUEST_URI fallback
+* Supports all permalink structures including Plain permalinks
+* Supports subdirectory WordPress installations
+* Fixed activation timing for rewrite rules
 
 = 3.25.6 =
 * Fixed .well-known/402.json and agent-card.json endpoints (null post check)

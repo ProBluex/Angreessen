@@ -35,7 +35,12 @@ class WellKnown {
      * x402 spec compliant discovery format
      */
     public static function serve_402_json() {
-        if (get_query_var('402_discovery')) {
+        // Check both query var (from rewrite rules) AND direct URI access (subdirectory-safe)
+        $request_uri = $_SERVER['REQUEST_URI'] ?? '';
+        $is_402_request = get_query_var('402_discovery') || 
+                          preg_match('#/\.well-known/402\.json(\?.*)?$#', $request_uri);
+        
+        if ($is_402_request) {
             $settings = get_option('402links_settings');
             $site_url = get_site_url();
             
@@ -134,7 +139,12 @@ class WellKnown {
      * Serve agent-card.json endpoint for AP2 discovery
      */
     public static function serve_agent_card() {
-        if (get_query_var('agent_card')) {
+        // Check both query var (from rewrite rules) AND direct URI access (subdirectory-safe)
+        $request_uri = $_SERVER['REQUEST_URI'] ?? '';
+        $is_agent_card_request = get_query_var('agent_card') || 
+                                 preg_match('#/\.well-known/agent-card\.json(\?.*)?$#', $request_uri);
+        
+        if ($is_agent_card_request) {
             $settings = get_option('402links_settings');
             $site_url = get_site_url();
             
