@@ -53,8 +53,7 @@
           </div>
 
           <div class="batch-actions">
-            <button type="button" class="button" id="batch-cancel-btn">Cancel</button>
-            <button type="button" class="button button-primary" id="batch-close-btn" style="display:none;">Close</button>
+            <button type="button" class="button button-primary" id="batch-action-btn">Stop</button>
           </div>
         </div>
       </div>
@@ -68,9 +67,14 @@
     modalElement = createModal();
     $("body").append(modalElement);
 
-    // Bind close/cancel actions
-    $("#batch-close-btn").on("click", closeModal);
-    $("#batch-cancel-btn").on("click", cancelBatch);
+    // Bind action button - starts as "Stop" (cancel), changes to "Done" (close) when complete
+    $("#batch-action-btn").on("click", function() {
+      if ($(this).text() === "Done") {
+        closeModal();
+      } else {
+        cancelBatch();
+      }
+    });
   }
 
   /* ---------- Close Modal ---------- */
@@ -140,10 +144,9 @@
       $("#stat-failed").text(failed);
     }
 
-    // Show close button when complete
+    // Change button text when complete
     if (progress.status === "completed") {
-      $("#batch-cancel-btn").hide();
-      $("#batch-close-btn").show();
+      $("#batch-action-btn").text("Done");
     }
   }
 
