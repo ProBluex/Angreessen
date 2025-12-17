@@ -831,6 +831,13 @@ class Admin {
         
         error_log('402links: Sync settings API result: ' . json_encode($result));
         
+        // Store the agent_payment_wallet (splitter address) returned from backend
+        // This ensures reinstallations get the correct payment address
+        if (isset($result['data']['agent_payment_wallet']) && !empty($result['data']['agent_payment_wallet'])) {
+            update_option('402links_agent_payment_wallet', $result['data']['agent_payment_wallet']);
+            error_log('402links: Stored agent_payment_wallet from sync: ' . $result['data']['agent_payment_wallet']);
+        }
+        
         if ($result['success']) {
             $links_updated = $result['links_updated'] ?? 0;
             $message = $links_updated > 0 
