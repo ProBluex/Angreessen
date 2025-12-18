@@ -1,10 +1,15 @@
+/* Batch Processor Modal - Premium Design */
+
+/* Glassmorphism Backdrop */
 .batch-modal {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.7);
+    background: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -17,59 +22,141 @@
     to { opacity: 1; }
 }
 
+/* Modal Container - Super Rounded */
 .batch-modal-content {
     background: white;
-    padding: 30px;
-    border-radius: 8px;
-    min-width: 550px;
-    max-width: 650px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-    animation: slideUp 0.3s ease;
+    padding: 40px 48px;
+    border-radius: 2rem;
+    min-width: 480px;
+    max-width: 540px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    animation: modalSlideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    text-align: center;
 }
 
-@keyframes slideUp {
+@keyframes modalSlideUp {
     from {
-        transform: translateY(30px);
+        transform: scale(0.95) translateY(20px);
         opacity: 0;
     }
     to {
-        transform: translateY(0);
+        transform: scale(1) translateY(0);
         opacity: 1;
     }
 }
 
-.batch-modal-content h2 {
-    margin: 0 0 25px 0;
+/* Close Button (X) - Top Right */
+.batch-close-btn {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: #f1f5f9;
+    border-radius: 50%;
     font-size: 20px;
+    line-height: 1;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.2s ease;
     display: flex;
     align-items: center;
-    gap: 10px;
+    justify-content: center;
 }
 
-.batch-modal-content h2 .dashicons {
+.batch-close-btn:hover {
+    background: #e2e8f0;
+    color: #334155;
+}
+
+/* Icon Container with Pulse */
+.batch-icon-container {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.batch-icon-pulse {
+    position: absolute;
+    width: 64px;
+    height: 64px;
+    background: #dbeafe;
+    border-radius: 1rem;
+    animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse-ring {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 0.7;
+    }
+    50% {
+        transform: scale(1.15);
+        opacity: 0;
+    }
+}
+
+.batch-icon {
+    position: relative;
+    width: 64px;
+    height: 64px;
+    background: #eff6ff;
+    border-radius: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.batch-icon svg {
+    width: 28px;
+    height: 28px;
+    color: #3b82f6;
+}
+
+/* Title - Serif Font */
+.batch-title {
+    margin: 0 0 8px 0;
     font-size: 24px;
-    width: 24px;
-    height: 24px;
+    font-weight: 600;
+    color: #0f172a;
+    font-family: Georgia, 'Times New Roman', serif;
 }
 
+/* Subtitle */
+.batch-subtitle {
+    margin: 0 0 28px 0;
+    font-size: 14px;
+    color: #64748b;
+    line-height: 1.5;
+    max-width: 380px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Progress Bar Container - Slim */
 .progress-bar-container {
     position: relative;
     width: 100%;
-    height: 40px;
-    background: #f0f0f0;
-    border-radius: 20px;
+    height: 8px;
+    background: #f1f5f9;
+    border-radius: 9999px;
     overflow: hidden;
-    margin: 20px 0;
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin: 0 0 8px 0;
 }
 
+/* Progress Bar - Gradient with Shimmer */
 .progress-bar {
     height: 100%;
-    background: linear-gradient(90deg, #0073aa, #00a0d2);
+    background: linear-gradient(90deg, #3b82f6, #6366f1);
     width: 0%;
     transition: width 0.5s ease;
     position: relative;
     overflow: hidden;
+    border-radius: 9999px;
 }
 
 .progress-bar::after {
@@ -82,7 +169,7 @@
     background: linear-gradient(
         90deg,
         transparent,
-        rgba(255, 255, 255, 0.3),
+        rgba(255, 255, 255, 0.4),
         transparent
     );
     animation: shimmer 2s infinite;
@@ -93,67 +180,141 @@
     100% { transform: translateX(100%); }
 }
 
+/* Progress Percentage Text */
 .progress-percent {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    text-align: right;
+    font-size: 12px;
     font-weight: 600;
-    font-size: 14px;
-    color: #333;
-    z-index: 1;
+    color: #64748b;
+    margin-bottom: 24px;
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
 }
 
+/* Stats Grid - Bento 3 Column */
 .batch-stats {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-    gap: 15px;
-    margin: 20px 0;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 28px;
 }
 
 .batch-stats .stat {
-    background: #f9f9f9;
-    padding: 12px;
-    border-radius: 6px;
+    padding: 16px 12px;
+    border-radius: 12px;
     text-align: center;
-    border: 1px solid #e0e0e0;
+    border: 1px solid;
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: 4px;
+}
+
+/* Stat Variants */
+.batch-stats .stat-total {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+}
+
+.batch-stats .stat-success {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+}
+
+.batch-stats .stat-failed {
+    background: #fef2f2;
+    border-color: #fecaca;
 }
 
 .batch-stats .stat-label {
-    font-size: 11px;
-    color: #666;
+    font-size: 10px;
+    color: #64748b;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+.batch-stats .stat-success .stat-label {
+    color: #16a34a;
+}
+
+.batch-stats .stat-failed .stat-label {
+    color: #dc2626;
+}
+
+.batch-stats .stat-icon {
+    font-size: 11px;
+    font-weight: 700;
 }
 
 .batch-stats .stat-value {
-    font-size: 20px;
+    font-size: 28px;
     font-weight: 700;
-    color: #333;
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
 }
 
-.batch-stats .stat-value.success {
-    color: #46b450;
+.batch-stats .stat-total .stat-value {
+    color: #334155;
 }
 
-.batch-stats .stat-value.info {
-    color: #00a0d2;
+.batch-stats .stat-success .stat-value {
+    color: #16a34a;
 }
 
-.batch-stats .stat-value.error {
-    color: #dc3232;
+.batch-stats .stat-failed .stat-value {
+    color: #dc2626;
 }
 
+/* Actions Container */
 .batch-actions {
     display: flex;
     justify-content: center;
     gap: 10px;
-    margin-top: 25px;
 }
 
-.batch-actions .button {
-    min-width: 120px;
+/* Stop Button - Outline Style */
+.batch-stop-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 24px;
+    border: 2px solid #fecaca;
+    background: transparent;
+    color: #dc2626;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 160px;
+}
+
+.batch-stop-btn:hover {
+    background: #fef2f2;
+    border-color: #fca5a5;
+}
+
+.batch-stop-btn svg {
+    width: 18px;
+    height: 18px;
+    transition: transform 0.2s ease;
+}
+
+.batch-stop-btn:hover svg {
+    transform: scale(1.1);
+}
+
+/* Done Button - Filled Green */
+.batch-stop-btn.is-done {
+    background: #16a34a;
+    border-color: #16a34a;
+    color: white;
+}
+
+.batch-stop-btn.is-done:hover {
+    background: #15803d;
+    border-color: #15803d;
 }

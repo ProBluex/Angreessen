@@ -18,42 +18,68 @@
   let pollTimer = null;
   let modalElement = null;
 
+  /* ---------- SVG Icons ---------- */
+  const ICONS = {
+    link: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
+    </svg>`,
+    stop: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      <path stroke-linecap="round" stroke-linejoin="round" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
+    </svg>`,
+    check: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>`
+  };
+
   /* ---------- Modal HTML ---------- */
   function createModal() {
     const html = `
       <div class="batch-modal" id="batch-modal">
         <div class="batch-modal-content">
-          <h2>
-            <span class="dashicons dashicons-admin-links"></span>
-            Generating Paid Links
-          </h2>
+          <!-- Close button -->
+          <button type="button" class="batch-close-btn" id="batch-close-btn">&times;</button>
           
+          <!-- Icon with pulse -->
+          <div class="batch-icon-container">
+            <div class="batch-icon-pulse"></div>
+            <div class="batch-icon">
+              ${ICONS.link}
+            </div>
+          </div>
+          
+          <!-- Header -->
+          <h2 class="batch-title">Generating Paid Links</h2>
+          <p class="batch-subtitle">Processing your content to create monetizable links for AI agents.</p>
+          
+          <!-- Progress bar -->
           <div class="progress-bar-container">
             <div class="progress-bar" id="batch-progress-bar"></div>
-            <div class="progress-percent" id="batch-progress-percent">0%</div>
           </div>
+          <div class="progress-percent" id="batch-progress-percent">0%</div>
 
+          <!-- Stats (3 columns) -->
           <div class="batch-stats">
-            <div class="stat">
+            <div class="stat stat-total">
               <div class="stat-label">Total</div>
-              <div class="stat-value info" id="stat-total">0</div>
+              <div class="stat-value" id="stat-total">0</div>
             </div>
-            <div class="stat">
-              <div class="stat-label">Processed</div>
-              <div class="stat-value" id="stat-processed">0</div>
+            <div class="stat stat-success">
+              <div class="stat-label"><span class="stat-icon">✓</span> Success</div>
+              <div class="stat-value" id="stat-success">0</div>
             </div>
-            <div class="stat">
-              <div class="stat-label">Success</div>
-              <div class="stat-value success" id="stat-success">0</div>
-            </div>
-            <div class="stat">
-              <div class="stat-label">Failed</div>
-              <div class="stat-value error" id="stat-failed">0</div>
+            <div class="stat stat-failed">
+              <div class="stat-label"><span class="stat-icon">✕</span> Failed</div>
+              <div class="stat-value" id="stat-failed">0</div>
             </div>
           </div>
 
+          <!-- Stop button -->
           <div class="batch-actions">
-            <button type="button" class="button button-primary" id="batch-action-btn">Stop</button>
+            <button type="button" class="batch-stop-btn" id="batch-action-btn">
+              ${ICONS.stop}
+              <span>Stop Process</span>
+            </button>
           </div>
         </div>
       </div>
@@ -67,9 +93,18 @@
     modalElement = createModal();
     $("body").append(modalElement);
 
+    // Bind close button (X)
+    $("#batch-close-btn").on("click", function() {
+      if ($("#batch-action-btn").hasClass("is-done")) {
+        closeModal();
+      } else {
+        cancelBatch();
+      }
+    });
+
     // Bind action button - starts as "Stop" (cancel), changes to "Done" (close) when complete
     $("#batch-action-btn").on("click", function() {
-      if ($(this).text() === "Done") {
+      if ($(this).hasClass("is-done")) {
         closeModal();
       } else {
         cancelBatch();
@@ -134,19 +169,17 @@
     $("#batch-progress-percent").text(percent + "%");
 
     $("#stat-total").text(total);
-    $("#stat-processed").text(processed);
     $("#stat-success").text(successful);
-    
-    // Show failed count with retry hint if failures exist
-    if (failed > 0) {
-      $("#stat-failed").html(`${failed} <small style="color:#666; font-size:10px;">(retry in table)</small>`);
-    } else {
-      $("#stat-failed").text(failed);
-    }
+    $("#stat-failed").text(failed);
 
-    // Change button text when complete
+    // Change button to "Done" when complete
     if (progress.status === "completed") {
-      $("#batch-action-btn").text("Done");
+      const $btn = $("#batch-action-btn");
+      $btn.addClass("is-done");
+      $btn.html(`${ICONS.check}<span>Done</span>`);
+      
+      // Stop the pulse animation
+      $(".batch-icon-pulse").css("animation", "none");
     }
   }
 
