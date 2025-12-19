@@ -50,7 +50,7 @@
           
           <!-- Header -->
           <h2 class="batch-title">Generating Paid Links</h2>
-          <p class="batch-subtitle">Processing your content to create monetizable links for AI agents.</p>
+          <p class="batch-subtitle" id="batch-subtitle">Processing your content to create monetizable links for AI agents.</p>
           
           <!-- Progress bar -->
           <div class="progress-bar-container">
@@ -58,18 +58,22 @@
           </div>
           <div class="progress-percent" id="batch-progress-percent">0%</div>
 
-          <!-- Stats (3 columns) -->
-          <div class="batch-stats">
+          <!-- Stats (4 columns) -->
+          <div class="batch-stats batch-stats-4">
             <div class="stat stat-total">
               <div class="stat-label">Total</div>
               <div class="stat-value" id="stat-total">0</div>
             </div>
             <div class="stat stat-success">
-              <div class="stat-label"><span class="stat-icon">✓</span> Success</div>
+              <div class="stat-label"><span class="stat-icon">✓</span> Created</div>
               <div class="stat-value" id="stat-success">0</div>
             </div>
+            <div class="stat stat-existing">
+              <div class="stat-label"><span class="stat-icon">↻</span> Existing</div>
+              <div class="stat-value" id="stat-existing">0</div>
+            </div>
             <div class="stat stat-skipped">
-              <div class="stat-label"><span class="stat-icon">⊘</span> Skipped</div>
+              <div class="stat-label"><span class="stat-icon">⊘</span> Failed</div>
               <div class="stat-value" id="stat-skipped">0</div>
             </div>
           </div>
@@ -124,6 +128,10 @@
       });
       modalElement = null;
     }
+    // Refresh content view
+    if (w.agentHub && w.agentHub.loadContent) {
+      w.agentHub.loadContent();
+    }
   }
 
   /* ---------- Cancel Batch ---------- */
@@ -151,9 +159,6 @@
       })
       .always(() => {
         closeModal();
-        if (w.agentHub && w.agentHub.loadContent) {
-          w.agentHub.loadContent();
-        }
       });
   }
 
@@ -161,25 +166,55 @@
   function updateProgressUI(progress) {
     const total = parseInt(progress.total, 10) || 0;
     const processed = parseInt(progress.processed, 10) || 0;
-    const successful = parseInt(progress.created, 10) || 0;
-    const skipped = parseInt(progress.failed, 10) || 0;
-    const percent = total > 0 ? Math.round((processed / total) * 100) : 0;
+    const created = parseInt(progress.created, 10) || 0;
+    const alreadyLinked = parseInt(progress.already_linked, 10) || 0;
+    const failed = parseInt(progress.failed, 10) || 0;
+    const percent = total > 0 ? Math.round((processed / total) * 100) : 100;
 
     $("#batch-progress-bar").css("width", percent + "%");
     $("#batch-progress-percent").text(percent + "%");
 
     $("#stat-total").text(total);
-    $("#stat-success").text(successful);
-    $("#stat-skipped").text(skipped);
+    $("#stat-success").text(created);
+    $("#stat-existing").text(alreadyLinked);
+    $("#stat-skipped").text(failed);
 
     // Change button to "Done" when complete
     if (progress.status === "completed") {
-      const $btn = $("#batch-action-btn");
-      $btn.addClass("is-done");
-      $btn.html(`${ICONS.check}<span>Done</span>`);
-      
-      // Stop the pulse animation
-      $(".batch-icon-pulse").css("animation", "none");
+      markAsComplete();
+    }
+  }
+
+  /* ---------- Mark Modal as Complete ---------- */
+  function markAsComplete() {
+    const $btn = $("#batch-action-btn");
+    $btn.addClass("is-done");
+    $btn.html(`${ICONS.check}<span>Done</span>`);
+    
+    // Stop the pulse animation
+    $(".batch-icon-pulse").css("animation", "none");
+  }
+
+  /* ---------- Show "All Links Generated" State ---------- */
+  function showAllLinksGenerated() {
+    // Update UI to show everything is done
+    $("#batch-progress-bar").css("width", "100%");
+    $("#batch-progress-percent").text("100%");
+    $("#batch-subtitle").text("All your posts already have paid links generated.");
+    $(".batch-title").text("All Links Generated");
+    
+    // Update stats to show 0 pending
+    $("#stat-total").text("0");
+    $("#stat-success").text("0");
+    $("#stat-existing").text("0");
+    $("#stat-skipped").text("0");
+    
+    // Mark as complete immediately
+    markAsComplete();
+    
+    // Show toast
+    if (w.showToast) {
+      w.showToast("Info", "All posts already have paid links.", "success");
     }
   }
 
@@ -218,16 +253,19 @@
         updateProgressUI(progress);
 
         if (isCompleted || progress.status === "completed") {
+          const created = progress.created || 0;
+          const existing = progress.already_linked || 0;
+          const failed = progress.failed || 0;
+          
           if (w.showToast) {
-            const msg = `Generated ${progress.created || 0} links. ${progress.failed || 0} skipped.`;
+            let msg = `Created ${created} new links.`;
+            if (existing > 0) msg += ` ${existing} already existed.`;
+            if (failed > 0) msg += ` ${failed} failed.`;
             w.showToast("Batch Complete", msg, "success");
           }
-          setTimeout(() => {
-            closeModal();
-            if (w.agentHub && w.agentHub.loadContent) {
-              w.agentHub.loadContent();
-            }
-          }, 3000);
+          
+          // Mark as complete but DON'T auto-close - let user click Done
+          markAsComplete();
         } else if (progress.status === "running") {
           pollTimer = setTimeout(pollBatchProgress, POLL_INTERVAL);
         } else {
@@ -270,15 +308,16 @@
         const progress = res.data || {};
         updateProgressUI(progress);
 
+        // Handle the case where there are no posts to process
+        if (progress.total === 0 || progress.total === "0") {
+          showAllLinksGenerated();
+          // DON'T auto-close - let user see the state and click Done
+          return;
+        }
+
         // Start polling if batch is running
-        if (progress.status === "running" && progress.total > 0) {
+        if (progress.status === "running") {
           pollTimer = setTimeout(pollBatchProgress, POLL_INTERVAL);
-        } else {
-          // No posts to process or already complete
-          if (w.showToast) {
-            w.showToast("Info", "No posts available to generate links.", "success");
-          }
-          setTimeout(closeModal, 2000);
         }
       })
       .fail((xhr, status, error) => {

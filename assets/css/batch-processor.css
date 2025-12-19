@@ -190,12 +190,17 @@
     font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
 }
 
-/* Stats Grid - Bento 3 Column */
+/* Stats Grid - Bento 3 Column (default) */
 .batch-stats {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 12px;
     margin-bottom: 28px;
+}
+
+/* Stats Grid - 4 Column Override */
+.batch-stats.batch-stats-4 {
+    grid-template-columns: repeat(4, 1fr);
 }
 
 .batch-stats .stat {
@@ -219,9 +224,14 @@
     border-color: #bbf7d0;
 }
 
-.batch-stats .stat-skipped {
+.batch-stats .stat-existing {
     background: #fffbeb;
     border-color: #fde68a;
+}
+
+.batch-stats .stat-skipped {
+    background: #fef2f2;
+    border-color: #fecaca;
 }
 
 .batch-stats .stat-label {
@@ -240,8 +250,12 @@
     color: #16a34a;
 }
 
-.batch-stats .stat-skipped .stat-label {
+.batch-stats .stat-existing .stat-label {
     color: #d97706;
+}
+
+.batch-stats .stat-skipped .stat-label {
+    color: #dc2626;
 }
 
 .batch-stats .stat-icon {
@@ -263,8 +277,12 @@
     color: #16a34a;
 }
 
-.batch-stats .stat-skipped .stat-value {
+.batch-stats .stat-existing .stat-value {
     color: #d97706;
+}
+
+.batch-stats .stat-skipped .stat-value {
+    color: #dc2626;
 }
 
 /* Actions Container */

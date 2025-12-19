@@ -19,6 +19,7 @@ class BatchProcessor {
             'total' => $total_posts,
             'processed' => 0,
             'created' => 0,
+            'already_linked' => 0,
             'updated' => 0,
             'failed' => 0,
             'current_offset' => 0,
@@ -81,6 +82,7 @@ class BatchProcessor {
         
         // Update progress with parallel results
         $progress['created'] += $chunk_result['created'];
+        $progress['already_linked'] += ($chunk_result['already_linked'] ?? 0);
         $progress['failed'] += $chunk_result['failed'];
         $progress['processed'] += count($posts);
         
