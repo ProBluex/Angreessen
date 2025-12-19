@@ -219,9 +219,9 @@
     border-color: #bbf7d0;
 }
 
-.batch-stats .stat-failed {
-    background: #fef2f2;
-    border-color: #fecaca;
+.batch-stats .stat-skipped {
+    background: #fffbeb;
+    border-color: #fde68a;
 }
 
 .batch-stats .stat-label {
@@ -240,8 +240,8 @@
     color: #16a34a;
 }
 
-.batch-stats .stat-failed .stat-label {
-    color: #dc2626;
+.batch-stats .stat-skipped .stat-label {
+    color: #d97706;
 }
 
 .batch-stats .stat-icon {
@@ -263,8 +263,8 @@
     color: #16a34a;
 }
 
-.batch-stats .stat-failed .stat-value {
-    color: #dc2626;
+.batch-stats .stat-skipped .stat-value {
+    color: #d97706;
 }
 
 /* Actions Container */

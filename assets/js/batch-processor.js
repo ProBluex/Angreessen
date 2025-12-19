@@ -68,9 +68,9 @@
               <div class="stat-label"><span class="stat-icon">✓</span> Success</div>
               <div class="stat-value" id="stat-success">0</div>
             </div>
-            <div class="stat stat-failed">
-              <div class="stat-label"><span class="stat-icon">✕</span> Failed</div>
-              <div class="stat-value" id="stat-failed">0</div>
+            <div class="stat stat-skipped">
+              <div class="stat-label"><span class="stat-icon">⊘</span> Skipped</div>
+              <div class="stat-value" id="stat-skipped">0</div>
             </div>
           </div>
 
@@ -161,8 +161,8 @@
   function updateProgressUI(progress) {
     const total = parseInt(progress.total, 10) || 0;
     const processed = parseInt(progress.processed, 10) || 0;
-    const successful = parseInt(progress.successful, 10) || 0;
-    const failed = parseInt(progress.failed, 10) || 0;
+    const successful = parseInt(progress.created, 10) || 0;
+    const skipped = parseInt(progress.failed, 10) || 0;
     const percent = total > 0 ? Math.round((processed / total) * 100) : 0;
 
     $("#batch-progress-bar").css("width", percent + "%");
@@ -170,7 +170,7 @@
 
     $("#stat-total").text(total);
     $("#stat-success").text(successful);
-    $("#stat-failed").text(failed);
+    $("#stat-skipped").text(skipped);
 
     // Change button to "Done" when complete
     if (progress.status === "completed") {
@@ -219,7 +219,7 @@
 
         if (isCompleted || progress.status === "completed") {
           if (w.showToast) {
-            const msg = `Generated ${progress.created || 0} links successfully. ${progress.failed || 0} failed.`;
+            const msg = `Generated ${progress.created || 0} links. ${progress.failed || 0} skipped.`;
             w.showToast("Batch Complete", msg, "success");
           }
           setTimeout(() => {
