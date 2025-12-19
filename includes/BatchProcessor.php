@@ -44,15 +44,27 @@ class BatchProcessor {
         
         $start_time = time();
         
-        // Get next batch of posts (POSTS ONLY, not pages)
+        // Get next batch of posts WITHOUT existing 402links (skip already linked)
         $posts = get_posts([
-            'post_type' => 'post',  // ✅ ONLY posts
+            'post_type' => 'post',
             'post_status' => 'publish',
             'posts_per_page' => self::BATCH_SIZE,
             'offset' => $progress['current_offset'],
             'fields' => 'ids',
             'orderby' => 'ID',
-            'order' => 'ASC'
+            'order' => 'ASC',
+            'meta_query' => [
+                'relation' => 'OR',
+                [
+                    'key' => '_402links_id',
+                    'compare' => 'NOT EXISTS'
+                ],
+                [
+                    'key' => '_402links_id',
+                    'value' => '',
+                    'compare' => '='
+                ]
+            ]
         ]);
         
         if (empty($posts)) {
@@ -133,16 +145,19 @@ class BatchProcessor {
     }
     
     /**
-     * Get count of posts (POSTS ONLY)
+     * Get count of posts WITHOUT existing 402links
      */
     private static function get_pending_post_count() {
         global $wpdb;
         
+        // Count posts that DON'T have a _402links_id meta (or have empty value)
         $count = $wpdb->get_var("
             SELECT COUNT(DISTINCT p.ID)
             FROM {$wpdb->posts} p
+            LEFT JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = '_402links_id'
             WHERE p.post_type = 'post'
             AND p.post_status = 'publish'
+            AND (pm.meta_value IS NULL OR pm.meta_value = '')
         ");
         
         return intval($count);
