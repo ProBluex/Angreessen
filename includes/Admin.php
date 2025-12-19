@@ -971,8 +971,8 @@ class Admin {
             wp_send_json_error(['message' => 'Unauthorized']);
         }
         
-        // Repair existing links before starting new batch
-        self::repair_existing_links();
+        // REMOVED: repair_existing_links() was causing 30-60s delay before batch start
+        // Use manual "Repair Links" button if WordPress meta needs syncing
         
         $progress = BatchProcessor::start_batch();
         wp_send_json_success($progress);

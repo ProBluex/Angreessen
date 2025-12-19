@@ -299,12 +299,13 @@ class API {
      */
     public function create_links_parallel($post_ids) {
         if (empty($post_ids)) {
-            return ['total' => 0, 'created' => 0, 'failed' => 0, 'errors' => []];
+            return ['total' => 0, 'created' => 0, 'already_linked' => 0, 'failed' => 0, 'errors' => []];
         }
         
         $results = [
             'total' => count($post_ids),
             'created' => 0,
+            'already_linked' => 0,
             'failed' => 0,
             'errors' => []
         ];
@@ -455,10 +456,15 @@ class API {
                     $short_id = $link_data['short_id'] ?? '';
                     $link_url = $link_data['link_url'] ?? '';
                     
+                    // Check if this was an "already exists" response
+                    $message = $data['message'] ?? $link_data['message'] ?? '';
+                    $is_existing = (stripos($message, 'already exists') !== false);
+                    
                     error_log("  ✅ Success - Updating post meta:");
                     error_log("    - link_id: {$link_id}");
                     error_log("    - short_id: {$short_id}");
                     error_log("    - link_url: {$link_url}");
+                    error_log("    - is_existing: " . ($is_existing ? 'yes' : 'no'));
                     
                     update_post_meta($post_id, '_402links_id', $link_id);
                     update_post_meta($post_id, '_402links_short_id', $short_id);
@@ -468,7 +474,12 @@ class API {
                     $saved_url = get_post_meta($post_id, '_402links_url', true);
                     error_log("    - Verified saved URL: {$saved_url}");
                     
-                    $results['created']++;
+                    // Count as already_linked or created
+                    if ($is_existing) {
+                        $results['already_linked']++;
+                    } else {
+                        $results['created']++;
+                    }
                 } else {
                     $results['failed']++;
                     $error_msg = $data['error'] ?? $link_data['error'] ?? 'Unknown error - link_id missing';
