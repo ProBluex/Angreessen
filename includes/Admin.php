@@ -557,22 +557,27 @@ class Admin {
             error_log('[Admin.php] 📊 $site_metrics keys: ' . json_encode(array_keys($site_metrics)));
             
             // Count protected pages with 5-minute cache
+            // FIXED: Use _402links_short_id (not _402links_id) and require non-empty value
             $pages_cache_key = 'agent_hub_protected_pages_count';
             $protected_pages_count = get_transient($pages_cache_key);
             
             if ($protected_pages_count === false) {
                 global $wpdb;
+                // Use _402links_short_id as source of truth for protection status
+                // Only count posts with non-empty short_id values
                 $protected_pages_count = $wpdb->get_var("
                     SELECT COUNT(DISTINCT p.ID) 
                     FROM {$wpdb->posts} p
                     INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
                     WHERE p.post_status = 'publish'
                     AND p.post_type IN ('post', 'page')
-                    AND pm.meta_key = '_402links_id'
+                    AND pm.meta_key = '_402links_short_id'
+                    AND pm.meta_value != ''
+                    AND pm.meta_value IS NOT NULL
                 ");
                 $protected_pages_count = intval($protected_pages_count);
                 set_transient($pages_cache_key, $protected_pages_count, 300); // 5 min cache
-                error_log('[Admin.php] 📄 Protected pages count (SQL): ' . $protected_pages_count);
+                error_log('[Admin.php] 📄 Protected pages count (SQL, using short_id): ' . $protected_pages_count);
             } else {
                 error_log('[Admin.php] 📦 Protected pages count (CACHED): ' . $protected_pages_count);
             }

@@ -8,21 +8,31 @@ class BatchProcessor {
     
     /**
      * Initialize batch processing
+     * 
+     * FIXED: Now counts ALL published posts as total, and separately tracks
+     * already-linked posts vs pending posts for accurate progress display.
      */
     public static function start_batch() {
-        // Get total count of posts without 402links
-        $total_posts = self::get_pending_post_count();
+        // Get total count of ALL published posts (stable number)
+        $total_posts = self::get_total_post_count();
+        
+        // Get count of posts that ALREADY have links (protected)
+        $already_linked_count = self::get_protected_post_count();
+        
+        // Pending = total - already linked
+        $pending_count = max(0, $total_posts - $already_linked_count);
+        
+        error_log("[BatchProcessor] start_batch - Total: {$total_posts}, Already Linked: {$already_linked_count}, Pending: {$pending_count}");
         
         // Initialize progress tracking
         $progress = [
             'status' => 'running',
-            'total' => $total_posts,
-            'processed' => 0,
+            'total' => $total_posts,           // Total published posts (stable)
+            'pending_at_start' => $pending_count,  // Posts needing links at start
+            'processed' => $already_linked_count,  // Start with already-linked count
             'created' => 0,
-            'already_linked' => 0,
-            'updated' => 0,
+            'already_linked' => $already_linked_count,  // Pre-existing links
             'failed' => 0,
-            'current_offset' => 0,
             'errors' => [],
             'started_at' => current_time('mysql'),
             'updated_at' => current_time('mysql')
@@ -35,6 +45,10 @@ class BatchProcessor {
     
     /**
      * Process next batch of posts
+     * 
+     * FIXED: Always query first N pending posts (no offset).
+     * As posts get linked, they're removed from the pending query results,
+     * so we always get fresh unprocessed posts.
      */
     public static function process_next_batch() {
         $progress = get_transient(self::PROGRESS_KEY);
@@ -43,36 +57,52 @@ class BatchProcessor {
             return ['success' => false, 'error' => 'No active batch process'];
         }
         
-        $start_time = time();
-        
-        // Get next batch of posts WITHOUT existing 402links (skip already linked)
+        // FIXED: Always get the FIRST batch of pending posts (no offset!)
+        // As posts get _402links_short_id set, they disappear from this query
         $posts = get_posts([
             'post_type' => 'post',
             'post_status' => 'publish',
             'posts_per_page' => self::BATCH_SIZE,
-            'offset' => $progress['current_offset'],
+            'offset' => 0,  // ALWAYS 0 - query shrinks as posts get linked
             'fields' => 'ids',
             'orderby' => 'ID',
             'order' => 'ASC',
             'meta_query' => [
                 'relation' => 'OR',
                 [
-                    'key' => '_402links_id',
+                    'key' => '_402links_short_id',
                     'compare' => 'NOT EXISTS'
                 ],
                 [
-                    'key' => '_402links_id',
+                    'key' => '_402links_short_id',
                     'value' => '',
                     'compare' => '='
                 ]
             ]
         ]);
         
+        error_log("[BatchProcessor] process_next_batch - Found " . count($posts) . " pending posts");
+        
         if (empty($posts)) {
-            // All done
+            // Double-check: recount pending to be sure we're done
+            $remaining = self::get_pending_post_count();
+            error_log("[BatchProcessor] No posts returned, remaining pending count: {$remaining}");
+            
+            if ($remaining > 0) {
+                // Edge case: query returned empty but count says pending exist
+                // This shouldn't happen, but if it does, mark as completed anyway
+                error_log("[BatchProcessor] WARNING: Query empty but {$remaining} pending - marking complete");
+            }
+            
+            // Update final counts
+            $progress['processed'] = $progress['total'];
             $progress['status'] = 'completed';
             $progress['updated_at'] = current_time('mysql');
             set_transient(self::PROGRESS_KEY, $progress, 3600);
+            
+            // Clear protected pages cache so dashboard updates
+            delete_transient('agent_hub_protected_pages_count');
+            
             return ['success' => true, 'completed' => true, 'progress' => $progress];
         }
         
@@ -94,18 +124,21 @@ class BatchProcessor {
             );
         }
         
-        $progress['current_offset'] += self::BATCH_SIZE;
         $progress['updated_at'] = current_time('mysql');
-        set_transient(self::PROGRESS_KEY, $progress, 3600);
         
-        // Check if batch is actually complete
+        // Check if we've processed everything
         $is_complete = ($progress['processed'] >= $progress['total']);
         
         if ($is_complete) {
             $progress['status'] = 'completed';
-            $progress['updated_at'] = current_time('mysql');
-            set_transient(self::PROGRESS_KEY, $progress, 3600);
+            
+            // Clear protected pages cache so dashboard updates immediately
+            delete_transient('agent_hub_protected_pages_count');
         }
+        
+        set_transient(self::PROGRESS_KEY, $progress, 3600);
+        
+        error_log("[BatchProcessor] Batch done - Processed: {$progress['processed']}/{$progress['total']}, Complete: " . ($is_complete ? 'yes' : 'no'));
         
         return [
             'success' => true,
@@ -147,16 +180,45 @@ class BatchProcessor {
     }
     
     /**
-     * Get count of posts WITHOUT existing 402links
+     * Get count of ALL published posts (stable total)
+     */
+    private static function get_total_post_count() {
+        $count = wp_count_posts('post');
+        return intval($count->publish ?? 0);
+    }
+    
+    /**
+     * Get count of posts WITH existing 402links (protected)
+     * Uses _402links_short_id as the source of truth for protection
+     */
+    private static function get_protected_post_count() {
+        global $wpdb;
+        
+        $count = $wpdb->get_var("
+            SELECT COUNT(DISTINCT p.ID)
+            FROM {$wpdb->posts} p
+            INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
+            WHERE p.post_type = 'post'
+            AND p.post_status = 'publish'
+            AND pm.meta_key = '_402links_short_id'
+            AND pm.meta_value != ''
+            AND pm.meta_value IS NOT NULL
+        ");
+        
+        return intval($count);
+    }
+    
+    /**
+     * Get count of posts WITHOUT existing 402links (pending)
      */
     private static function get_pending_post_count() {
         global $wpdb;
         
-        // Count posts that DON'T have a _402links_id meta (or have empty value)
+        // Count posts that DON'T have a _402links_short_id meta (or have empty value)
         $count = $wpdb->get_var("
             SELECT COUNT(DISTINCT p.ID)
             FROM {$wpdb->posts} p
-            LEFT JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = '_402links_id'
+            LEFT JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = '_402links_short_id'
             WHERE p.post_type = 'post'
             AND p.post_status = 'publish'
             AND (pm.meta_value IS NULL OR pm.meta_value = '')

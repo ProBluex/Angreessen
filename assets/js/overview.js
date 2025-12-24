@@ -156,8 +156,9 @@
         let overviewDataInterval;
         let rqOverview = null; // Track active request for deduplication
         
-        // Browser-level cache
-        const CACHE_KEY = 'agent_hub_overview_cache';
+        // Browser-level cache - FIXED: Include siteId to prevent stale cross-install data
+        const siteId = window.agentHubData?.siteId || 'unknown';
+        const CACHE_KEY = 'agent_hub_overview_cache_' + siteId;
         const CACHE_TTL = 300000; // 5 minutes
 
         function getCachedData() {
@@ -169,7 +170,7 @@
                     localStorage.removeItem(CACHE_KEY);
                     return null;
                 }
-                debugLog('🔵 [Overview] Using cached data from localStorage');
+                debugLog('🔵 [Overview] Using cached data from localStorage (site: ' + siteId + ')');
                 return data;
             } catch (e) {
                 return null;
@@ -186,6 +187,14 @@
                 debugWarn('[Overview] Failed to cache data:', e);
             }
         }
+        
+        // Clear cache when batch completes (called from batch-processor.js)
+        window.clearOverviewCache = function() {
+            try {
+                localStorage.removeItem(CACHE_KEY);
+                debugLog('🔵 [Overview] Cache cleared');
+            } catch (e) {}
+        };
 
         function loadOverviewAnalytics() {
             debugLog('🔵 [Overview] ==================== ANALYTICS REQUEST START ====================');

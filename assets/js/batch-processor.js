@@ -264,6 +264,11 @@
             w.showToast("Batch Complete", msg, "success");
           }
           
+          // Clear the overview cache so dashboard refreshes with new counts
+          if (w.clearOverviewCache) {
+            w.clearOverviewCache();
+          }
+          
           // Mark as complete but DON'T auto-close - let user click Done
           markAsComplete();
         } else if (progress.status === "running") {
