@@ -19,7 +19,7 @@ class Admin {
             <div class="notice notice-success is-dismissible">
                 <p><strong>🎉 Agent Angreessen - Ai Agent Pay Collector:</strong> Your site has been automatically registered! 
                 Site ID: <code><?php echo esc_html($site_id); ?></code></p>
-                <p>Configure your payment wallet in the <a href="<?php echo admin_url('admin.php?page=agent-hub'); ?>">Agent Angreessen dashboard</a> to start protecting and monetizing your content.</p>
+                <p>Configure your payment wallet in the <a href="<?php echo esc_url(admin_url('admin.php?page=agent-hub')); ?>">Agent Angreessen dashboard</a> to start protecting and monetizing your content.</p>
             </div>
             <?php
             delete_option('402links_provisioning_success');
@@ -81,7 +81,7 @@ class Admin {
             
             <p>
                 <button type="button" class="button button-primary" id="angreessen-complete-setup">Complete Setup</button>
-                <a href="<?php echo admin_url('plugins.php'); ?>" class="button">Skip for Now</a>
+                <a href="<?php echo esc_url(admin_url('plugins.php')); ?>" class="button">Skip for Now</a>
             </p>
         </div>
         
@@ -93,7 +93,7 @@ class Admin {
                 
                 $.post(ajaxurl, {
                     action: 'agent_hub_complete_setup',
-                    nonce: '<?php echo wp_create_nonce("angreessen_setup"); ?>'
+                    nonce: '<?php echo esc_js(wp_create_nonce("angreessen_setup")); ?>'
                 }, function(response) {
                     if (response.success) {
                         $('#angreessen-setup-notice').html('<p>✅ Setup complete! Site ID: <code>' + response.data.site_id + '</code></p>');
@@ -1222,7 +1222,14 @@ class Admin {
             wp_send_json_error(['message' => 'Site not registered']);
         }
         
-        $policies = $_POST['policies'] ?? [];
+        // Sanitize policies array input
+        $policies = [];
+        $raw_policies = isset($_POST['policies']) && is_array($_POST['policies']) ? $_POST['policies'] : [];
+        foreach ($raw_policies as $key => $value) {
+            if (is_string($key) && is_string($value)) {
+                $policies[sanitize_key($key)] = sanitize_text_field($value);
+            }
+        }
         
         if (empty($policies)) {
             wp_send_json_error(['message' => 'No policies provided']);

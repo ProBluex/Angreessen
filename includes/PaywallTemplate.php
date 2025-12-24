@@ -30,8 +30,8 @@ class PaywallTemplate {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Payment Required - <?php echo $description; ?></title>
-    <script src="https://unpkg.com/@coinbase/onchainkit@<?php echo $onchainkit_version; ?>/dist/onchainkit.umd.js"></script>
-    <link href="https://unpkg.com/@coinbase/onchainkit@<?php echo $onchainkit_version; ?>/dist/onchainkit.css" rel="stylesheet">
+    <script src="<?php echo esc_url('https://unpkg.com/@coinbase/onchainkit@' . $onchainkit_version . '/dist/onchainkit.umd.js'); ?>"></script>
+    <link href="<?php echo esc_url('https://unpkg.com/@coinbase/onchainkit@' . $onchainkit_version . '/dist/onchainkit.css'); ?>" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -138,13 +138,13 @@ class PaywallTemplate {
     <script>
         // Inject x402 configuration into window object
         window.x402 = {
-            amount: <?php echo $amount_usd; ?>,
-            paymentRequirements: <?php echo json_encode($requirements); ?>,
-            x402Response: <?php echo json_encode($x402_response); ?>,
+            amount: <?php echo esc_js($amount_usd); ?>,
+            paymentRequirements: <?php echo wp_json_encode($requirements); ?>,
+            x402Response: <?php echo wp_json_encode($x402_response); ?>,
             testnet: <?php echo $testnet ? 'true' : 'false'; ?>,
-            currentUrl: "<?php echo $resource_url; ?>",
-            network: "<?php echo $network; ?>",
-            cdpClientKey: "<?php echo $cdp_client_key; ?>"
+            currentUrl: <?php echo wp_json_encode($resource_url); ?>,
+            network: <?php echo wp_json_encode($network); ?>,
+            cdpClientKey: <?php echo wp_json_encode($cdp_client_key); ?>
         };
 
         console.log('x402 Payment Requirements:', window.x402);

@@ -36,7 +36,7 @@ class WellKnown {
      */
     public static function serve_402_json() {
         // Check both query var (from rewrite rules) AND direct URI access (subdirectory-safe)
-        $request_uri = $_SERVER['REQUEST_URI'] ?? '';
+        $request_uri = Helpers::get_sanitized_request_uri();
         $is_402_request = get_query_var('402_discovery') || 
                           preg_match('#/\.well-known/402\.json(\?.*)?$#', $request_uri);
         
@@ -93,7 +93,7 @@ class WellKnown {
             header('Access-Control-Allow-Origin: *');
             header('X-402-Version: 1');
             header('X-402-Resources: ' . count($resources));
-            echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+            echo wp_json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
             exit;
         }
     }
@@ -140,7 +140,7 @@ class WellKnown {
      */
     public static function serve_agent_card() {
         // Check both query var (from rewrite rules) AND direct URI access (subdirectory-safe)
-        $request_uri = $_SERVER['REQUEST_URI'] ?? '';
+        $request_uri = Helpers::get_sanitized_request_uri();
         $is_agent_card_request = get_query_var('agent_card') || 
                                  preg_match('#/\.well-known/agent-card\.json(\?.*)?$#', $request_uri);
         
@@ -177,7 +177,7 @@ class WellKnown {
             
             header('Content-Type: application/json');
             header('Access-Control-Allow-Origin: *');
-            echo json_encode($agent_card, JSON_PRETTY_PRINT);
+            echo wp_json_encode($agent_card, JSON_PRETTY_PRINT);
             exit;
         }
     }

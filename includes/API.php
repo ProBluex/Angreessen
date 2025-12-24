@@ -41,7 +41,7 @@ class API {
             'site_url' => get_site_url(),
             'agent_name' => $agent_name,
             'user_agent' => $user_agent,
-            'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
+            'ip_address' => Helpers::get_validated_ip(),
             'page_url' => get_permalink($post_id)
         ];
 
@@ -50,7 +50,7 @@ class API {
                 'Authorization' => 'Bearer ' . $this->api_key,
                 'Content-Type' => 'application/json'
             ],
-            'body' => json_encode($payload),
+            'body' => wp_json_encode($payload),
             'timeout' => 5,
             'blocking' => false // Fire-and-forget
         ]);
@@ -80,7 +80,7 @@ class API {
                 'Authorization' => 'Bearer ' . $this->api_key,
                 'Content-Type' => 'application/json'
             ],
-            'body' => json_encode($payload),
+            'body' => wp_json_encode($payload),
             'timeout' => 10
         ]);
 
@@ -286,7 +286,7 @@ class API {
             'json_content' => $json_content  // NEW: Full content in JSON format
         ];
         
-        error_log('402links: Creating link for post ' . $post_id . ' with payload: ' . json_encode($payload));
+        error_log('402links: Creating link for post ' . $post_id . ' with payload: ' . wp_json_encode($payload));
         
         return $this->request('POST', '/create-wordpress-link', $payload);
     }
@@ -391,7 +391,7 @@ class API {
             curl_setopt_array($ch, [
                 CURLOPT_URL => $this->api_endpoint . '/create-wordpress-link',
                 CURLOPT_POST => true,
-                CURLOPT_POSTFIELDS => json_encode($payload),
+                CURLOPT_POSTFIELDS => wp_json_encode($payload),
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_TIMEOUT => 15,
                 CURLOPT_HTTPHEADER => [

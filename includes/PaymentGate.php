@@ -11,7 +11,7 @@ class PaymentGate {
      */
     public static function intercept_request() {
         // ============= STEP 1: OPTIONS PREFLIGHT (CORS) =============
-        if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+        if (Helpers::get_sanitized_request_method() === 'OPTIONS') {
             header('Access-Control-Allow-Origin: *');
             header('Access-Control-Allow-Headers: X-PAYMENT, Content-Type, Authorization');
             header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
@@ -37,7 +37,7 @@ class PaymentGate {
         error_log('===== 402links PaymentGate: Protected Content Request =====');
         error_log('Post ID: ' . $post->ID . ' | Title: ' . Helpers::get_clean_title($post->ID));
         error_log('Short ID: ' . $short_id);
-        error_log('User-Agent: ' . ($_SERVER['HTTP_USER_AGENT'] ?? 'NONE'));
+        error_log('User-Agent: ' . Helpers::get_sanitized_user_agent());
         
         // ============= STEP 3: ADMIN BYPASS =============
         if (current_user_can('manage_options')) {
@@ -83,10 +83,10 @@ class PaymentGate {
         }
         
         // ============= STEP 4: HUMAN DETECTION =============
-        $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+        $user_agent = Helpers::get_sanitized_user_agent();
         $human_check = HumanDetector::is_human($user_agent);
         
-        error_log('Human Detection: ' . json_encode($human_check));
+        error_log('Human Detection: ' . wp_json_encode($human_check));
         
         // ============= STEP 5: HUMAN PATH =============
         if ($human_check['is_human']) {
@@ -122,7 +122,7 @@ class PaymentGate {
             error_log('402links: Agent is blacklisted - denying access');
             status_header(403);
             header('Content-Type: application/json');
-            echo json_encode([
+            echo wp_json_encode([
                 'error' => 'Access denied',
                 'message' => 'This agent is blacklisted'
             ]);
@@ -134,7 +134,7 @@ class PaymentGate {
         $api->record_agent_visit($post->ID, $agent_name, $user_agent);
         
         // ============= STEP 7: CHECK X-PAYMENT HEADER =============
-        $payment_header = $_SERVER['HTTP_X_PAYMENT'] ?? '';
+        $payment_header = sanitize_text_field(wp_unslash($_SERVER['HTTP_X_PAYMENT'] ?? ''));
         
         if (!empty($payment_header)) {
             error_log('402links: X-PAYMENT header present - verifying payment');
@@ -182,7 +182,7 @@ class PaymentGate {
             $post->ID,
             get_permalink($post->ID),
             $user_agent,
-            $_SERVER['REMOTE_ADDR'] ?? ''
+            Helpers::get_validated_ip()
         );
         
         if ($cached_payment && $cached_payment['payment_verified']) {
@@ -225,7 +225,7 @@ class PaymentGate {
         if (!$post) {
             status_header(404);
             header('Content-Type: application/json');
-            echo json_encode(['error' => 'Content not found']);
+            echo wp_json_encode(['error' => 'Content not found']);
             exit;
         }
         
@@ -244,7 +244,7 @@ class PaymentGate {
         status_header(200);
         header('Content-Type: application/json');
         header('Access-Control-Allow-Origin: *');
-        echo json_encode($content, JSON_PRETTY_PRINT);
+        echo wp_json_encode($content, JSON_PRETTY_PRINT);
         exit;
     }
     
@@ -264,8 +264,8 @@ class PaymentGate {
             'wordpress_post_id' => $post_id,
             'agent_name' => $agent_name,
             'user_agent' => $user_agent,
-            'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
-            'requested_url' => $_SERVER['REQUEST_URI'] ?? '',
+            'ip_address' => Helpers::get_validated_ip(),
+            'requested_url' => Helpers::get_sanitized_request_uri(),
             'violation_type' => $violation_type
         ]);
     }

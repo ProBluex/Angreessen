@@ -303,8 +303,8 @@ class AgentDetector {
         $data = [
             'post_id' => $post_id,
             'agent_name' => $agent_info['agent_name'],
-            'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
-            'ip_address' => self::get_client_ip(),
+            'user_agent' => Helpers::get_sanitized_user_agent(),
+            'ip_address' => Helpers::get_validated_ip(),
             'payment_status' => $payment_status,
             'created_at' => current_time('mysql')
         ];
@@ -336,9 +336,9 @@ class AgentDetector {
         $payload = [
             'wordpress_post_id' => $post_id,
             'agent_name' => $agent_info['agent_name'] ?? 'Unknown',
-            'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
-            'ip_address' => self::get_client_ip(),
-            'requested_url' => $_SERVER['REQUEST_URI'] ?? '',
+            'user_agent' => Helpers::get_sanitized_user_agent(),
+            'ip_address' => Helpers::get_validated_ip(),
+            'requested_url' => Helpers::get_sanitized_request_uri(),
             'violation_type' => $violation_data['violation_type'] ?? 'unknown',
             'robots_txt_directive' => $violation_data['robots_txt_directive'] ?? null
         ];
@@ -356,16 +356,9 @@ class AgentDetector {
      * Get client IP address
      * 
      * @return string
+     * @deprecated Use Helpers::get_validated_ip() instead
      */
     public static function get_client_ip() {
-        $ip_keys = ['HTTP_CF_CONNECTING_IP', 'HTTP_X_FORWARDED_FOR', 'HTTP_X_REAL_IP', 'REMOTE_ADDR'];
-        
-        foreach ($ip_keys as $key) {
-            if (isset($_SERVER[$key]) && filter_var($_SERVER[$key], FILTER_VALIDATE_IP)) {
-                return $_SERVER[$key];
-            }
-        }
-        
-        return $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+        return Helpers::get_validated_ip();
     }
 }

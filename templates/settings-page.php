@@ -12,7 +12,7 @@ $is_connected = !empty($api_key) && !empty($site_id);
             <!-- Brand Section -->
             <div class="header-brand">
                 <div class="brand-logo-wrapper">
-                    <img src="<?php echo AGENT_HUB_PLUGIN_URL; ?>assets/images/angreessen-logo.png" 
+                    <img src="<?php echo esc_url(AGENT_HUB_PLUGIN_URL . 'assets/images/angreessen-logo.png'); ?>" 
                          alt="Agent Angreessen" class="brand-logo">
                 </div>
                 <div class="brand-info">

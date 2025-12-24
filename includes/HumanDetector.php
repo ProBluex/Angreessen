@@ -75,7 +75,7 @@ class HumanDetector {
         }
         
         // SIGNAL 4: Accept headers (moderate human indicator)
-        $accept_header = $_SERVER['HTTP_ACCEPT'] ?? '';
+        $accept_header = sanitize_text_field(wp_unslash($_SERVER['HTTP_ACCEPT'] ?? ''));
         if (stripos($accept_header, 'text/html') !== false) {
             $human_signals++;
             $indicators[] = 'accepts_html';
