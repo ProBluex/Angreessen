@@ -160,8 +160,8 @@
     const n = Number(amount || 0);
     if (!Number.isFinite(n)) return "$0.00";
     
-    // Convert from minor units (wei/cents) to dollars
-    const dollars = n / 1e6;
+    // API already returns values in USDC (not micro-USDC), no conversion needed
+    const dollars = n;
     
     // Show M for millions
     if (dollars >= 1_000_000) {
