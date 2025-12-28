@@ -12,6 +12,7 @@ if (!defined('WP_UNINSTALL_PLUGIN')) {
 // Drop custom table
 global $wpdb;
 $table_name = $wpdb->prefix . '402links_agent_logs';
+// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name uses trusted $wpdb->prefix with hardcoded suffix
 $wpdb->query("DROP TABLE IF EXISTS {$table_name}");
 
 // Delete all 402links core options
@@ -39,10 +40,17 @@ delete_option('external_updates-agent-angreessen');
 delete_option('angreessen_debug_updater');
 
 // Clean up any remaining 402links or angreessen options (safety net)
-$wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '402links%' OR option_name LIKE '%angreessen%'");
+$wpdb->query($wpdb->prepare(
+    "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
+    '402links%',
+    '%angreessen%'
+));
 
 // Delete all post meta
-$wpdb->query("DELETE FROM {$wpdb->postmeta} WHERE meta_key LIKE '_402links_%'");
+$wpdb->query($wpdb->prepare(
+    "DELETE FROM {$wpdb->postmeta} WHERE meta_key LIKE %s",
+    '_402links_%'
+));
 
 // Flush rewrite rules
 flush_rewrite_rules();

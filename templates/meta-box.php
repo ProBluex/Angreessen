@@ -8,6 +8,7 @@ $default_price = $settings['default_price'] ?? 0.10;
 
 global $wpdb;
 $table_name = $wpdb->prefix . '402links_agent_logs';
+// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name uses trusted $wpdb->prefix with hardcoded suffix
 $stats = $wpdb->get_row($wpdb->prepare(
     "SELECT 
         COUNT(*) as total_crawls,
@@ -57,7 +58,7 @@ $stats = $wpdb->get_row($wpdb->prepare(
             <?php if ($synced_at): ?>
                 <p>
                     <strong>Last Synced:</strong><br>
-                    <?php echo esc_html(date('F j, Y, g:i a', strtotime($synced_at))); ?>
+                    <?php echo esc_html(wp_date('F j, Y, g:i a', strtotime($synced_at))); ?>
                 </p>
             <?php endif; ?>
         </div>
