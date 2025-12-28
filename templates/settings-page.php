@@ -1,8 +1,8 @@
 <?php
-$settings = get_option('402links_settings');
-$api_key = get_option('402links_api_key');
-$site_id = get_option('402links_site_id');
-$is_connected = !empty($api_key) && !empty($site_id);
+$agent_hub_settings = get_option('402links_settings');
+$agent_hub_api_key = get_option('402links_api_key');
+$agent_hub_site_id = get_option('402links_site_id');
+$agent_hub_is_connected = !empty($agent_hub_api_key) && !empty($agent_hub_site_id);
 ?>
 
 <div class="wrap agent-hub-dashboard">
@@ -22,9 +22,9 @@ $is_connected = !empty($api_key) && !empty($site_id);
             </div>
             
             <!-- Connection Status -->
-            <div class="connection-pill <?php echo $is_connected ? 'connected' : 'disconnected'; ?>">
+            <div class="connection-pill <?php echo $agent_hub_is_connected ? 'connected' : 'disconnected'; ?>">
                 <span class="status-dot"></span>
-                <?php echo $is_connected ? 'Connected' : 'Offline'; ?>
+                <?php echo $agent_hub_is_connected ? 'Connected' : 'Offline'; ?>
             </div>
         </header>
     </div>
@@ -99,18 +99,18 @@ $is_connected = !empty($api_key) && !empty($site_id);
         <div class="agent-hub-config-card">
             <h3><i data-feather="settings"></i> Configuration</h3>
             
-            <?php if ($site_id): ?>
+            <?php if ($agent_hub_site_id): ?>
                 <div class="config-site-id">
                     <span class="site-id-label">Site ID:</span>
-                    <?php if ($is_connected): ?>
+                    <?php if ($agent_hub_is_connected): ?>
                         <span class="site-id-badge connected">
                             <i data-feather="check-circle"></i>
-                            <code><?php echo esc_html($site_id); ?></code>
+                            <code><?php echo esc_html($agent_hub_site_id); ?></code>
                         </span>
                     <?php else: ?>
                         <span class="site-id-badge disconnected">
                             <i data-feather="alert-circle"></i>
-                            <code><?php echo esc_html($site_id); ?></code>
+                            <code><?php echo esc_html($agent_hub_site_id); ?></code>
                         </span>
                     <?php endif; ?>
                 </div>
@@ -124,27 +124,27 @@ $is_connected = !empty($api_key) && !empty($site_id);
                     </label>
                     <?php
                     // Determine initial sync status based on saved wallet
-                    $saved_wallet = $settings['payment_wallet'] ?? '';
-                    $has_wallet = !empty(trim($saved_wallet));
+                    $agent_hub_saved_wallet = $agent_hub_settings['payment_wallet'] ?? '';
+                    $agent_hub_has_wallet = !empty(trim($agent_hub_saved_wallet));
                     
                     // Set indicator state
-                    if ($has_wallet) {
-                        $indicator_class = 'wallet-sync-indicator wallet-status-synced';
-                        $dot_color = 'green';
-                        $status_text = 'Synced';
+                    if ($agent_hub_has_wallet) {
+                        $agent_hub_indicator_class = 'wallet-sync-indicator wallet-status-synced';
+                        $agent_hub_dot_color = 'green';
+                        $agent_hub_status_text = 'Synced';
                     } else {
-                        $indicator_class = 'wallet-sync-indicator wallet-status-empty';
-                        $dot_color = 'gray';
-                        $status_text = 'Not synced';
+                        $agent_hub_indicator_class = 'wallet-sync-indicator wallet-status-empty';
+                        $agent_hub_dot_color = 'gray';
+                        $agent_hub_status_text = 'Not synced';
                     }
                     ?>
                     <div class="wallet-input-wrapper">
                         <input type="text" id="overview-payment-wallet" class="config-input" 
-                               value="<?php echo esc_attr($settings['payment_wallet'] ?? ''); ?>" 
+                               value="<?php echo esc_attr($agent_hub_settings['payment_wallet'] ?? ''); ?>" 
                                placeholder="0x..." />
-                        <div id="wallet-sync-indicator" class="<?php echo esc_attr($indicator_class); ?>" data-server-rendered="true">
-                            <span class="status-dot <?php echo esc_attr($dot_color); ?>"></span>
-                            <span class="status-text"><?php echo esc_html($status_text); ?></span>
+                        <div id="wallet-sync-indicator" class="<?php echo esc_attr($agent_hub_indicator_class); ?>" data-server-rendered="true">
+                            <span class="status-dot <?php echo esc_attr($agent_hub_dot_color); ?>"></span>
+                            <span class="status-text"><?php echo esc_html($agent_hub_status_text); ?></span>
                         </div>
                     </div>
                     <p class="config-description">
@@ -161,7 +161,7 @@ $is_connected = !empty($api_key) && !empty($site_id);
                     </label>
                     <input type="number" id="overview-default-price" class="config-input" 
                            step="0.01" min="0"
-                           value="<?php echo esc_attr($settings['default_price'] ?? 0.10); ?>" />
+                           value="<?php echo esc_attr($agent_hub_settings['default_price'] ?? 0.10); ?>" />
                     <p class="config-description">Default price for AI agents to access each page</p>
                 </div>
                 

@@ -12,7 +12,7 @@ if (!defined('WP_UNINSTALL_PLUGIN')) {
 // Drop custom table
 global $wpdb;
 $agent_hub_table_name = $wpdb->prefix . '402links_agent_logs';
-// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Table name uses trusted $wpdb->prefix with hardcoded suffix, uninstall cleanup
+// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Table name uses trusted $wpdb->prefix with hardcoded suffix, uninstall cleanup
 $wpdb->query("DROP TABLE IF EXISTS {$agent_hub_table_name}");
 
 // Delete all 402links core options
