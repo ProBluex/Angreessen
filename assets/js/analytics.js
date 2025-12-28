@@ -160,8 +160,30 @@
     const n = Number(amount || 0);
     if (!Number.isFinite(n)) return "$0.00";
     
-    // API already returns values in USDC (not micro-USDC), no conversion needed
+    // Ecosystem API returns values already in USDC - no conversion needed
     const dollars = n;
+    
+    // Show M for millions
+    if (dollars >= 1_000_000) {
+      const millions = dollars / 1_000_000;
+      return "$" + millions.toFixed(2) + "M";
+    }
+    // Show K for thousands
+    if (dollars >= 1_000) {
+      const thousands = dollars / 1_000;
+      return "$" + thousands.toFixed(2) + "K";
+    }
+    // Show full amount for under $1000
+    return cf.format(dollars);
+  };
+
+  // Facilitators API returns amounts in micro-USDC (1e-6), need to convert
+  const formatCurrencyFromMicro = (microAmount) => {
+    const n = Number(microAmount || 0);
+    if (!Number.isFinite(n)) return "$0.00";
+    
+    // Convert micro-USDC to USDC (divide by 1,000,000)
+    const dollars = n / 1_000_000;
     
     // Show M for millions
     if (dollars >= 1_000_000) {
@@ -945,7 +967,7 @@
             </div>
             <div class="facilitator-stat">
               <div class="facilitator-stat-label">Volume</div>
-              <div class="facilitator-stat-value">${formatCurrency(volume)}</div>
+              <div class="facilitator-stat-value">${formatCurrencyFromMicro(volume)}</div>
             </div>
             <div class="facilitator-stat">
               <div class="facilitator-stat-label">Buyers</div>

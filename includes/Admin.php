@@ -176,12 +176,13 @@ class Admin {
             true
         );
         
-        // Analytics depends on admin.js being loaded
+        // Analytics depends on admin.js being loaded - use filemtime for cache busting
+        $analytics_version = AGENT_HUB_VERSION . '.' . filemtime(AGENT_HUB_PLUGIN_DIR . 'assets/js/analytics.js');
         wp_enqueue_script(
             'agent-hub-analytics',
             AGENT_HUB_PLUGIN_URL . 'assets/js/analytics.js',
             ['jquery', 'agent-hub-admin', 'chartjs'],
-            AGENT_HUB_VERSION,
+            $analytics_version,
             true
         );
         
