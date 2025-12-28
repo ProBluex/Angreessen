@@ -208,7 +208,7 @@ class PaymentGate {
             'published_at' => $post->post_date,
             'modified_at' => $post->post_modified,
             'url' => get_permalink($post->ID),
-            'word_count' => str_word_count(strip_tags($post->post_content))
+            'word_count' => str_word_count(wp_strip_all_tags($post->post_content))
         ];
         
         status_header(200);
@@ -432,8 +432,8 @@ class PaymentGate {
      * Check if request is from a browser
      */
     private static function is_browser_request() {
-        $accept = $_SERVER['HTTP_ACCEPT'] ?? '';
-        $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+        $accept = sanitize_text_field(wp_unslash($_SERVER['HTTP_ACCEPT'] ?? ''));
+        $user_agent = sanitize_text_field(wp_unslash($_SERVER['HTTP_USER_AGENT'] ?? ''));
         
         // Browser will request text/html and have Mozilla in user agent
         return (strpos($accept, 'text/html') !== false && 
@@ -611,7 +611,7 @@ class PaymentGate {
                 'amount_paid' => $validation['amount'] ?? 0,
                 'payment_status' => 'paid',
                 'accessed_at' => current_time('mysql'),
-                'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown',
+                'user_agent' => Helpers::get_sanitized_user_agent() ?: 'Unknown',
                 'ip_address' => AgentDetector::get_client_ip()
             ],
             ['%d', '%s', '%s', '%f', '%s', '%s', '%s', '%s']
@@ -666,7 +666,7 @@ class PaymentGate {
                 'post_id' => $post_id,
                 'site_url' => get_site_url(),
                 'agent_name' => $agent_check['agent_name'],
-                'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
+                'user_agent' => Helpers::get_sanitized_user_agent(),
                 'ip_address' => AgentDetector::get_client_ip(),
                 'payment_tx_hash' => $verification['transaction'] ?? '',
                 'amount' => $verification['amount'] ?? 0,
