@@ -102,6 +102,7 @@ class WellKnown {
      * Get all pages with 402 protection
      */
     private static function get_all_402_pages() {
+        // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Required to discover 402-protected content, limited to 100 results
         $posts = get_posts([
             'post_type' => ['post', 'page'],
             'post_status' => 'publish',

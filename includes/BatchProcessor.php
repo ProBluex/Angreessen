@@ -57,6 +57,7 @@ class BatchProcessor {
         
         // FIXED: Always get the FIRST batch of pending posts (no offset!)
         // As posts get _402links_short_id set, they disappear from this query
+        // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Required to find unlinked posts, limited to 50 per batch
         $posts = get_posts([
             'post_type' => 'post',
             'post_status' => 'publish',
