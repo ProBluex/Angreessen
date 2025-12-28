@@ -181,6 +181,7 @@ class BatchProcessor {
     private static function get_protected_post_count() {
         global $wpdb;
         
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Complex JOIN query for batch stats, results change frequently
         $count = $wpdb->get_var("
             SELECT COUNT(DISTINCT p.ID)
             FROM {$wpdb->posts} p
@@ -202,6 +203,7 @@ class BatchProcessor {
         global $wpdb;
         
         // Count posts that DON'T have a _402links_short_id meta (or have empty value)
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Complex LEFT JOIN query for batch stats, results change frequently
         $count = $wpdb->get_var("
             SELECT COUNT(DISTINCT p.ID)
             FROM {$wpdb->posts} p

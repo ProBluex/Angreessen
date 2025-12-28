@@ -30,7 +30,9 @@ class PaywallTemplate {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Payment Required - <?php echo $description; ?></title>
+    <?php // phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedScript -- Standalone paywall page served via status_header(402), not a WordPress template ?>
     <script src="<?php echo esc_url('https://unpkg.com/@coinbase/onchainkit@' . $onchainkit_version . '/dist/onchainkit.umd.js'); ?>"></script>
+    <?php // phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedStylesheet -- Standalone paywall page served via status_header(402), not a WordPress template ?>
     <link href="<?php echo esc_url('https://unpkg.com/@coinbase/onchainkit@' . $onchainkit_version . '/dist/onchainkit.css'); ?>" rel="stylesheet">
     <style>
         * {

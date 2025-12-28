@@ -11,9 +11,9 @@ if (!defined('WP_UNINSTALL_PLUGIN')) {
 
 // Drop custom table
 global $wpdb;
-$table_name = $wpdb->prefix . '402links_agent_logs';
-// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name uses trusted $wpdb->prefix with hardcoded suffix
-$wpdb->query("DROP TABLE IF EXISTS {$table_name}");
+$agent_hub_table_name = $wpdb->prefix . '402links_agent_logs';
+// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Table name uses trusted $wpdb->prefix with hardcoded suffix, uninstall cleanup
+$wpdb->query("DROP TABLE IF EXISTS {$agent_hub_table_name}");
 
 // Delete all 402links core options
 delete_option('402links_settings');
@@ -40,6 +40,7 @@ delete_option('external_updates-agent-angreessen');
 delete_option('angreessen_debug_updater');
 
 // Clean up any remaining 402links or angreessen options (safety net)
+// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Uninstall cleanup requires bulk DELETE, no caching needed
 $wpdb->query($wpdb->prepare(
     "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
     '402links%',
@@ -47,6 +48,7 @@ $wpdb->query($wpdb->prepare(
 ));
 
 // Delete all post meta
+// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Uninstall cleanup requires bulk DELETE, no caching needed
 $wpdb->query($wpdb->prepare(
     "DELETE FROM {$wpdb->postmeta} WHERE meta_key LIKE %s",
     '_402links_%'

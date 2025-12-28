@@ -3,7 +3,7 @@
  * Plugin Name: Agent Angreessen - Ai Agent Pay Collector
  * Plugin URI: https://402links.com
  * Description: Convert any WordPress page into a paid API endpoint using HTTP 402 - requiring payment before AI agents access your content.
- * Version:           3.25.7
+ * Version:           1.0.0
  * Author: Agent Angreessen Team
  * Author URI: https://402links.com
  * License: GPLv2 or later
@@ -19,8 +19,8 @@ if (!defined('ABSPATH')) {
 if (!function_exists('get_file_data')) {
     require_once(ABSPATH . 'wp-includes/functions.php');
 }
-$header = get_file_data(__FILE__, ['Version' => 'Version'], 'plugin');
-define('AGENT_HUB_VERSION', $header['Version'] ?: '3.25.7');
+$agent_hub_header = get_file_data(__FILE__, ['Version' => 'Version'], 'plugin');
+define('AGENT_HUB_VERSION', $agent_hub_header['Version'] ?: '1.0.0');
 define('AGENT_HUB_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('AGENT_HUB_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('AGENT_HUB_PLUGIN_FILE', __FILE__);
@@ -55,169 +55,6 @@ add_action('init', function() {
     );
 }, 10);
 
-// GitHub Auto-Update Integration
-// CRITICAL: Must be initialized at file scope (not deferred to hooks)
-// to ensure PUC can hook into pre_set_site_transient_update_plugins
-// before WordPress checks for updates
-
-// Context guards: skip initialization where not needed
-$should_init_puc = true;
-
-// Skip during WordPress installation
-if (defined('WP_INSTALLING') && WP_INSTALLING) {
-    $should_init_puc = false;
-}
-
-// Skip during REST API requests (unless it's an admin context)
-if (defined('REST_REQUEST') && REST_REQUEST && !is_admin()) {
-    $should_init_puc = false;
-}
-
-// Skip during frontend requests (unless it's wp-cron)
-if (!is_admin() && !wp_doing_cron() && !defined('DOING_CRON')) {
-    $should_init_puc = false;
-}
-
-// Initialize PUC immediately if context is appropriate
-if ($should_init_puc) {
-    $puc_path = AGENT_HUB_PLUGIN_DIR . 'vendor/plugin-update-checker/plugin-update-checker.php';
-    
-    if (file_exists($puc_path)) {
-        require_once $puc_path;
-        
-        if (class_exists('YahnisElsts\\PluginUpdateChecker\\v5p6\\PucFactory')) {
-            $updateChecker = YahnisElsts\PluginUpdateChecker\v5p6\PucFactory::buildUpdateChecker(
-                'https://github.com/ProBluex/Angreessen',
-                AGENT_HUB_PLUGIN_FILE,
-                'agent-angreessen'
-            );
-            
-            $updateChecker->getVcsApi()->enableReleaseAssets();
-            $updateChecker->setBranch('main');
-            
-            if (defined('WP_DEBUG') && WP_DEBUG) {
-                $context = wp_doing_cron() ? 'wp-cron' : (is_admin() ? 'admin' : 'other');
-                error_log("Agent Angreessen PUC: Initialized at file scope (context: {$context})");
-            }
-        }
-    }
-}
-
-// Add cache-clearing mechanism for PUC updates
-add_action('admin_init', function() {
-    // Handle manual cache clear request
-    if (isset($_GET['angreessen_clear_update_cache']) && current_user_can('update_plugins')) {
-        check_admin_referer('angreessen-clear-cache');
-        
-        // Clear all PUC-related caches
-        delete_site_option('external_updates-agent-angreessen');
-        delete_site_transient('puc_request_info_result-agent-angreessen');
-        delete_transient('puc_request_info_result-agent-angreessen');
-        
-        // Clear WordPress plugin update cache
-        delete_site_transient('update_plugins');
-        
-        // Force PUC to check immediately
-        if (function_exists('wp_update_plugins')) {
-            wp_update_plugins();
-        }
-        
-        wp_redirect(admin_url('plugins.php?angreessen_cache_cleared=1'));
-        exit;
-    }
-    
-    // Show success notice
-    if (isset($_GET['angreessen_cache_cleared'])) {
-        add_action('admin_notices', function() {
-            echo '<div class="notice notice-success is-dismissible">';
-            echo '<p><strong>Agent Angreessen:</strong> Update cache cleared! Please check for updates again.</p>';
-            echo '</div>';
-        });
-    }
-}, 15);
-
-// Auto-clear cache if version mismatch detected
-add_action('admin_init', function() {
-    // Only check on plugins page
-    $screen = get_current_screen();
-    if (!$screen || $screen->id !== 'plugins') {
-        return;
-    }
-    
-    // Get cached update info
-    $cached_update = get_site_option('external_updates-agent-angreessen');
-    
-    if ($cached_update && isset($cached_update->update)) {
-        $cached_version = $cached_update->update->version ?? null;
-        $current_version = AGENT_HUB_VERSION;
-        
-        // If cached version shows "no update" but we're not on that version,
-        // the cache is stale
-        if ($cached_version && version_compare($current_version, $cached_version, '=')) {
-            // Check GitHub directly for newer version
-            $github_api_url = 'https://api.github.com/repos/ProBluex/Angreessen/releases/latest';
-            $response = wp_remote_get($github_api_url, ['timeout' => 5]);
-            
-            if (!is_wp_error($response)) {
-                $release = json_decode(wp_remote_retrieve_body($response), true);
-                $latest_version = isset($release['tag_name']) ? ltrim($release['tag_name'], 'v') : null;
-                
-                // If GitHub has a newer version, clear cache
-                if ($latest_version && version_compare($current_version, $latest_version, '<')) {
-                    delete_site_option('external_updates-agent-angreessen');
-                    delete_site_transient('update_plugins');
-                    
-                    if (defined('WP_DEBUG') && WP_DEBUG) {
-                        error_log("Agent Angreessen: Auto-cleared stale cache (current: {$current_version}, GitHub: {$latest_version})");
-                    }
-                }
-            }
-        }
-    }
-}, 20);
-
-// Add "Clear Update Cache" action link on plugins page
-add_filter('plugin_action_links_' . plugin_basename(AGENT_HUB_PLUGIN_FILE), function($links) {
-    if (current_user_can('update_plugins')) {
-        $clear_cache_url = wp_nonce_url(
-            admin_url('admin.php?angreessen_clear_update_cache=1'),
-            'angreessen-clear-cache'
-        );
-        $clear_cache_link = sprintf(
-            '<a href="%s" style="color: #d63638;">%s</a>',
-            esc_url($clear_cache_url),
-            __('Clear Update Cache', 'agent-angreessen')
-        );
-        array_unshift($links, $clear_cache_link);
-    }
-    return $links;
-}, 10, 1);
-
-// Add custom update checker button on plugins page
-add_action('admin_footer', function() {
-    $screen = get_current_screen();
-    if ($screen && $screen->id === 'plugins') {
-        ?>
-        <script>
-        jQuery(document).ready(function($) {
-            // Add custom check button for Angreessen updates
-            const clearCacheUrl = '<?php echo wp_nonce_url(admin_url('admin.php?angreessen_clear_update_cache=1'), 'angreessen-clear-cache'); ?>';
-            
-            $('<a>', {
-                href: clearCacheUrl,
-                class: 'button button-secondary',
-                text: 'Check Angreessen Updates',
-                css: {
-                    marginLeft: '10px',
-                    marginTop: '10px'
-                }
-            }).insertAfter($('.subsubsub'));
-        });
-        </script>
-        <?php
-    }
-});
-
 // Activation hook - now using Installer class
 register_activation_hook(__FILE__, ['\AgentHub\Installer', 'activate']);
 register_activation_hook(__FILE__, 'agent_hub_activate');
@@ -247,8 +84,9 @@ function agent_hub_activate() {
     
     // One-time migration: fix typo in meta key (missing 's' after '402link')
     if (!get_option('402links_block_humans_migrated')) {
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- One-time migration fix for meta key typo, no caching needed for UPDATE
         $wpdb->query("
-            UPDATE {$wpdb->postmeta} 
+            UPDATE {$wpdb->postmeta}
             SET meta_key = '_402links_block_humans' 
             WHERE meta_key = '_402link_block_humans'
         ");

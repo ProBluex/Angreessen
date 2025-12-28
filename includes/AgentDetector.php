@@ -263,6 +263,7 @@ class AgentDetector {
     private static function get_wordpress_robots_txt() {
         // Generate robots.txt using WordPress function
         ob_start();
+        // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Triggering WordPress core action
         do_action('do_robots');
         $robots_content = ob_get_clean();
         
@@ -315,6 +316,7 @@ class AgentDetector {
             self::report_violation_to_backend($post_id, $agent_info, $violation_data);
         }
         
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- INSERT operation for agent logging, caching not applicable
         $wpdb->insert($table_name, $data, ['%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s']);
     }
     

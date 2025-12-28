@@ -8,7 +8,7 @@ $default_price = $settings['default_price'] ?? 0.10;
 
 global $wpdb;
 $table_name = $wpdb->prefix . '402links_agent_logs';
-// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name uses trusted $wpdb->prefix with hardcoded suffix
+// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Table name uses trusted $wpdb->prefix with hardcoded suffix, display stats
 $stats = $wpdb->get_row($wpdb->prepare(
     "SELECT 
         COUNT(*) as total_crawls,

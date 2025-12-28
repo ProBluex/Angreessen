@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Verify nonce
-if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'agent_hub_nonce')) {
+if (!isset($_POST['nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['nonce'])), 'agent_hub_nonce')) {
     wp_send_json_error(['message' => 'Invalid nonce']);
     exit;
 }
@@ -28,7 +28,7 @@ if (!current_user_can('manage_options')) {
 
 // Get timeframe parameter
 $timeframe = in_array($_POST['timeframe'] ?? '30d', ['7d', '30d', '90d', 'all'], true) 
-    ? sanitize_text_field($_POST['timeframe']) 
+    ? sanitize_text_field(wp_unslash($_POST['timeframe'])) 
     : '30d';
 
 // Get API key

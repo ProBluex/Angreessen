@@ -202,6 +202,7 @@ class PaymentGate {
         $content = [
             'id' => $post->ID,
             'title' => Helpers::get_clean_title($post->ID),
+            // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Using WordPress core filter, not defining
             'content' => apply_filters('the_content', $post->post_content),
             'excerpt' => get_the_excerpt($post->ID),
             'author' => get_the_author_meta('display_name', $post->post_author),

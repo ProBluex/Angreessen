@@ -1,16 +1,16 @@
 === Agent Angreessen - Ai Agent Pay Collector ===
 Contributors: 402links, ProBluex
-Tags: payment, ai, agent, monetization, x402, paywall
+Tags: payment, ai, agent, monetization, x402
 Requires at least: 5.0
-Tested up to: 6.7
-Stable tag: 3.25.7
+Tested up to: 6.9
+Stable tag: 1.0.0
 License: GPLv2 or later
 
 Automatically monetize WordPress content with AI agent payments via x402 protocol.
 
 == Description ==
 
-Agent Angreessen - Ai Agent Pay Collector enables seamless monetization of WordPress content through the x402 payment protocol. AI agents can automatically discover and pay for access to premium content on wordpress using micropayments.Read more on x402 here: https://github.com/coinbase/x402.
+Agent Angreessen - Ai Agent Pay Collector enables seamless monetization of WordPress content through the x402 payment protocol. AI agents can automatically discover and pay for access to premium content on wordpress using micropayments. Read more on x402 here: https://github.com/coinbase/x402.
 
 **Key Features:**
 
@@ -54,30 +54,7 @@ Yes, you need a wallet address on Base network to receive payments.
 
 The plugin automatically exposes payment metadata through the x402 protocol that AI agents can discover and process.
 
-== Screenshots ==
-
-1. Plugin settings page
-2. Post/page pricing configuration
-3. Payment tracking dashboard
-4. Agent access logs
-
 == Changelog ==
-
-= 3.25.7 =
-* Fixed .well-known endpoints with universal REQUEST_URI fallback
-* Supports all permalink structures including Plain permalinks
-* Supports subdirectory WordPress installations
-* Fixed activation timing for rewrite rules
-
-= 3.25.6 =
-* Fixed .well-known/402.json and agent-card.json endpoints (null post check)
-* Fixed payment wallet reference in WellKnown.php discovery
-
-= 3.24.4 =
-* Disabled auto-refresh for My Content tab to prevent disruptive page reloads
-
-= 3.24.3 =
-* Design roll back
 
 = 1.0.0 =
 * Initial public release on WordPress.org
@@ -86,10 +63,9 @@ The plugin automatically exposes payment metadata through the x402 protocol that
 * Payment tracking and analytics
 * Base network support
 
-
 == Support ==
 
-For support, visit: https://402links.com/support
+For support, visit: https://402links.com/contact
 Documentation: https://402links.com/docs
 
 == External Services ==

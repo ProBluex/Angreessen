@@ -19,7 +19,7 @@ class ContentSync {
         
         // SECURITY: Verify nonce for manual saves (not for programmatic updates)
         if (isset($_POST['402links_meta_nonce'])) {
-            if (!wp_verify_nonce($_POST['402links_meta_nonce'], '402links_save_meta_' . $post_id)) {
+            if (!wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['402links_meta_nonce'])), '402links_save_meta_' . $post_id)) {
                 return;
             }
         }
