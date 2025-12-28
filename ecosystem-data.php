@@ -31,12 +31,9 @@ $timeframe = in_array($_POST['timeframe'] ?? '30d', ['7d', '30d', '90d', 'all'],
     ? sanitize_text_field($_POST['timeframe']) 
     : '30d';
 
-error_log('[ecosystem-data.php] 🌍 Direct ecosystem request for timeframe: ' . $timeframe);
-
 // Get API key
 $api_key = get_option('402links_api_key');
 if (empty($api_key)) {
-    error_log('[ecosystem-data.php] ❌ No API key found');
     wp_send_json_error(['message' => 'API key not configured']);
     exit;
 }
@@ -44,7 +41,6 @@ if (empty($api_key)) {
 // Get site ID
 $site_id = get_option('402links_site_id');
 if (empty($site_id)) {
-    error_log('[ecosystem-data.php] ❌ No site ID found');
     wp_send_json_error(['message' => 'Site not registered']);
     exit;
 }
@@ -89,22 +85,14 @@ while ($retry_count <= $max_retries) {
     $retry_count++;
     $wait_ms = pow(2, $retry_count) * 250;
     usleep($wait_ms * 1000);
-    error_log('[ecosystem-data.php] ⚠️ Retry ' . $retry_count . '/' . $max_retries . ' after ' . $wait_ms . 'ms');
 }
 
 // Handle errors - serve last-known-good if available
 if (is_wp_error($response)) {
     $error_message = $response->get_error_message();
     $error_code = $response->get_error_code();
-    error_log('[ecosystem-data.php] ❌ WP Error [' . $error_code . ']: ' . $error_message);
-    
-    // Log additional error details for debugging
-    if ($error_code === 'http_request_failed') {
-        error_log('[ecosystem-data.php] ⚠️ Network error - possible timeout or DNS issue');
-    }
     
     if ($cached) {
-        error_log('[ecosystem-data.php] ⚠️ Serving cached data (WP error fallback)');
         $cached['cache'] = ($cached['cache'] ?? []) + [
             'served_from_wp_cache' => true, 
             'stale' => true,
@@ -125,15 +113,9 @@ if (is_wp_error($response)) {
 
 $status_code = wp_remote_retrieve_response_code($response);
 $body = wp_remote_retrieve_body($response);
-$elapsed_time = round((microtime(true) - $start_time) * 1000);
-
-error_log('[ecosystem-data.php] Response: ' . $status_code . ' in ' . $elapsed_time . 'ms');
 
 if ($status_code !== 200) {
-    error_log('[ecosystem-data.php] ❌ Non-200 status: ' . $status_code);
-    
     if ($cached) {
-        error_log('[ecosystem-data.php] ⚠️ Serving cached data (non-200 fallback)');
         $cached['cache'] = ($cached['cache'] ?? []) + ['served_from_wp_cache' => true, 'stale' => true];
         header('Content-Type: application/json');
         echo json_encode($cached);
@@ -148,10 +130,7 @@ if ($status_code !== 200) {
 $data = json_decode($body, true);
 
 if (json_last_error() !== JSON_ERROR_NONE || !is_array($data)) {
-    error_log('[ecosystem-data.php] ❌ JSON decode error: ' . json_last_error_msg());
-    
     if ($cached) {
-        error_log('[ecosystem-data.php] ⚠️ Serving cached data (JSON error fallback)');
         $cached['cache'] = ($cached['cache'] ?? []) + ['served_from_wp_cache' => true, 'stale' => true];
         header('Content-Type: application/json');
         echo json_encode($cached);
@@ -165,10 +144,8 @@ if (json_last_error() !== JSON_ERROR_NONE || !is_array($data)) {
 // If edge claims success with data, cache it
 if (!empty($data['success']) && !empty($data['data'])) {
     set_transient($cache_key, $data, 5 * MINUTE_IN_SECONDS);
-    error_log('[ecosystem-data.php] ✅ Cached fresh data');
 } elseif ($cached) {
     // Edge not happy but we have last-known-good
-    error_log('[ecosystem-data.php] ⚠️ Serving cached data (edge success:false fallback)');
     $data = $cached;
     $data['cache'] = ($data['cache'] ?? []) + ['served_from_wp_cache' => true, 'stale' => true];
 }

@@ -34,11 +34,6 @@ class PaymentGate {
             return; // Not protected - serve content normally
         }
         
-        error_log('===== 402links PaymentGate: Protected Content Request =====');
-        error_log('Post ID: ' . $post->ID . ' | Title: ' . Helpers::get_clean_title($post->ID));
-        error_log('Short ID: ' . $short_id);
-        error_log('User-Agent: ' . Helpers::get_sanitized_user_agent());
-        
         // ============= STEP 3: ADMIN BYPASS =============
         if (current_user_can('manage_options')) {
             // If admin is viewing protected post, show preview notice
@@ -86,18 +81,12 @@ class PaymentGate {
         $user_agent = Helpers::get_sanitized_user_agent();
         $human_check = HumanDetector::is_human($user_agent);
         
-        error_log('Human Detection: ' . wp_json_encode($human_check));
-        
         // ============= STEP 5: HUMAN PATH =============
         if ($human_check['is_human']) {
-            error_log('402links: HUMAN DETECTED');
-            
             // Check if humans are blocked for this content
             $block_humans = get_post_meta($post->ID, '_402links_block_humans', true);
             
             if ($block_humans === '1' || $block_humans === 1) {
-                error_log('402links: Human blocking enabled - redirecting to 402links.com/p/' . $short_id);
-                
                 $return_url = get_permalink($post->ID);
                 $redirect_url = 'https://402links.com/p/' . $short_id . '?return_to=' . urlencode($return_url);
                 
@@ -106,20 +95,15 @@ class PaymentGate {
                 exit;
             }
             
-            error_log('402links: Human allowed - serving content');
             return; // Serve content to human
         }
         
         // ============= STEP 6: AGENT PATH =============
-        error_log('402links: AGENT DETECTED (not human)');
-        
         $agent_name = HumanDetector::extract_agent_name($user_agent);
-        error_log('402links: Agent name: ' . $agent_name);
         
         // Check if agent is blacklisted FIRST (before recording)
         $site_id = get_option('402links_site_id');
         if (AgentDetector::is_blacklisted($user_agent, $site_id)) {
-            error_log('402links: Agent is blacklisted - denying access');
             status_header(403);
             header('Content-Type: application/json');
             echo wp_json_encode([
@@ -137,22 +121,16 @@ class PaymentGate {
         $payment_header = sanitize_text_field(wp_unslash($_SERVER['HTTP_X_PAYMENT'] ?? ''));
         
         if (!empty($payment_header)) {
-            error_log('402links: X-PAYMENT header present - verifying payment');
-            
             $requirements = self::get_payment_requirements($post->ID);
             $verification = self::verify_payment($payment_header, $requirements);
             
             if (!$verification['isValid']) {
-                error_log('402links: Payment verification FAILED - ' . ($verification['error'] ?? 'unknown'));
-                
                 // VIOLATION: Agent provided invalid payment
                 self::report_violation($post->ID, $agent_name, $user_agent, 'invalid_payment');
                 
                 self::send_402_response($requirements, $verification['error'] ?? 'Invalid payment');
                 exit;
             }
-            
-            error_log('402links: Payment VERIFIED - txHash: ' . ($verification['transaction'] ?? 'none'));
             
             // Log successful payment
             self::log_agent_payment($post->ID, $verification, [
@@ -169,14 +147,11 @@ class PaymentGate {
             });
             
             // Serve JSON content
-            error_log('402links: Serving JSON content to agent');
             self::serve_json_content($post->ID);
             exit;
         }
         
         // ============= STEP 8: CHECK CACHED PAYMENT =============
-        error_log('402links: No X-PAYMENT header - checking for cached payment');
-        
         $cached_payment = $api->verify_agent_payment(
             $site_id,
             $post->ID,
@@ -186,23 +161,18 @@ class PaymentGate {
         );
         
         if ($cached_payment && $cached_payment['payment_verified']) {
-            error_log('402links: Cached payment found (crawl_id: ' . ($cached_payment['crawl_id'] ?? 'unknown') . ')');
-            
             // Serve JSON content
             self::serve_json_content($post->ID);
             exit;
         }
         
         // ============= STEP 9: SEND 402 PAYMENT REQUIRED =============
-        error_log('402links: No payment found - sending 402 Payment Required');
-        
         // Track repeated failed access attempts for brute force detection
         $attempt_key = '402links_failed_attempts_' . md5($user_agent . $post->ID);
         $failed_attempts = (int) get_transient($attempt_key);
         
         if ($failed_attempts >= 3) {
             // VIOLATION: Agent is brute forcing
-            error_log('402links: VIOLATION - Brute force detected after ' . $failed_attempts . ' attempts');
             self::report_violation($post->ID, $agent_name, $user_agent, 'brute_force_bypass');
         }
         
@@ -257,8 +227,6 @@ class PaymentGate {
      * @param string $violation_type
      */
     private static function report_violation($post_id, $agent_name, $user_agent, $violation_type) {
-        error_log('402links: VIOLATION DETECTED - ' . $violation_type);
-        
         $api = new API();
         $api->report_violation([
             'wordpress_post_id' => $post_id,
@@ -292,12 +260,10 @@ class PaymentGate {
         $payment_wallet = get_option('402links_agent_payment_wallet');
         if (empty($payment_wallet)) {
             $payment_wallet = $settings['payment_wallet'] ?? '';
-            error_log('402links PaymentGate: agent_payment_wallet not set, using fallback wallet');
         }
         
         // Validate wallet is configured before sending 402 response
         if (empty($payment_wallet)) {
-            error_log('402links PaymentGate: Payment wallet not configured - content NOT protected');
             return; // Skip 402 response, allow normal WordPress content delivery
         }
         
@@ -603,7 +569,6 @@ class PaymentGate {
         ]);
         
         if (is_wp_error($response)) {
-            error_log('402links: Invoice validation request failed: ' . $response->get_error_message());
             return ['isValid' => false, 'error' => 'API request failed'];
         }
         
@@ -622,7 +587,6 @@ class PaymentGate {
         }
         
         if (json_last_error() !== JSON_ERROR_NONE) {
-            error_log('402links: Invalid JSON response from validate-invoice: ' . $body);
             return ['isValid' => false, 'error' => 'Invalid JSON response'];
         }
         
@@ -651,8 +615,6 @@ class PaymentGate {
             ],
             ['%d', '%s', '%s', '%f', '%s', '%s', '%s', '%s']
         );
-        
-        error_log('402links: Agent access logged to local database');
     }
     
     /**
@@ -662,21 +624,12 @@ class PaymentGate {
         $current_uses = (int) get_post_meta($post_id, '_402links_usage_count', true);
         $new_uses = $current_uses + 1;
         update_post_meta($post_id, '_402links_usage_count', $new_uses);
-        
-        error_log('402links: Link usage incremented: ' . $current_uses . ' → ' . $new_uses);
     }
     
     /**
      * Log successful payment to backend and local database
      */
     private static function log_agent_payment($post_id, $verification, $agent_check) {
-        error_log('402links: Logging successful payment:');
-        error_log('  - Post ID: ' . $post_id);
-        error_log('  - Transaction: ' . ($verification['transaction'] ?? 'none'));
-        error_log('  - Payer: ' . ($verification['payer'] ?? 'unknown'));
-        error_log('  - Amount: ' . ($verification['amount'] ?? 0));
-        error_log('  - Agent: ' . ($agent_check['agent_name'] ?? 'unknown'));
-        
         global $wpdb;
         $table_name = $wpdb->prefix . '402links_agent_logs';
         

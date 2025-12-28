@@ -316,13 +316,10 @@ class Admin {
                 'payment_wallet' => $settings['payment_wallet']
             ]);
             
-            error_log('🟦 [Admin] Synced settings to Supabase: ' . json_encode($sync_result));
-            
             // CRITICAL: Store the agent_payment_wallet (splitter address) returned from backend
             // This is the address agents should pay to (99% creator / 1% platform split)
             if (isset($sync_result['data']['agent_payment_wallet'])) {
                 update_option('402links_agent_payment_wallet', $sync_result['data']['agent_payment_wallet']);
-                error_log('🟦 [Admin] Stored agent_payment_wallet: ' . $sync_result['data']['agent_payment_wallet']);
             }
         }
         
@@ -399,7 +396,6 @@ class Admin {
             // This is the splitter address that agents should pay to
             if (isset($result['agent_payment_wallet'])) {
                 update_option('402links_agent_payment_wallet', $result['agent_payment_wallet']);
-                error_log('🟦 [Admin] Stored agent_payment_wallet from registration: ' . $result['agent_payment_wallet']);
             }
             
             // Auto-generate 402links for all published content
@@ -461,7 +457,6 @@ class Admin {
         $cached = get_transient($cache_key);
         
         if ($cached !== false) {
-            error_log('[Admin.php] 📦 Returning cached analytics for timeframe: ' . $timeframe);
             wp_send_json_success($cached);
             return;
         }
@@ -472,7 +467,6 @@ class Admin {
             usleep(500000); // Wait 0.5s for in-flight request
             $cached = get_transient($cache_key);
             if ($cached !== false) {
-                error_log('[Admin.php] 📦 Returning cached data after lock wait');
                 wp_send_json_success($cached);
                 return;
             }
@@ -483,9 +477,6 @@ class Admin {
         
         $api = new API();
         
-        error_log('[Admin.php] 📊 ==================== ANALYTICS REQUEST ====================');
-        error_log('[Admin.php] 📊 Timeframe: ' . $timeframe);
-        
         // 🚀 PARALLEL API CALLS - Make both requests simultaneously
         $site_id = get_option('402links_site_id');
         $api_endpoint = $api->get_api_endpoint();
@@ -495,7 +486,7 @@ class Admin {
             'site' => [
                 'url' => $api_endpoint . '/get-site-analytics?site_id=' . $site_id . '&period=' . $timeframe,
                 'type' => 'GET',
-                'timeout' => 8, // Increased from 3 to 8 seconds
+                'timeout' => 8,
                 'headers' => [
                     'Authorization' => 'Bearer ' . $api_key,
                     'Content-Type' => 'application/json'
@@ -504,7 +495,7 @@ class Admin {
             'ecosystem' => [
                 'url' => $api_endpoint . '/wordpress-ecosystem-stats',
                 'type' => 'POST',
-                'timeout' => 8, // Increased from 3 to 8 seconds
+                'timeout' => 8,
                 'data' => ['timeframe' => $timeframe],
                 'headers' => [
                     'Authorization' => 'Bearer ' . $api_key,
@@ -537,10 +528,6 @@ class Admin {
             $ecosystem_result = $body ?: ['success' => false];
         }
         
-        error_log('[Admin.php] 📊 Parallel requests completed');
-        error_log('[Admin.php] 📊 site_result success: ' . ($site_result['success'] ? 'true' : 'false'));
-        error_log('[Admin.php] 🌍 ecosystem_result success: ' . ($ecosystem_result['success'] ? 'true' : 'false'));
-        
         if (($site_result['success'] ?? false) || ($ecosystem_result['success'] ?? false)) {
             // Add cache-busting headers
             header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -553,9 +540,6 @@ class Admin {
             
             // Extract metrics safely - tolerate both nested and flat structures
             $site_metrics = $site_data['metrics'] ?? $site_data;
-            error_log('[Admin.php] 📊 Extracted $site_data structure: ' . json_encode(array_keys($site_data)));
-            error_log('[Admin.php] 📊 Extracted $site_metrics: ' . json_encode($site_metrics));
-            error_log('[Admin.php] 📊 $site_metrics keys: ' . json_encode(array_keys($site_metrics)));
             
             // Count protected pages with 5-minute cache
             // FIXED: Use _402links_short_id (not _402links_id) and require non-empty value
@@ -578,9 +562,6 @@ class Admin {
                 ");
                 $protected_pages_count = intval($protected_pages_count);
                 set_transient($pages_cache_key, $protected_pages_count, 300); // 5 min cache
-                error_log('[Admin.php] 📄 Protected pages count (SQL, using short_id): ' . $protected_pages_count);
-            } else {
-                error_log('[Admin.php] 📦 Protected pages count (CACHED): ' . $protected_pages_count);
             }
             
             $final_response = [
@@ -605,19 +586,6 @@ class Admin {
                 ]
             ];
             
-            error_log('[Admin.php] 📊 Final site metrics being sent:');
-            error_log('[Admin.php]    - total_crawls: ' . $final_response['site']['total_crawls']);
-            error_log('[Admin.php]    - paid_crawls: ' . $final_response['site']['paid_crawls']);
-            error_log('[Admin.php]    - total_revenue: ' . $final_response['site']['total_revenue']);
-            error_log('[Admin.php]    - protected_pages: ' . $final_response['site']['protected_pages']);
-            
-            error_log('[Admin.php] ✅ Final response structure: ' . json_encode([
-                'has_site' => isset($final_response['site']),
-                'has_ecosystem' => isset($final_response['ecosystem']),
-                'site_total_crawls' => $final_response['site']['total_crawls'],
-                'ecosystem_total_transactions' => $final_response['ecosystem']['total_transactions']
-            ]));
-            
             // Cache the response for 30 seconds (better real-time experience)
             set_transient($cache_key, $final_response, 30);
             
@@ -631,7 +599,6 @@ class Admin {
         delete_transient($lock_key);
         $site_err = $site_result['error'] ?? $site_result['message'] ?? 'unknown';
         $eco_err  = $ecosystem_result['error'] ?? $ecosystem_result['message'] ?? 'unknown';
-        error_log('[Admin.php] ❌ Analytics request failed');
         wp_send_json_error(['message' => "Site analytics: $site_err | Ecosystem stats: $eco_err"]);
     }
     
@@ -650,17 +617,12 @@ class Admin {
         $per_page = isset($_POST['per_page']) ? intval($_POST['per_page']) : 10;
         $offset = ($page - 1) * $per_page;
         
-        error_log("[402links] === CONTENT TABLE DATA FLOW ===");
-        error_log("[402links] Page: $page, Per Page: $per_page, Offset: $offset");
-        
         // Get site_id
         $site_id = get_option('402links_site_id');
         
         // Fetch page analytics from backend API
         $api = new API();
         $analytics_result = $api->get_pages_analytics($site_id);
-        
-        error_log('[402links] Analytics API response: ' . json_encode($analytics_result));
         
         $page_stats = [];
         if ($analytics_result['success'] && isset($analytics_result['data']['pages'])) {
@@ -670,12 +632,8 @@ class Admin {
                     'crawls' => intval($page_data['crawls'] ?? 0),
                     'revenue' => floatval($page_data['revenue'] ?? 0)
                 ];
-                
-                error_log("402links: Page stats for WP Post ID {$wp_post_id}: {$page_stats[$wp_post_id]['crawls']} crawls, \${$page_stats[$wp_post_id]['revenue']} revenue");
             }
         }
-        
-        error_log('[402links] Page stats extracted: ' . json_encode($page_stats));
         
         // Get total count first
         $total_posts = wp_count_posts('post')->publish;
@@ -691,10 +649,7 @@ class Admin {
             'order' => 'DESC'
         ]);
         
-        error_log("[402links] WordPress posts count: " . count($posts) . " (total: $total_posts)");
-        
         $wp_post_ids = array_map(function($p) { return $p->ID; }, $posts);
-        error_log('402links: WordPress query returned post IDs: ' . implode(', ', $wp_post_ids));
         
         $content_list = [];
         
@@ -713,9 +668,6 @@ class Admin {
             if (isset($page_stats[$post_id])) {
                 $crawls = $page_stats[$post_id]['crawls'];
                 $revenue = $page_stats[$post_id]['revenue'];
-                error_log("402links: Post #{$post_id} '{$post->post_title}' - MATCHED: {$crawls} crawls, \${$revenue} revenue");
-            } else {
-                error_log("402links: Post #{$post_id} '{$post->post_title}' - NO MATCH in analytics data");
             }
             
             $content_list[] = [
@@ -758,10 +710,6 @@ class Admin {
         $wallet = sanitize_text_field($_POST['wallet'] ?? '');
         $default_price = floatval($_POST['default_price'] ?? 0.10);
         
-        error_log('402links: ajax_save_wallet called');
-        error_log('402links: Wallet: ' . $wallet);
-        error_log('402links: Default Price: ' . $default_price);
-        
         if (empty($wallet)) {
             wp_send_json_error(['message' => 'Wallet address is required']);
         }
@@ -786,8 +734,6 @@ class Admin {
         
         // SCENARIO 1: Site not provisioned at all
         if (!$site_id) {
-            error_log('402links: Site not provisioned - triggering auto-provision');
-            
             // Trigger auto-provisioning
             Installer::activate();
             
@@ -800,7 +746,6 @@ class Admin {
             
             if (!$site_id) {
                 $provision_error = get_option('402links_provisioning_error', 'Auto-provisioning failed');
-                error_log('402links: Auto-provisioning failed: ' . $provision_error);
                 
                 wp_send_json_success([
                     'message' => 'Configuration saved locally',
@@ -810,13 +755,10 @@ class Admin {
                 ]);
                 return;
             }
-            
-            error_log('402links: Auto-provisioning completed. Site ID: ' . $site_id);
         }
         
         // SCENARIO 2: Site provisioned but no API key
         if (!$api_key) {
-            error_log('402links: Site provisioned but no API key found');
             wp_send_json_success([
                 'message' => 'Configuration saved locally',
                 'sync_success' => false,
@@ -827,21 +769,16 @@ class Admin {
         }
         
         // SCENARIO 3: Everything is ready - sync to backend
-        error_log('402links: Site ID: ' . $site_id . ' - Syncing settings to backend');
-        
         $api = new API();
         $result = $api->sync_site_settings([
             'default_price' => $default_price,
             'payment_wallet' => $wallet
         ]);
         
-        error_log('402links: Sync settings API result: ' . json_encode($result));
-        
         // Store the agent_payment_wallet (splitter address) returned from backend
         // This ensures reinstallations get the correct payment address
         if (isset($result['data']['agent_payment_wallet']) && !empty($result['data']['agent_payment_wallet'])) {
             update_option('402links_agent_payment_wallet', $result['data']['agent_payment_wallet']);
-            error_log('402links: Stored agent_payment_wallet from sync: ' . $result['data']['agent_payment_wallet']);
         }
         
         if ($result['success']) {
@@ -858,7 +795,6 @@ class Admin {
             ]);
         } else {
             $sync_error = $result['error'] ?? 'Unknown sync error';
-            error_log('402links: Failed to sync settings: ' . $sync_error);
             
             wp_send_json_success([
                 'message' => 'Configuration saved locally',
@@ -898,13 +834,9 @@ class Admin {
      * AJAX: Get top performing pages
      */
     public static function ajax_get_top_pages() {
-        error_log('🟦 [Admin] === AJAX GET TOP PAGES START ===');
-        error_log('🟦 [Admin] POST data: ' . print_r($_POST, true));
-        
         check_ajax_referer('agent_hub_nonce', 'nonce');
         
         if (!current_user_can('manage_options')) {
-            error_log('🔴 [Admin] ERROR: Unauthorized user');
             wp_send_json_error(['message' => 'Unauthorized']);
         }
         
@@ -912,21 +844,14 @@ class Admin {
         $limit = intval($_POST['limit'] ?? 10);
         $offset = intval($_POST['offset'] ?? 0);
         
-        error_log('🟦 [Admin] Calling API with: timeframe=' . $timeframe . ', limit=' . $limit . ', offset=' . $offset);
-        
         $site_id = get_option('402links_site_id');
-        error_log('🟦 [Admin] Site ID from options: ' . ($site_id ?: 'NOT SET'));
         
         $api = new API();
         $result = $api->get_top_pages($timeframe, $limit, $offset);
         
-        error_log('🟢 [Admin] API result: ' . print_r($result, true));
-        
         if ($result['success']) {
-            error_log('🟢 [Admin] Sending success response with ' . count($result['pages'] ?? []) . ' pages');
             wp_send_json_success($result);
         } else {
-            error_log('🔴 [Admin] Sending error response: ' . ($result['error'] ?? 'Unknown error'));
             wp_send_json_error($result);
         }
     }
@@ -992,25 +917,19 @@ class Admin {
         
         $site_id = get_option('402links_site_id');
         if (!$site_id) {
-            error_log('[Link Repair] No site_id configured, skipping repair');
             return;
         }
-        
-        error_log('[Link Repair] Starting repair process for site: ' . $site_id);
         
         // Query Supabase to get all existing links for this site
         $api = new API();
         $response = $api->get_site_pages_with_links($site_id);
         
         if (!($response['success'] ?? false)) {
-            error_log('[Link Repair] Failed to fetch existing links from database');
             return;
         }
         
         $links = $response['links'] ?? [];
         $repaired_count = 0;
-        
-        error_log('[Link Repair] Found ' . count($links) . ' existing links in database');
         
         // Update WordPress post meta for each existing link
         foreach ($links as $link) {
@@ -1020,7 +939,6 @@ class Admin {
             $link_url = $link['link_url'] ?? null;
             
             if (!$post_id || !$link_id || !$short_id || !$link_url) {
-                error_log("[Link Repair] Skipping incomplete link data for post {$post_id}");
                 continue;
             }
             
@@ -1028,8 +946,6 @@ class Admin {
             $existing_url = get_post_meta($post_id, '_402links_url', true);
             
             if (empty($existing_url) || $existing_url !== $link_url) {
-                error_log("[Link Repair] Repairing post {$post_id}: setting URL to {$link_url}");
-                
                 // Update WordPress post meta
                 update_post_meta($post_id, '_402links_id', $link_id);
                 update_post_meta($post_id, '_402links_short_id', $short_id);
@@ -1038,8 +954,6 @@ class Admin {
                 $repaired_count++;
             }
         }
-        
-        error_log("[Link Repair] Repair complete: {$repaired_count} links repaired");
     }
     
     /**
@@ -1088,8 +1002,6 @@ class Admin {
         $api = new API();
         $result = $api->get_violations_summary();
         
-        error_log('402links: Violations AJAX handler - API result: ' . print_r($result, true));
-        
         if ($result['success']) {
             // Extract agents and totals from flat result structure
             $response_data = [
@@ -1097,10 +1009,8 @@ class Admin {
                 'totals' => $result['totals'] ?? []
             ];
             
-            error_log('402links: Violations AJAX handler - Sending response: ' . print_r($response_data, true));
             wp_send_json_success($response_data);
         } else {
-            error_log('402links: Violations AJAX handler - Error: ' . ($result['error'] ?? 'Unknown error'));
             wp_send_json_error([
                 'message' => $result['error'] ?? 'Failed to fetch violations data'
             ]);

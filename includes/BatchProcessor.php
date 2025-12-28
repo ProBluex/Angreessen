@@ -22,8 +22,6 @@ class BatchProcessor {
         // Pending = total - already linked
         $pending_count = max(0, $total_posts - $already_linked_count);
         
-        error_log("[BatchProcessor] start_batch - Total: {$total_posts}, Already Linked: {$already_linked_count}, Pending: {$pending_count}");
-        
         // Initialize progress tracking
         $progress = [
             'status' => 'running',
@@ -81,18 +79,9 @@ class BatchProcessor {
             ]
         ]);
         
-        error_log("[BatchProcessor] process_next_batch - Found " . count($posts) . " pending posts");
-        
         if (empty($posts)) {
             // Double-check: recount pending to be sure we're done
             $remaining = self::get_pending_post_count();
-            error_log("[BatchProcessor] No posts returned, remaining pending count: {$remaining}");
-            
-            if ($remaining > 0) {
-                // Edge case: query returned empty but count says pending exist
-                // This shouldn't happen, but if it does, mark as completed anyway
-                error_log("[BatchProcessor] WARNING: Query empty but {$remaining} pending - marking complete");
-            }
             
             // Update final counts
             $progress['processed'] = $progress['total'];
@@ -137,8 +126,6 @@ class BatchProcessor {
         }
         
         set_transient(self::PROGRESS_KEY, $progress, 3600);
-        
-        error_log("[BatchProcessor] Batch done - Processed: {$progress['processed']}/{$progress['total']}, Complete: " . ($is_complete ? 'yes' : 'no'));
         
         return [
             'success' => true,

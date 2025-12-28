@@ -11,13 +11,11 @@ class Installer {
         $existing_site_id = get_option('402links_site_id');
         
         if ($existing_key && $existing_site_id) {
-            error_log('402links: Already provisioned');
             return;
         }
         
         // Set flag for deferred setup (user consent required)
         update_option('402links_needs_setup', true);
-        error_log('402links: Plugin activated. Setup required on first admin visit.');
     }
     
     /**
@@ -28,8 +26,6 @@ class Installer {
         $backoff_delays = [1, 2, 4]; // seconds
         
         for ($attempt = 1; $attempt <= $max_attempts; $attempt++) {
-            error_log("402links: Auto-provision attempt {$attempt}/{$max_attempts}...");
-            
             $result = self::attempt_provision();
             
             if ($result['success']) {
@@ -40,35 +36,30 @@ class Installer {
                     update_option('402links_site_id', $result['site_id']);
                     update_option('402links_provisioned_url', get_site_url());
                     
-                error_log('402links: Auto-provisioning successful! Site ID: ' . $result['site_id']);
-                update_option('402links_provisioning_success', true);
-                return $result;
+                    update_option('402links_provisioning_success', true);
+                    return $result;
                 } elseif (isset($result['already_provisioned']) && $result['already_provisioned']) {
                     // Site was already provisioned
                     update_option('402links_site_id', $result['site_id']);
                     update_option('402links_api_key_id', $result['api_key_id']);
                     
-                error_log('402links: Site already provisioned: ' . $result['site_id']);
-                update_option('402links_provisioning_info', 'Site was already registered. Please contact support if you need your API key.');
-                return $result;
+                    update_option('402links_provisioning_info', 'Site was already registered. Please contact support if you need your API key.');
+                    return $result;
                 }
             }
             
             // If not last attempt, wait before retry
             if ($attempt < $max_attempts) {
                 $delay = $backoff_delays[$attempt - 1];
-                error_log("402links: Attempt {$attempt} failed. Retrying in {$delay}s... Error: " . $result['error']);
                 sleep($delay);
             } else {
                 // All attempts failed
-                error_log('402links: All provisioning attempts failed. Final error: ' . $result['error']);
                 update_option('402links_provisioning_error', 'Failed after ' . $max_attempts . ' attempts. Last error: ' . $result['error']);
             }
         }
         
         // Final fallback: plugin still works, just not connected
         update_option('402links_needs_setup', true);
-        error_log('402links: Provisioning failed but plugin activated successfully');
         
         return [
             'success' => false,

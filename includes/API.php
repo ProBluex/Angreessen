@@ -30,7 +30,6 @@ class API {
      */
     public function record_agent_visit($post_id, $agent_name, $user_agent) {
         if (!$this->api_endpoint) {
-            error_log('402links: Cannot record agent visit - API endpoint not configured');
             return;
         }
 
@@ -61,7 +60,6 @@ class API {
      */
     public function verify_agent_payment($site_id, $wordpress_post_id, $page_url, $user_agent, $ip_address) {
         if (!$this->api_endpoint || !$this->api_key) {
-            error_log('402links: Cannot verify agent payment - API credentials missing');
             return null;
         }
 
@@ -85,14 +83,12 @@ class API {
         ]);
 
         if (is_wp_error($response)) {
-            error_log('402links: verify-agent-payment request failed: ' . $response->get_error_message());
             return null;
         }
 
         $body = json_decode(wp_remote_retrieve_body($response), true);
         
         if (isset($body['payment_verified']) && $body['payment_verified'] === true) {
-            error_log('402links: Agent payment verified (cached within 24h) - crawl_id: ' . ($body['crawl_id'] ?? 'unknown'));
             return $body;
         }
 
@@ -123,7 +119,6 @@ class API {
         
         // Handle specific API key reuse error
         if (!$result['success'] && isset($result['error']) && strpos($result['error'], 'already being used') !== false) {
-            error_log('402links: API key is already in use by another site');
             return [
                 'success' => false,
                 'error' => $result['error'],
@@ -148,10 +143,6 @@ class API {
             ];
         }
         
-        error_log('🟦 [API] === SYNC SITE SETTINGS (via edge function) ===');
-        error_log('🟦 [API] Site ID: ' . $site_id);
-        error_log('🟦 [API] Settings: ' . json_encode($settings));
-        
         $payload = ['site_id' => $site_id];
         if (isset($settings['default_price'])) {
             $payload['default_price'] = floatval($settings['default_price']);
@@ -174,13 +165,9 @@ class API {
             return ['count' => 0];
         }
         
-        error_log('🟦 [API] === CHECK LINKS COUNT (via edge function) ===');
-        error_log('🟦 [API] Site ID: ' . $site_id);
-        
         $result = $this->request('GET', '/check-wordpress-links-count?site_id=' . $site_id);
         
         if (!$result['success']) {
-            error_log('🔴 [API] Failed to count links: ' . ($result['error'] ?? 'Unknown error'));
             return ['count' => 0];
         }
         
@@ -285,8 +272,6 @@ class API {
             'description' => !empty($category_names) ? 'Filed under: ' . implode(', ', $category_names) : '',
             'json_content' => $json_content  // NEW: Full content in JSON format
         ];
-        
-        error_log('402links: Creating link for post ' . $post_id . ' with payload: ' . wp_json_encode($payload));
         
         return $this->request('POST', '/create-wordpress-link', $payload);
     }
@@ -422,34 +407,17 @@ class API {
             $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             $curl_error = curl_error($ch);
             
-            // Comprehensive logging for diagnostics
-            error_log("🔍 [Parallel Link Creation] Post {$post_id}:");
-            error_log("  - HTTP Code: {$http_code}");
-            error_log("  - cURL Error: " . ($curl_error ?: 'none'));
-            error_log("  - Response (first 200 chars): " . substr($response, 0, 200));
-            
             if ($curl_error) {
                 $results['failed']++;
                 $results['errors'][] = "Post {$post_id}: cURL error - {$curl_error}";
             } elseif ($http_code !== 200) {
                 $results['failed']++;
                 $results['errors'][] = "Post {$post_id}: HTTP {$http_code}";
-                error_log("  ❌ Failed: HTTP {$http_code}");
             } else {
                 $data = json_decode($response, true);
                 
-                // Log parsed data structure
-                error_log("  - Parsed data keys: " . implode(', ', array_keys($data ?: [])));
-                error_log("  - Has 'success' key: " . (isset($data['success']) ? 'yes' : 'no'));
-                error_log("  - Has 'data' key: " . (isset($data['data']) ? 'yes' : 'no'));
-                
                 // Handle nested response structure: {success: true, data: {link_id, short_id, link_url}}
                 $link_data = $data['data'] ?? $data;
-                
-                error_log("  - Extracted link_data keys: " . implode(', ', array_keys($link_data ?: [])));
-                error_log("  - link_id present: " . (isset($link_data['link_id']) ? 'yes' : 'no'));
-                error_log("  - short_id present: " . (isset($link_data['short_id']) ? 'yes' : 'no'));
-                error_log("  - link_url present: " . (isset($link_data['link_url']) ? 'yes' : 'no'));
                 
                 if (($data['success'] ?? false) && isset($link_data['link_id'])) {
                     $link_id = $link_data['link_id'];
@@ -460,19 +428,12 @@ class API {
                     $message = $data['message'] ?? $link_data['message'] ?? '';
                     $is_existing = (stripos($message, 'already exists') !== false);
                     
-                    error_log("  ✅ Success - Updating post meta:");
-                    error_log("    - link_id: {$link_id}");
-                    error_log("    - short_id: {$short_id}");
-                    error_log("    - link_url: {$link_url}");
-                    error_log("    - is_existing: " . ($is_existing ? 'yes' : 'no'));
-                    
                     update_post_meta($post_id, '_402links_id', $link_id);
                     update_post_meta($post_id, '_402links_short_id', $short_id);
                     update_post_meta($post_id, '_402links_url', $link_url);
                     
                     // Verify meta was actually saved
                     $saved_url = get_post_meta($post_id, '_402links_url', true);
-                    error_log("    - Verified saved URL: {$saved_url}");
                     
                     // Count as already_linked or created
                     if ($is_existing) {
@@ -484,7 +445,6 @@ class API {
                     $results['failed']++;
                     $error_msg = $data['error'] ?? $link_data['error'] ?? 'Unknown error - link_id missing';
                     $results['errors'][] = "Post {$post_id}: {$error_msg}";
-                    error_log("  ❌ Failed: {$error_msg}");
                 }
             }
             
@@ -595,22 +555,15 @@ class API {
     public function get_site_analytics($period = '30d') {
         $site_id = get_option('402links_site_id');
         if (!$site_id) {
-            error_log('[API.php] ⚠️ get_site_analytics() - No site_id found');
             return ['success' => false, 'error' => 'Site not registered'];
         }
         
         $period = $this->normalize_period($period);
-        error_log('[API.php] 📊 get_site_analytics() - site_id: ' . $site_id . ', period: ' . $period);
         
         $result = $this->request('GET', '/get-site-analytics', [
             'site_id' => $site_id,
             'period'  => $period
         ]);
-        
-        error_log('[API.php] 📊 get_site_analytics() result: ' . json_encode([
-            'success' => $result['success'] ?? false,
-            'has_data' => isset($result['data'])
-        ]));
         
         return $result;
     }
@@ -620,17 +573,10 @@ class API {
      * Used for: Analytics tab lower fold (Top Performing Content)
      */
     public function get_wordpress_analytics($timeframe = '30d') {
-        error_log('[API.php] 📊 get_wordpress_analytics() called with timeframe: ' . $timeframe);
-        
         $result = $this->request('POST', '/wordpress-analytics', [
             'site_url'  => get_site_url(),
             'timeframe' => $timeframe ?: '30d'
         ]);
-        
-        error_log('[API.php] 📊 get_wordpress_analytics() result: ' . json_encode([
-            'success' => $result['success'] ?? false,
-            'has_data' => isset($result['data'])
-        ]));
         
         return $result;
     }
@@ -640,13 +586,6 @@ class API {
      * Kept for backward compatibility - redirects to ecosystem stats
      */
     public function get_analytics($timeframe = '30d') {
-        // Log caller context for debugging
-        $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
-        $caller = $backtrace[1]['function'] ?? 'unknown';
-        $class = $backtrace[1]['class'] ?? '';
-        $caller_info = $class ? "$class::$caller" : $caller;
-        
-        error_log('[API.php] ⚠️ DEPRECATED: get_analytics() called by ' . $caller_info . '. Use get_site_analytics() or get_wordpress_analytics().');
         return $this->get_ecosystem_stats($timeframe);
     }
     
@@ -654,31 +593,13 @@ class API {
      * Get ecosystem-wide statistics
      */
     public function get_ecosystem_stats($timeframe = '30d') {
-        error_log('[API.php] 🌍 get_ecosystem_stats() called with timeframe: ' . $timeframe);
-        
         $url = '/wordpress-ecosystem-stats';
         $payload = ['timeframe' => $timeframe];
         
-        error_log('[API.php] 🌍 Request URL: ' . $this->api_endpoint . $url);
-        error_log('[API.php] 🌍 Request payload: ' . json_encode($payload));
-        error_log('[API.php] 🌍 API Key (first 8 chars): ' . substr($this->api_key, 0, 8) . '...');
-        
         $result = $this->request('POST', $url, $payload);
         
-        // Add detailed response logging
-        error_log('[API.php] 🌍 get_ecosystem_stats() raw response: ' . json_encode($result));
-        
         if (!isset($result['success'])) {
-            error_log('[API.php] ❌ get_ecosystem_stats() - Invalid response structure (no success field)');
             return ['success' => false, 'error' => 'Invalid response from server'];
-        }
-        
-        if (!$result['success']) {
-            $error_msg = $result['error'] ?? $result['message'] ?? 'Unknown error';
-            $status_code = $result['status_code'] ?? $result['status'] ?? 'unknown';
-            error_log('[API.php] ❌ get_ecosystem_stats() failed: ' . $error_msg . ' (HTTP ' . $status_code . ')');
-        } else {
-            error_log('[API.php] ✅ get_ecosystem_stats() successful - has data: ' . (isset($result['data']) ? 'yes' : 'no'));
         }
         
         return $result;
@@ -745,7 +666,6 @@ class API {
             return $result['bots'];
         }
         
-        error_log('402links: Failed to fetch bot registry: ' . ($result['error'] ?? 'Unknown error'));
         return [];
     }
     
@@ -768,7 +688,6 @@ class API {
     public function report_violation($violation_data) {
         $site_id = get_option('402links_site_id');
         if (!$site_id) {
-            error_log('402links: Cannot report violation - site not registered');
             return ['success' => false, 'error' => 'Site not registered'];
         }
         
@@ -777,8 +696,6 @@ class API {
             'site_id' => $site_id,
             'detected_at' => gmdate('Y-m-d\TH:i:s\Z')
         ], $violation_data);
-        
-        error_log('402links: Reporting violation: ' . json_encode($payload));
         
         return $this->request('POST', '/report-violation', $payload);
     }
@@ -792,21 +709,12 @@ class API {
      * @return array Response from backend (or error array)
      */
     public static function report_violation_static($violation_data) {
-        error_log('402links: Static violation report called');
-        
         try {
             $api = new self();
             $result = $api->report_violation($violation_data);
             
-            if (isset($result['success']) && $result['success']) {
-                error_log('402links: Violation reported successfully');
-            } else {
-                error_log('402links: Violation report failed: ' . json_encode($result));
-            }
-            
             return $result;
         } catch (\Exception $e) {
-            error_log('402links: EXCEPTION in report_violation_static: ' . $e->getMessage());
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }
@@ -817,7 +725,6 @@ class API {
     public function get_top_pages($timeframe = '30d', $limit = 10, $offset = 0) {
         $site_id = get_option('402links_site_id');
         if (!$site_id) {
-            error_log('[402links] get_top_pages: Site ID not found');
             return ['success' => false, 'error' => 'Site not registered'];
         }
 
@@ -866,7 +773,6 @@ class API {
             ];
         }
         
-        error_log('402links: Failed to fetch violations: ' . ($result['error'] ?? 'Unknown error'));
         return [
             'success' => false,
             'error' => $result['error'] ?? 'Failed to fetch violations',
@@ -910,9 +816,6 @@ class API {
      * REST API endpoint: Sync post meta from Supabase
      */
     public static function rest_sync_meta($request) {
-        error_log('===== 402links REST SYNC CALLED =====');
-        error_log('Request params: ' . json_encode($request->get_json_params()));
-        
         $params = $request->get_json_params();
         
         $post_id = $params['post_id'] ?? null;
@@ -923,12 +826,8 @@ class API {
         $force_human = $params['force_human_payment'] ?? false;
         
         if (!$post_id || !$link_id) {
-            error_log('402links: SYNC FAILED - Missing required params');
             return new \WP_Error('missing_params', 'Missing required parameters', ['status' => 400]);
         }
-        
-        error_log('402links: Syncing meta for post ' . $post_id . ' with link ' . $link_id);
-        error_log('402links: force_human_payment = ' . ($force_human ? 'true' : 'false'));
         
         // Update post meta to enable PaymentGate blocking
         update_post_meta($post_id, '_402links_id', $link_id);
@@ -936,9 +835,6 @@ class API {
         update_post_meta($post_id, '_402links_url', $link_url);
         update_post_meta($post_id, '_402links_synced_at', current_time('mysql'));
         update_post_meta($post_id, '_402links_block_humans', $force_human ? '1' : '0');
-        
-        error_log('402links: SYNC SUCCESS - Post meta updated for post ' . $post_id);
-        error_log('===== 402links REST SYNC COMPLETE =====');
         
         return rest_ensure_response([
             'success' => true,
@@ -1079,15 +975,9 @@ class API {
     private function request($method, $endpoint, $data = []) {
         $url = $this->api_endpoint . $endpoint;
         
-        error_log('[API.php] 🚀 ==================== API REQUEST ====================');
-        error_log('[API.php] 🚀 Method: ' . $method);
-        error_log('[API.php] 🚀 URL: ' . $url);
-        error_log('[API.php] 🚀 Endpoint: ' . $endpoint);
-        
         // For GET requests, append data as query parameters
         if ($method === 'GET' && !empty($data)) {
             $url = add_query_arg($data, $url);
-            error_log('[API.php] 🚀 GET query params: ' . json_encode($data));
         }
         
         $args = [
@@ -1101,23 +991,14 @@ class API {
             ]
         ];
         
-        error_log('[API.php] 🚀 Headers: ' . json_encode([
-            'Content-Type' => 'application/json',
-            'Authorization' => 'Bearer ' . substr($this->api_key, 0, 8) . '...' // Show first 8 chars only
-        ]));
-        
         if ($method === 'POST' || $method === 'PUT') {
             $args['body'] = json_encode($data);
-            error_log('[API.php] 🚀 Request body: ' . json_encode($data));
         }
         
-        error_log('[API.php] 🚀 Making request...');
         $response = wp_remote_request($url, $args);
         
         if (is_wp_error($response)) {
             $error_msg = $response->get_error_message();
-            error_log('[API.php] ❌ WP_Error: ' . $error_msg);
-            error_log('[API.php] ❌ ==================== REQUEST FAILED ====================');
             return [
                 'success' => false,
                 'error' => $error_msg
@@ -1126,27 +1007,16 @@ class API {
         
         $body = wp_remote_retrieve_body($response);
         $status_code = wp_remote_retrieve_response_code($response);
-        $response_headers = wp_remote_retrieve_headers($response);
-        
-        error_log('[API.php] 📥 Response status: ' . $status_code);
-        error_log('[API.php] 📥 Response headers: ' . json_encode($response_headers));
-        error_log('[API.php] 📥 Response body (first 500 chars): ' . substr($body, 0, 500));
         
         $result = json_decode($body, true);
         
         if ($status_code >= 400) {
-            error_log('[API.php] ❌ HTTP ERROR ' . $status_code . ': ' . ($result['error'] ?? 'Unknown error'));
-            error_log('[API.php] ❌ Full error response: ' . json_encode($result));
-            error_log('[API.php] ❌ ==================== REQUEST FAILED ====================');
             return [
                 'success' => false,
                 'error' => $result['error'] ?? 'API request failed',
                 'status_code' => $status_code
             ];
         }
-        
-        error_log('[API.php] ✅ Request successful');
-        error_log('[API.php] ✅ ==================== REQUEST COMPLETE ====================');
         
         return array_merge(['success' => true], $result ?? []);
     }

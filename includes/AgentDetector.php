@@ -85,16 +85,12 @@ class AgentDetector {
         $registry = $api->get_bot_registry();
         
         if (!empty($registry)) {
-            $elapsed = microtime(true) - $start_time;
-            error_log(sprintf('402links: Bot registry loaded in %.2f seconds (%d bots)', $elapsed, count($registry)));
-            
             // Cache for 1 hour
             set_transient('402links_bot_registry', $registry, self::$cache_duration);
             self::$bot_registry_cache = $registry;
             return $registry;
         }
         
-        error_log('402links: Bot registry API failed or returned empty data');
         return [];
     }
     
@@ -129,7 +125,6 @@ class AgentDetector {
         foreach ($priority_agents as $name => $patterns) {
             foreach ($patterns as $pattern) {
                 if (strpos($ua_lower, $pattern) !== false) {
-                    error_log('402links: Major AI agent detected immediately: ' . $name);
                     return [
                         'is_agent' => true,
                         'agent_name' => $name,
@@ -343,13 +338,7 @@ class AgentDetector {
             'robots_txt_directive' => $violation_data['robots_txt_directive'] ?? null
         ];
         
-        $result = $api->report_violation($payload);
-        
-        if (!$result['success']) {
-            error_log('402links: Failed to report violation: ' . ($result['error'] ?? 'Unknown error'));
-        } else {
-            error_log('402links: Violation reported successfully (ID: ' . ($result['violation_id'] ?? 'unknown') . ')');
-        }
+        $api->report_violation($payload);
     }
     
     /**
