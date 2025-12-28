@@ -296,15 +296,15 @@ class Admin {
         $settings = [
             'default_price' => floatval($_POST['default_price'] ?? 0.10),
             'auto_generate' => isset($_POST['auto_generate']) && $_POST['auto_generate'] === 'true',
-            'payment_wallet' => sanitize_text_field($_POST['payment_wallet'] ?? ''),
-            'network' => sanitize_text_field($_POST['network'] ?? 'base'),
-            'api_endpoint' => sanitize_text_field($_POST['api_endpoint'] ?? 'https://api.402links.com/v1')
+            'payment_wallet' => sanitize_text_field(wp_unslash($_POST['payment_wallet'] ?? '')),
+            'network' => sanitize_text_field(wp_unslash($_POST['network'] ?? 'base')),
+            'api_endpoint' => sanitize_text_field(wp_unslash($_POST['api_endpoint'] ?? 'https://api.402links.com/v1'))
         ];
         
         update_option('402links_settings', $settings);
         
         if (isset($_POST['api_key'])) {
-            update_option('402links_api_key', sanitize_text_field($_POST['api_key']));
+            update_option('402links_api_key', sanitize_text_field(wp_unslash($_POST['api_key'])));
         }
         
         // Sync default_price and payment_wallet to Supabase registered_sites table
@@ -450,7 +450,7 @@ class Admin {
             wp_send_json_error(['message' => 'Unauthorized']);
         }
         
-        $timeframe = sanitize_text_field($_POST['timeframe'] ?? '30d');
+        $timeframe = sanitize_text_field(wp_unslash($_POST['timeframe'] ?? '30d'));
         
         // Check cache first (30 second TTL for better real-time experience)
         $cache_key = 'agent_hub_analytics_' . $timeframe;
@@ -707,7 +707,7 @@ class Admin {
             wp_send_json_error(['message' => 'Unauthorized']);
         }
         
-        $wallet = sanitize_text_field($_POST['wallet'] ?? '');
+        $wallet = sanitize_text_field(wp_unslash($_POST['wallet'] ?? ''));
         $default_price = floatval($_POST['default_price'] ?? 0.10);
         
         if (empty($wallet)) {
@@ -840,7 +840,7 @@ class Admin {
             wp_send_json_error(['message' => 'Unauthorized']);
         }
         
-        $timeframe = sanitize_text_field($_POST['timeframe'] ?? '30d');
+        $timeframe = sanitize_text_field(wp_unslash($_POST['timeframe'] ?? '30d'));
         $limit = intval($_POST['limit'] ?? 10);
         $offset = intval($_POST['offset'] ?? 0);
         
@@ -1140,7 +1140,8 @@ class Admin {
         
         // Sanitize policies array input
         $policies = [];
-        $raw_policies = isset($_POST['policies']) && is_array($_POST['policies']) ? $_POST['policies'] : [];
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized in loop below
+        $raw_policies = isset($_POST['policies']) && is_array($_POST['policies']) ? wp_unslash($_POST['policies']) : [];
         foreach ($raw_policies as $key => $value) {
             if (is_string($key) && is_string($value)) {
                 $policies[sanitize_key($key)] = sanitize_text_field($value);
