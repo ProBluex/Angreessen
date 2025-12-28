@@ -29,7 +29,7 @@ class PaywallTemplate {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payment Required - <?php echo $description; ?></title>
+    <title>Payment Required - <?php echo esc_html($description); ?></title>
     <?php // phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedScript -- Standalone paywall page served via status_header(402), not a WordPress template ?>
     <script src="<?php echo esc_url('https://unpkg.com/@coinbase/onchainkit@' . $onchainkit_version . '/dist/onchainkit.umd.js'); ?>"></script>
     <?php // phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedStylesheet -- Standalone paywall page served via status_header(402), not a WordPress template ?>
@@ -121,7 +121,7 @@ class PaywallTemplate {
         <div class="paywall-icon">🔒</div>
         <h1>Payment Required</h1>
         <div class="price">$<?php echo number_format($amount_usd, 2); ?></div>
-        <div class="description"><?php echo $description; ?></div>
+        <div class="description"><?php echo esc_html($description); ?></div>
         
         <div id="payment-widget" class="payment-widget">
             <div class="loading">Initializing payment widget...</div>
@@ -129,7 +129,7 @@ class PaywallTemplate {
         
         <div class="resource-info">
             <strong>Resource:</strong><br>
-            <?php echo $resource_url; ?>
+            <?php echo esc_url($resource_url); ?>
         </div>
         
         <div class="powered-by">

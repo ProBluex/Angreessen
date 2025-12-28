@@ -48,6 +48,7 @@ require_once AGENT_HUB_PLUGIN_DIR . 'includes/Helpers.php';
 
 // Load text domain at the correct time (WordPress 6.7+ requirement)
 add_action('init', function() {
+    // phpcs:ignore PluginCheck.CodeAnalysis.DiscouragedFunctions.load_plugin_textdomainFound -- Required for self-hosted/non-WordPress.org distribution
     load_plugin_textdomain(
         'agent-angreessen',
         false,

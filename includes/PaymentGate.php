@@ -603,6 +603,7 @@ class PaymentGate {
         $table_name = $wpdb->prefix . '402links_agent_logs';
         
         // Insert access log
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Intentional logging to custom table
         $wpdb->insert(
             $table_name,
             [
@@ -636,6 +637,7 @@ class PaymentGate {
         $table_name = $wpdb->prefix . '402links_agent_logs';
         
         // Update local log
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Intentional update to custom logging table
         $wpdb->update(
             $table_name,
             [
