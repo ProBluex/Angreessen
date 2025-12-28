@@ -210,7 +210,7 @@ class API {
         // Get post excerpt
         $excerpt = $post->post_excerpt;
         if (empty($excerpt)) {
-            $excerpt = wp_trim_words(strip_tags($post->post_content), 30);
+            $excerpt = wp_trim_words(wp_strip_all_tags($post->post_content), 30);
         }
         
         // Get author information
@@ -220,7 +220,7 @@ class API {
         $featured_image_url = get_the_post_thumbnail_url($post_id, 'large');
         
         // Calculate word count
-        $word_count = str_word_count(strip_tags($post->post_content));
+        $word_count = str_word_count(wp_strip_all_tags($post->post_content));
         
         // Get tags
         $tags = [];
@@ -299,6 +299,31 @@ class API {
         $curl_handles = [];
         $post_map = []; // Map curl handle resource ID to post_id
         
+        /**
+         * PHPCS Ignore: Using cURL multi-handle for parallel HTTP requests.
+         * 
+         * WordPress's wp_remote_*() functions are synchronous and would require
+         * N × timeout seconds for N posts. cURL multi-handle enables true parallel
+         * execution, reducing batch link creation from minutes to seconds.
+         * 
+         * Alternative approaches considered:
+         * - wp_remote_post() loop: Would be 10-100× slower for batch operations
+         * - wp_remote_post() non-blocking: Cannot capture responses
+         * - Batch API endpoint: Would require backend changes
+         */
+        // phpcs:disable WordPress.WP.AlternativeFunctions.curl_curl_multi_init
+        // phpcs:disable WordPress.WP.AlternativeFunctions.curl_curl_init
+        // phpcs:disable WordPress.WP.AlternativeFunctions.curl_curl_setopt_array
+        // phpcs:disable WordPress.WP.AlternativeFunctions.curl_curl_multi_add_handle
+        // phpcs:disable WordPress.WP.AlternativeFunctions.curl_curl_multi_exec
+        // phpcs:disable WordPress.WP.AlternativeFunctions.curl_curl_multi_select
+        // phpcs:disable WordPress.WP.AlternativeFunctions.curl_curl_multi_getcontent
+        // phpcs:disable WordPress.WP.AlternativeFunctions.curl_curl_getinfo
+        // phpcs:disable WordPress.WP.AlternativeFunctions.curl_curl_error
+        // phpcs:disable WordPress.WP.AlternativeFunctions.curl_curl_multi_remove_handle
+        // phpcs:disable WordPress.WP.AlternativeFunctions.curl_curl_close
+        // phpcs:disable WordPress.WP.AlternativeFunctions.curl_curl_multi_close
+        
         // Initialize cURL multi-handle
         $multi_handle = curl_multi_init();
         
@@ -316,12 +341,12 @@ class API {
             
             $excerpt = $post->post_excerpt;
             if (empty($excerpt)) {
-                $excerpt = wp_trim_words(strip_tags($post->post_content), 30);
+                $excerpt = wp_trim_words(wp_strip_all_tags($post->post_content), 30);
             }
             
             $author = get_the_author_meta('display_name', $post->post_author);
             $featured_image_url = get_the_post_thumbnail_url($post_id, 'large');
-            $word_count = str_word_count(strip_tags($post->post_content));
+            $word_count = str_word_count(wp_strip_all_tags($post->post_content));
             
             $tags = [];
             $post_tags = get_the_tags($post_id);
@@ -455,6 +480,7 @@ class API {
         
         // Close multi-handle
         curl_multi_close($multi_handle);
+        // phpcs:enable
         
         return $results;
     }
@@ -474,12 +500,12 @@ class API {
         // Get post metadata
         $excerpt = $post->post_excerpt;
         if (empty($excerpt)) {
-            $excerpt = wp_trim_words(strip_tags($post->post_content), 30);
+            $excerpt = wp_trim_words(wp_strip_all_tags($post->post_content), 30);
         }
         
         $author = get_the_author_meta('display_name', $post->post_author);
         $featured_image_url = get_the_post_thumbnail_url($post_id, 'large');
-        $word_count = str_word_count(strip_tags($post->post_content));
+        $word_count = str_word_count(wp_strip_all_tags($post->post_content));
         
         // Get tags
         $tags = [];
