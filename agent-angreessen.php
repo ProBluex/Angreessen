@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Agent Angreessen - Ai Agent Pay Collector
- * Plugin URI: https://402links.com
+ * Plugin URI: https://402links.com/agent-angreessen
  * Description: Convert any WordPress page into a paid API endpoint using HTTP 402 - requiring payment before AI agents access your content.
  * Version:           1.0.0
  * Author: Agent Angreessen Team
