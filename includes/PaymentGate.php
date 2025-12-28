@@ -504,6 +504,7 @@ class PaymentGate {
         if (self::is_browser_request()) {
             require_once plugin_dir_path(__FILE__) . 'PaywallTemplate.php';
             header('Content-Type: text/html; charset=UTF-8');
+            // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- PaywallTemplate::render() returns a complete HTML document with all values properly escaped internally using htmlspecialchars(), esc_url(), esc_js(), and wp_json_encode()
             echo PaywallTemplate::render($x402_response, $requirements);
         } else {
             header('Content-Type: application/json');
