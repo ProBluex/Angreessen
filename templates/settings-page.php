@@ -1,4 +1,6 @@
 <?php
+if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
+
 $agent_hub_settings = get_option('402links_settings');
 $agent_hub_api_key = get_option('402links_api_key');
 $agent_hub_site_id = get_option('402links_site_id');

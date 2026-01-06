@@ -1,4 +1,6 @@
 <?php
+if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
+
 $agent_hub_link_id = get_post_meta($post->ID, '_402links_id', true);
 $agent_hub_link_url = get_post_meta($post->ID, '_402links_url', true);
 $agent_hub_price = get_post_meta($post->ID, '_402links_price', true);

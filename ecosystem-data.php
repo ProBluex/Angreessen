@@ -10,8 +10,8 @@
 require_once(dirname(__FILE__) . '/../../../wp-load.php');
 
 // Security check
-if (!defined('ABSPATH')) {
-    die('Direct access not allowed');
+if ( ! defined( 'ABSPATH' ) ) {
+    exit; // Exit if accessed directly
 }
 
 // Verify nonce

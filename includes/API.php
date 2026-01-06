@@ -475,11 +475,10 @@ class API {
             
             // Clean up individual handle
             curl_multi_remove_handle($multi_handle, $ch);
-            curl_close($ch);
+            // Note: curl_close() deprecated in PHP 8.0+ - handles are automatically cleaned up
         }
         
-        // Close multi-handle
-        curl_multi_close($multi_handle);
+        // Note: curl_multi_close() deprecated in PHP 8.0+ - multi handles are automatically cleaned up
         // phpcs:enable
         
         return $results;
