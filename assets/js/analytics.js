@@ -19,7 +19,7 @@
 
   /* ------------------ Config & State ------------------ */
   const DEBUG = !!w.agentHubData.debug;
-  const CHARTJS_SRC = "https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js";
+  // Chart.js is now bundled locally and enqueued via wp_enqueue_script
   const COLORS = {
     tx: "#00D091",
     vol: "#8B5CF6",
@@ -217,51 +217,28 @@
   /* ------------------ Chart.js loader (idempotent) ------------------ */
 
   function ensureChartJS(cb) {
-    // Check if Chart.js is already loaded
+    // Chart.js is now bundled locally and enqueued via wp_enqueue_script
+    // Just check if it's loaded yet
     if (typeof w.Chart !== "undefined") {
       return cb?.();
     }
     
-    // Check if script tag exists
-    const existingScript = d.getElementById("chartjs-umd");
-    if (existingScript) {
-      // Check if script has already loaded by checking w.Chart again
+    // Poll for Chart.js since it's enqueued and should load shortly
+    const pollInterval = setInterval(() => {
       if (typeof w.Chart !== "undefined") {
-        return cb?.();
-      }
-      existingScript.addEventListener("load", () => {
-        console.log('✅ Chart.js loaded from existing script');
+        debugLog('✅ Chart.js detected (bundled locally)');
+        clearInterval(pollInterval);
         cb?.();
-      });
-      
-      // FALLBACK: Also poll for Chart.js in case load event was missed
-      const pollInterval = setInterval(() => {
-        if (typeof w.Chart !== "undefined") {
-          console.log('✅ Chart.js detected via polling');
-          clearInterval(pollInterval);
-          cb?.();
-        }
-      }, 50); // Check every 50ms
-      
-      // Clear polling after 5 seconds to prevent infinite loop
-      setTimeout(() => clearInterval(pollInterval), 5000);
-      
-      return;
-    }
+      }
+    }, 50); // Check every 50ms
     
-    // Script doesn't exist - load it
-    console.log('📥 Loading Chart.js from CDN...');
-    const s = d.createElement("script");
-    s.id = "chartjs-umd";
-    s.src = CHARTJS_SRC;
-    s.onload = () => {
-      console.log("✅ Chart.js loaded successfully");
-      cb?.();
-    };
-    s.onerror = () => {
-      console.error("🔴 Failed to load Chart.js from CDN");
-    };
-    d.head.appendChild(s);
+    // Clear polling after 5 seconds to prevent infinite loop
+    setTimeout(() => {
+      clearInterval(pollInterval);
+      if (typeof w.Chart === "undefined") {
+        console.error("🔴 Chart.js failed to load - check wp_enqueue_script");
+      }
+    }, 5000);
   }
 
   /* ------------------ DOM Ready ------------------ */

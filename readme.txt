@@ -70,25 +70,47 @@ Documentation: https://402links.com/docs
 
 == External Services ==
 
-This plugin relies on the 402links.com service to enable AI agent payments and content monetization. 
+This plugin relies on the following external services:
 
-**What data is transmitted:**
+**1. 402links.com API**
+
+This plugin connects to the 402links.com service to enable AI agent payments and content monetization. 
+
+*What data is transmitted:*
 * Site URL, site name, and admin email (during initial setup)
 * WordPress version and plugin version (for compatibility)
 * Post/page titles, URLs, and pricing information (when creating paid links)
 * AI agent user-agents and IP addresses (when agents access protected content)
 * Payment transaction metadata (when payments are processed)
 
-**When connections occur:**
+*When connections occur:*
 * During plugin activation (automatic site registration)
 * When you create or update paid links for posts/pages
 * When AI agents request protected content
 * When viewing analytics and access logs in the admin dashboard
 
-**Service Information:**
+*Service Information:*
 * Service URL: https://402links.com
 * Privacy Policy: https://402links.com/privacy
 * Terms of Service: https://402links.com/terms
+
+**2. Coinbase OnchainKit SDK**
+
+This plugin loads the Coinbase OnchainKit SDK from Coinbase's official CDN (unpkg.com/@coinbase/onchainkit) to enable cryptocurrency payment processing for AI agents.
+
+*What it does:* Renders the payment widget and processes blockchain transactions on the Base network.
+
+*When it loads:* Only on the 402 payment page when an AI agent needs to pay for content access.
+
+*Why it's remote:* OnchainKit is a payment processing SDK that must connect to Coinbase's infrastructure. Like Stripe.js or PayPal's SDK, it cannot be bundled locally as it handles real-time payment verification and must stay synchronized with Coinbase's API versions.
+
+*Service Information:*
+* Service URL: https://www.coinbase.com/
+* OnchainKit Documentation: https://onchainkit.xyz/
+* GitHub: https://github.com/coinbase/onchainkit
+* Coinbase Privacy Policy: https://www.coinbase.com/legal/privacy
+
+This is analogous to how e-commerce plugins load Stripe.js or PayPal SDKs from their respective CDNs to process payments.
 
 **Important:** By using this plugin, you agree to the 402links.com Terms of Service and Privacy Policy. The plugin will not function without connecting to 402links.com services.
 

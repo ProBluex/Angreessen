@@ -139,23 +139,21 @@ class Admin {
             AGENT_HUB_VERSION
         );
         
-        // Feather Icons library
-        // phpcs:ignore PluginCheck.CodeAnalysis.EnqueuedResourceOffloading.OffloadedContent -- Required third-party icon library with no bundled alternative
+        // Feather Icons library (bundled locally)
         wp_enqueue_script(
             'feather-icons',
-            'https://unpkg.com/feather-icons@4.29.0/dist/feather.min.js',
+            AGENT_HUB_PLUGIN_URL . 'assets/js/vendor/feather.min.js',
             [],
-            '4.29.0',
+            AGENT_HUB_VERSION,
             true
         );
         
-        // Preload Chart.js for faster Analytics rendering
-        // phpcs:ignore PluginCheck.CodeAnalysis.EnqueuedResourceOffloading.OffloadedContent -- Chart.js for analytics visualization, standard CDN practice
+        // Chart.js for Analytics rendering (bundled locally)
         wp_enqueue_script(
             'chartjs',
-            'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js',
+            AGENT_HUB_PLUGIN_URL . 'assets/js/vendor/chart.umd.min.js',
             [],
-            '4.4.0',
+            AGENT_HUB_VERSION,
             true
         );
         
