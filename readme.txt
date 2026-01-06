@@ -96,9 +96,18 @@ For more information about the x402 protocol used by this plugin, visit: https:/
 
 == Privacy Policy ==
 
-This plugin collects anonymous usage data including:
-* AI agent access logs (IP address, user agent)
-* Payment transaction data
-* Post/page access statistics
+**Data Collected:**
 
-No personal user data is collected. All data is stored locally in your WordPress database.
+* Site URL, site name, and admin email (during initial setup for account creation and DMCA compliance)
+* AI agent/bot IP addresses and user-agent strings (for payment verification and rate limiting)
+* Post/page titles, URLs, and pricing (when creating paid links)
+* Payment transaction metadata (processed through 402links.com)
+
+**Important Clarifications:**
+
+* Human visitors are NOT tracked - only AI agents/bots accessing protected content
+* AI agent IPs are used for payment caching (24-hour access) and security, not individual tracking
+* Admin email is used solely for service communication and legal compliance
+* Access logs and payment records are stored in your WordPress database
+
+For complete details, see: https://402links.com/privacy
