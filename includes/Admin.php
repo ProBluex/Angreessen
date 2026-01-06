@@ -64,6 +64,20 @@ class Admin {
             return;
         }
         
+        // Enqueue the setup wizard script
+        wp_enqueue_script(
+            'agent-hub-setup-wizard',
+            AGENT_HUB_PLUGIN_URL . 'assets/js/setup-wizard.js',
+            ['jquery'],
+            AGENT_HUB_VERSION,
+            true
+        );
+        
+        wp_localize_script('agent-hub-setup-wizard', 'angreessenSetup', [
+            'ajaxUrl' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('angreessen_setup')
+        ]);
+        
         ?>
         <div class="notice notice-info is-dismissible" id="angreessen-setup-notice">
             <h3>🚀 Welcome to Agent Angreessen - Ai Agent Pay Collector!</h3>
@@ -84,30 +98,6 @@ class Admin {
                 <a href="<?php echo esc_url(admin_url('plugins.php')); ?>" class="button">Skip for Now</a>
             </p>
         </div>
-        
-        <script>
-        jQuery(document).ready(function($) {
-            $('#angreessen-complete-setup').on('click', function() {
-                var button = $(this);
-                button.prop('disabled', true).text('Setting up...');
-                
-                $.post(ajaxurl, {
-                    action: 'agent_hub_complete_setup',
-                    nonce: '<?php echo esc_js(wp_create_nonce("angreessen_setup")); ?>'
-                }, function(response) {
-                    if (response.success) {
-                        $('#angreessen-setup-notice').html('<p>✅ Setup complete! Site ID: <code>' + response.data.site_id + '</code></p>');
-                        setTimeout(function() {
-                            location.reload();
-                        }, 2000);
-                    } else {
-                        alert('Setup failed: ' + response.data.message);
-                        button.prop('disabled', false).text('Complete Setup');
-                    }
-                });
-            });
-        });
-        </script>
         <?php
     }
     
@@ -234,6 +224,77 @@ class Admin {
         );
         
         wp_localize_script('agent-hub-admin', 'agentHubData', [
+            'ajaxUrl' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('agent_hub_nonce'),
+            'siteUrl' => get_site_url(),
+            'siteName' => get_bloginfo('name'),
+            'siteId' => get_option('402links_site_id'),
+            'pluginUrl' => AGENT_HUB_PLUGIN_URL,
+            'supabaseUrl' => 'https://cnionwnknwnzpwfuacse.supabase.co',
+            'supabaseAnonKey' => 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNuaW9ud25rbnduenB3ZnVhY3NlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzODQ5NTAsImV4cCI6MjA3NDk2MDk1MH0.vgBlogXLSPd5AA_nt6ISv69xrMa4a--__EXdWgI79Dc'
+        ]);
+    }
+    
+    /**
+     * Enqueue meta box assets for post/page editors
+     */
+    public static function enqueue_meta_box_assets($hook) {
+        $screen = get_current_screen();
+        if (!$screen || !in_array($screen->base, ['post', 'page'], true)) {
+            return;
+        }
+        
+        wp_enqueue_style(
+            'agent-hub-meta-box',
+            AGENT_HUB_PLUGIN_URL . 'assets/css/meta-box.css',
+            [],
+            AGENT_HUB_VERSION
+        );
+        
+        wp_enqueue_script(
+            'agent-hub-meta-box',
+            AGENT_HUB_PLUGIN_URL . 'assets/js/meta-box.js',
+            ['jquery'],
+            AGENT_HUB_VERSION,
+            true
+        );
+        
+        self::localize_agent_hub_data('agent-hub-meta-box');
+    }
+    
+    /**
+     * Enqueue violations page assets
+     */
+    public static function enqueue_violations_page_assets($hook) {
+        if ($hook !== 'admin_page_agent-hub-violations') {
+            return;
+        }
+        
+        wp_enqueue_style(
+            'agent-hub-violations-page',
+            AGENT_HUB_PLUGIN_URL . 'assets/css/violations-page.css',
+            [],
+            AGENT_HUB_VERSION
+        );
+        
+        wp_enqueue_script(
+            'agent-hub-violations-page',
+            AGENT_HUB_PLUGIN_URL . 'assets/js/violations-page.js',
+            ['jquery'],
+            AGENT_HUB_VERSION,
+            true
+        );
+        
+        self::localize_agent_hub_data('agent-hub-violations-page');
+    }
+    
+    /**
+     * Localize agentHubData for scripts
+     * 
+     * @param string $handle Script handle to attach data to
+     */
+    private static function localize_agent_hub_data($handle) {
+        wp_localize_script($handle, 'agentHubData', [
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('agent_hub_nonce'),
             'siteUrl' => get_site_url(),

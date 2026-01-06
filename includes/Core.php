@@ -10,6 +10,8 @@ class Core {
         if (is_admin()) {
             add_action('admin_menu', [Admin::class, 'register_menu']);
             add_action('admin_enqueue_scripts', [Admin::class, 'enqueue_assets']);
+            add_action('admin_enqueue_scripts', [Admin::class, 'enqueue_meta_box_assets']);
+            add_action('admin_enqueue_scripts', [Admin::class, 'enqueue_violations_page_assets']);
             add_action('add_meta_boxes', [Admin::class, 'add_meta_box']);
             add_action('admin_notices', [Admin::class, 'show_setup_notice']);
             add_action('admin_notices', [Admin::class, 'show_provisioning_notice']);

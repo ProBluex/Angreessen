@@ -1,0 +1,54 @@
+.violations-filters select,
+.violations-filters input {
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+}
+
+#violations-table {
+    margin-top: 20px;
+}
+
+#violations-table th {
+    padding: 12px;
+    text-align: left;
+    background: #f9f9f9;
+    font-weight: 600;
+}
+
+#violations-table td {
+    padding: 12px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.violation-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #fff;
+}
+
+.violation-robots_txt {
+    background: #f56e28;
+}
+
+.violation-unpaid_access {
+    background: #fcb900;
+    color: #000;
+}
+
+.violation-ignored_402 {
+    background: #d63638;
+}
+
+.violation-scraped_content {
+    background: #826eb4;
+}
+
+.violation-details {
+    font-size: 12px;
+    color: #666;
+    margin-top: 5px;
+}

@@ -1,0 +1,32 @@
+.agent-hub-meta-box {
+    padding: 10px 0;
+}
+
+.meta-box-section {
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #ddd;
+}
+
+.meta-box-section:last-child {
+    border-bottom: none;
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+}
+
+.status-indicator.success {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-indicator.warning {
+    background: #fff3cd;
+    color: #856404;
+}
