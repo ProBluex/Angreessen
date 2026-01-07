@@ -344,22 +344,6 @@ $agent_hub_is_connected = !empty($agent_hub_api_key) && !empty($agent_hub_site_i
             <div class="chart-empty-state" style="display:none;"></div>
         </div>
         
-        <!-- Top Performing Content -->
-        <div class="analytics-section">
-            <h3>Top Performing Content</h3>
-            <table class="wp-list-table widefat fixed striped">
-                <thead>
-                    <tr>
-                        <th>Page Title</th>
-                        <th>Revenue</th>
-                    </tr>
-                </thead>
-                <tbody id="top-content-body">
-                    <tr><td colspan="2" style="text-align:center;">Loading...</td></tr>
-                </tbody>
-            </table>
-            <div id="top-content-pagination" style="margin-top: 15px; text-align: center;"></div>
-        </div>
     </div>
     
     <!-- Violations Tab -->
