@@ -19,6 +19,9 @@
     // Sorting state
     let currentSortColumn = 'total_violations';
     let currentSortDirection = 'desc';
+    
+    // Search filter
+    let searchFilter = '';
 
     // Initialize when document is ready
     $(document).ready(function() {
@@ -67,6 +70,25 @@
             if (violationsData) {
                 displayViolations(violationsData);
             }
+        });
+        
+        // Event handler for search input
+        $(document).on('input', '#violations-search', function() {
+            searchFilter = $(this).val().toLowerCase().trim();
+            
+            // Re-render with filtered data
+            if (violationsData) {
+                displayViolations(violationsData);
+            }
+        });
+        
+        // Re-initialize feather icons when violations tab is shown
+        $(document).on('click', '[data-tab="violations"]', function() {
+            setTimeout(function() {
+                if (typeof feather !== 'undefined') {
+                    feather.replace();
+                }
+            }, 100);
         });
     });
 
@@ -182,9 +204,17 @@
             $empty.show();
             return;
         }
+        
+        // Filter agents based on search
+        let filteredAgents = data.agents;
+        if (searchFilter) {
+            filteredAgents = data.agents.filter(function(agent) {
+                return agent.agent_name.toLowerCase().includes(searchFilter);
+            });
+        }
 
         // Sort agents based on current sort column and direction
-        const sortedAgents = sortAgents(data.agents, currentSortColumn, currentSortDirection);
+        const sortedAgents = sortAgents(filteredAgents, currentSortColumn, currentSortDirection);
         
         // Update table header sort indicators
         updateSortIndicators();
@@ -194,38 +224,43 @@
         sortedAgents.forEach(function(agent) {
             const $row = $('<tr>');
             
-            // Agent name
+            // Agent name with icon
+            const initials = getInitials(agent.agent_name);
             $row.append($('<td>').html(
-                '<strong>' + escapeHtml(agent.agent_name) + '</strong>'
+                '<div class="agent-cell">' +
+                    '<div class="agent-icon">' + escapeHtml(initials) + '</div>' +
+                    '<span class="agent-name-text">' + escapeHtml(agent.agent_name) + '</span>' +
+                '</div>'
             ));
 
-            // Total violations
+            // Total violations - gray badge
             $row.append($('<td>').html(
-                '<span class="violation-badge violation-total">' + 
+                '<span class="count-badge count-badge-gray">' + 
                 formatNumber(agent.total_violations) + 
                 '</span>'
             ));
 
-            // Robots.txt violations
+            // Robots.txt violations - rose if > 0, green if 0
             $row.append($('<td>').html(
                 agent.robots_txt_violations > 0 
-                    ? '<span class="violation-badge violation-robots">' + 
-                      formatNumber(agent.robots_txt_violations) + 
-                      '</span>'
-                    : '<span class="violation-badge violation-none">0</span>'
+                    ? '<span class="count-badge count-badge-rose">' + formatNumber(agent.robots_txt_violations) + '</span>'
+                    : '<span class="count-badge count-badge-green">0</span>'
             ));
 
-            // Unpaid access
+            // Unpaid access - amber if > 0, green if 0
             $row.append($('<td>').html(
                 agent.unpaid_access_violations > 0 
-                    ? '<span class="violation-badge violation-unpaid">' + 
-                      formatNumber(agent.unpaid_access_violations) + 
-                      '</span>'
-                    : '<span class="violation-badge violation-none">0</span>'
+                    ? '<span class="count-badge count-badge-amber">' + formatNumber(agent.unpaid_access_violations) + '</span>'
+                    : '<span class="count-badge count-badge-green">0</span>'
             ));
 
-            // Last seen
-            $row.append($('<td>').text(formatDateTime(agent.last_seen)));
+            // Last seen with relative time
+            $row.append($('<td>').html(
+                '<span class="last-seen">' +
+                    '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>' +
+                    formatRelativeTime(agent.last_seen) +
+                '</span>'
+            ));
 
             // Policy dropdown with custom button
             const currentPolicy = botPolicies[agent.bot_registry_id] || 'monetize';
@@ -247,12 +282,14 @@
             // Create custom dropdown container
             const $dropdownContainer = $('<div>')
                 .addClass('policy-dropdown-container')
-                .attr('data-bot-id', agent.bot_registry_id);
+                .attr('data-bot-id', agent.bot_registry_id)
+                .attr('data-policy', currentPolicy);
             
             // Create dropdown button showing current policy
             const $dropdownButton = $('<button>')
                 .addClass('policy-dropdown-button')
                 .attr('type', 'button')
+                .attr('data-current', currentPolicy)
                 .html(
                     '<span class="policy-status-dot"></span>' +
                     '<span class="policy-label">' + policyLabels[currentPolicy] + '</span>' +
@@ -281,6 +318,10 @@
                 // Click handler for option
                 $option.on('click', function() {
                     const newValue = $(this).attr('data-value');
+                    
+                    // Update container and button data attributes
+                    $dropdownContainer.attr('data-policy', newValue);
+                    $dropdownButton.attr('data-current', newValue);
                     
                     // Update button display
                     $dropdownButton.html(
@@ -334,6 +375,41 @@
         
         // Show policy actions container when table has data
         $('#violations-policy-actions').show();
+    }
+    
+    /**
+     * Get initials from agent name (first 2 chars or first letter of each word)
+     */
+    function getInitials(name) {
+        if (!name) return '??';
+        const words = name.trim().split(/[\s_-]+/);
+        if (words.length >= 2) {
+            return (words[0][0] + words[1][0]).toUpperCase();
+        }
+        return name.substring(0, 2).toUpperCase();
+    }
+    
+    /**
+     * Format relative time (e.g., "2 mins ago", "3 hours ago")
+     */
+    function formatRelativeTime(dateStr) {
+        if (!dateStr) return 'Never';
+        
+        const date = new Date(dateStr);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffSecs = Math.floor(diffMs / 1000);
+        const diffMins = Math.floor(diffSecs / 60);
+        const diffHours = Math.floor(diffMins / 60);
+        const diffDays = Math.floor(diffHours / 24);
+        
+        if (diffSecs < 60) return 'Just now';
+        if (diffMins < 60) return diffMins + ' min' + (diffMins === 1 ? '' : 's') + ' ago';
+        if (diffHours < 24) return diffHours + ' hour' + (diffHours === 1 ? '' : 's') + ' ago';
+        if (diffDays < 7) return diffDays + ' day' + (diffDays === 1 ? '' : 's') + ' ago';
+        
+        // Fall back to formatted date for older entries
+        return date.toLocaleDateString();
     }
     
     /**

@@ -348,112 +348,125 @@ $agent_hub_is_connected = !empty($agent_hub_api_key) && !empty($agent_hub_site_i
     
     <!-- Violations Tab -->
     <div id="tab-violations" class="tab-content">
-        <div class="violations-header">
-            <h2>
-                <i data-feather="shield-off"></i>
-                Agent Violations Dashboard
-            </h2>
-            <p class="violations-description">Track and monitor AI agents that violate robots.txt rules, ignore 402 payment requirements, or attempt unauthorized access to your content.</p>
+        <!-- Header with title and save button -->
+        <div class="violations-page-header">
+            <div class="violations-header-left">
+                <h2 class="violations-title">
+                    <i data-feather="shield-off"></i>
+                    Agent Violations Dashboard
+                </h2>
+                <p class="violations-subtitle">Monitor and manage AI agent access policies for your site.</p>
+            </div>
+            <div class="violations-header-right">
+                <button type="button" id="violations-save-policies" class="violations-save-btn" style="display:none;">
+                    Save Policy Changes
+                </button>
+            </div>
         </div>
         
-        <div class="agent-hub-stats-grid">
-            <div class="stat-card stat-card-violations">
-                <div class="stat-icon stat-icon-flat">
+        <!-- Statistics Cards -->
+        <div class="violations-stats-grid">
+            <div class="stat-card-modern">
+                <div class="stat-icon-modern stat-icon-rose">
                     <i data-feather="alert-triangle"></i>
                 </div>
-                <div class="stat-content">
-                    <div class="stat-label">Total Violations</div>
-                    <div class="stat-value" id="violations-total">0</div>
+                <div class="stat-content-modern">
+                    <span class="stat-value-modern" id="violations-total">0</span>
+                    <span class="stat-label-modern">Total Violations</span>
                 </div>
             </div>
-            
-            <div class="stat-card stat-card-violations">
-                <div class="stat-icon stat-icon-flat">
+            <div class="stat-card-modern">
+                <div class="stat-icon-modern stat-icon-amber">
                     <i data-feather="shield"></i>
                 </div>
-                <div class="stat-content">
-                    <div class="stat-label">Robots.txt Violations</div>
-                    <div class="stat-value" id="violations-robots">0</div>
+                <div class="stat-content-modern">
+                    <span class="stat-value-modern" id="violations-robots">0</span>
+                    <span class="stat-label-modern">Robots.txt</span>
                 </div>
             </div>
-            
-            <div class="stat-card stat-card-violations">
-                <div class="stat-icon stat-icon-flat">
+            <div class="stat-card-modern">
+                <div class="stat-icon-modern stat-icon-yellow">
                     <i data-feather="dollar-sign"></i>
                 </div>
-                <div class="stat-content">
-                    <div class="stat-label">Unpaid Access Attempts</div>
-                    <div class="stat-value" id="violations-unpaid">0</div>
+                <div class="stat-content-modern">
+                    <span class="stat-value-modern" id="violations-unpaid">0</span>
+                    <span class="stat-label-modern">Unpaid Access</span>
                 </div>
             </div>
-            
-            <div class="stat-card stat-card-violations">
-                <div class="stat-icon stat-icon-flat">
+            <div class="stat-card-modern">
+                <div class="stat-icon-modern stat-icon-indigo">
                     <i data-feather="users"></i>
                 </div>
-                <div class="stat-content">
-                    <div class="stat-label">Unique Violating Agents</div>
-                    <div class="stat-value" id="violations-unique-agents">0</div>
+                <div class="stat-content-modern">
+                    <span class="stat-value-modern" id="violations-unique-agents">0</span>
+                    <span class="stat-label-modern">Unique Agents</span>
                 </div>
             </div>
         </div>
         
-        <div class="violations-table-section">
-            <h3>Agent Violation Summary</h3>
-            <div id="violations-loading" style="text-align: center; padding: 40px;">
-                <span class="spinner is-active"></span> Loading violations data...
+        <!-- Table Card -->
+        <div class="violations-card">
+            <!-- Search Bar -->
+            <div class="violations-search-bar">
+                <div class="violations-search-input-wrapper">
+                    <i data-feather="search" class="violations-search-icon"></i>
+                    <input type="text" id="violations-search" class="violations-search-input" placeholder="Search agents...">
+                </div>
             </div>
-            <div id="violations-error" class="notice notice-error" style="display:none; margin: 20px 0;">
-                <p><strong>Error:</strong> <span id="violations-error-message"></span></p>
+            
+            <!-- Loading State -->
+            <div id="violations-loading" class="violations-loading-state">
+                <span class="spinner is-active"></span>
+                <span>Loading violations data...</span>
             </div>
-            <table class="wp-list-table widefat fixed striped" id="violations-table" style="display:none;">
+            
+            <!-- Error State -->
+            <div id="violations-error" class="violations-error-state" style="display:none;">
+                <i data-feather="alert-circle"></i>
+                <span id="violations-error-message">Failed to load data</span>
+            </div>
+            
+            <!-- Empty State -->
+            <div id="violations-empty" class="violations-empty-state" style="display:none;">
+                <div class="violations-empty-icon">
+                    <i data-feather="check-circle"></i>
+                </div>
+                <h3>No violations detected!</h3>
+                <p>All AI agents are respecting your site's access rules.</p>
+            </div>
+            
+            <!-- Table -->
+            <table id="violations-table" class="violations-table" style="display:none;">
                 <thead>
                     <tr>
-                        <th class="sortable" data-sort="agent_name">
-                            Agent Name <span class="sort-arrow"></span>
-                        </th>
-                        <th class="sortable" data-sort="total_violations">
-                            Total Violations <span class="sort-arrow"></span>
-                        </th>
-                        <th class="sortable" data-sort="robots_txt_violations">
-                            Robots.txt Violations <span class="sort-arrow"></span>
-                        </th>
-                        <th class="sortable" data-sort="unpaid_access_violations">
-                            Unpaid Access <span class="sort-arrow"></span>
-                        </th>
-                        <th class="sortable" data-sort="last_seen">
-                            Last Seen <span class="sort-arrow"></span>
-                        </th>
-                        <th>Policy</th>
+                        <th class="sortable" data-sort="agent_name">AGENT NAME</th>
+                        <th class="sortable" data-sort="total_violations">TOTAL</th>
+                        <th class="sortable" data-sort="robots_txt_violations">ROBOTS.TXT</th>
+                        <th class="sortable" data-sort="unpaid_access_violations">UNPAID</th>
+                        <th class="sortable" data-sort="last_seen">LAST SEEN</th>
+                        <th>POLICY</th>
                     </tr>
                 </thead>
                 <tbody id="violations-table-body">
                 </tbody>
             </table>
-
-            <!-- Policy Management Actions -->
-            <div id="violations-policy-actions" style="display:none; margin-top: 20px;">
-                <button type="button" id="violations-save-policies" class="button button-primary" style="display:none;">
-                    <span class="dashicons dashicons-saved"></span>
-                    Save Policy Changes
-                </button>
-                <span id="violations-save-loading" style="display:none; margin-left: 12px;">
+            
+            <!-- Save Status Messages -->
+            <div id="violations-policy-actions" class="violations-policy-actions" style="display:none;">
+                <span id="violations-save-loading" style="display:none;">
                     <span class="spinner is-active"></span>
                     Saving policies...
                 </span>
-                <div id="violations-save-error" class="notice notice-error" style="display:none; margin: 12px 0;">
-                    <p><strong>Error:</strong> <span id="violations-save-error-message"></span></p>
+                <div id="violations-save-error" class="violations-save-error" style="display:none;">
+                    <i data-feather="x-circle"></i>
+                    <span id="violations-save-error-message"></span>
                 </div>
-                <div id="violations-save-success" class="notice notice-success" style="display:none; margin: 12px 0;">
-                    <p>✅ <strong>Success!</strong> Bot policies updated successfully.</p>
+                <div id="violations-save-success" class="violations-save-success" style="display:none;">
+                    <i data-feather="check-circle"></i>
+                    Bot policies updated successfully.
                 </div>
-            </div>
-
-            <div id="violations-empty" class="notice notice-info" style="display:none; margin: 20px 0;">
-                <p>✅ <strong>Great news!</strong> No violations detected. All AI agents are respecting your site's access rules.</p>
             </div>
         </div>
-        
     </div>
     
     <!-- Contact Us Tab -->

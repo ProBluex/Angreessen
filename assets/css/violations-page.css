@@ -1,54 +1,588 @@
-.violations-filters select,
-.violations-filters input {
-    padding: 6px 10px;
-    border: 1px solid #ddd;
-    border-radius: 3px;
+/**
+ * Violations Page - Polished Design
+ * Matches the modern design language of the Angreessen plugin
+ */
+
+/* =============================================
+   Page Header
+   ============================================= */
+.violations-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 24px;
 }
 
-#violations-table {
-    margin-top: 20px;
+.violations-header-left {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
 }
 
-#violations-table th {
-    padding: 12px;
-    text-align: left;
-    background: #f9f9f9;
-    font-weight: 600;
+.violations-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 24px;
+    font-weight: 700;
+    color: #0F172A;
+    margin: 0;
 }
 
-#violations-table td {
-    padding: 12px;
-    border-bottom: 1px solid #f0f0f0;
+.violations-title svg {
+    width: 24px;
+    height: 24px;
+    color: #E11D48;
 }
 
-.violation-badge {
-    display: inline-block;
-    padding: 4px 12px;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: 600;
+.violations-subtitle {
+    color: #64748B;
+    font-size: 14px;
+    margin: 0;
+}
+
+.violations-save-btn {
+    background: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%);
     color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2);
 }
 
-.violation-robots_txt {
-    background: #f56e28;
+.violations-save-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
 }
 
-.violation-unpaid_access {
-    background: #fcb900;
-    color: #000;
+.violations-save-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
 }
 
-.violation-ignored_402 {
-    background: #d63638;
+/* =============================================
+   Statistics Grid
+   ============================================= */
+.violations-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
 }
 
-.violation-scraped_content {
-    background: #826eb4;
+@media (max-width: 1200px) {
+    .violations-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
 }
 
-.violation-details {
-    font-size: 12px;
-    color: #666;
-    margin-top: 5px;
+@media (max-width: 600px) {
+    .violations-stats-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.stat-card-modern {
+    background: #FFFFFF;
+    border-radius: 12px;
+    border: 1px solid #E2E8F0;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.stat-icon-modern {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.stat-icon-modern svg {
+    width: 24px;
+    height: 24px;
+}
+
+.stat-icon-rose {
+    background: #FFF1F2;
+    color: #E11D48;
+}
+
+.stat-icon-amber {
+    background: #FEF3C7;
+    color: #D97706;
+}
+
+.stat-icon-yellow {
+    background: #FFFBEB;
+    color: #CA8A04;
+}
+
+.stat-icon-indigo {
+    background: #EEF2FF;
+    color: #4F46E5;
+}
+
+.stat-content-modern {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.stat-value-modern {
+    font-size: 28px;
+    font-weight: 700;
+    color: #0F172A;
+    line-height: 1;
+}
+
+.stat-label-modern {
+    font-size: 13px;
+    color: #64748B;
+    font-weight: 500;
+}
+
+/* =============================================
+   Card Container
+   ============================================= */
+.violations-card {
+    background: #FFFFFF;
+    border-radius: 12px;
+    border: 1px solid #E2E8F0;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+    overflow: hidden;
+}
+
+/* =============================================
+   Search Bar
+   ============================================= */
+.violations-search-bar {
+    padding: 16px 20px;
+    border-bottom: 1px solid #F1F5F9;
+}
+
+.violations-search-input-wrapper {
+    position: relative;
+    max-width: 320px;
+}
+
+.violations-search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    color: #94A3B8;
+    pointer-events: none;
+}
+
+.violations-search-input {
+    width: 100%;
+    padding: 10px 12px 10px 40px;
+    border: 1px solid #E2E8F0;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #0F172A;
+    background: #F8FAFC;
+    transition: all 0.2s ease;
+}
+
+.violations-search-input:focus {
+    outline: none;
+    border-color: #4F46E5;
+    background: #FFFFFF;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+.violations-search-input::placeholder {
+    color: #94A3B8;
+}
+
+/* =============================================
+   Loading, Error, Empty States
+   ============================================= */
+.violations-loading-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 60px 20px;
+    color: #64748B;
+    font-size: 14px;
+}
+
+.violations-error-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 40px 20px;
+    background: #FEF2F2;
+    color: #DC2626;
+    font-size: 14px;
+}
+
+.violations-error-state svg {
+    width: 18px;
+    height: 18px;
+}
+
+.violations-empty-state {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.violations-empty-icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 16px;
+    background: #ECFDF5;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.violations-empty-icon svg {
+    width: 32px;
+    height: 32px;
+    color: #10B981;
+}
+
+.violations-empty-state h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #0F172A;
+    margin: 0 0 8px;
+}
+
+.violations-empty-state p {
+    font-size: 14px;
+    color: #64748B;
+    margin: 0;
+}
+
+/* =============================================
+   Table Styles
+   ============================================= */
+.violations-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.violations-table thead {
+    background: rgba(248, 250, 252, 0.8);
+    border-bottom: 1px solid #E2E8F0;
+}
+
+.violations-table thead th {
+    padding: 14px 20px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    color: #64748B;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s ease;
+    white-space: nowrap;
+}
+
+.violations-table thead th:hover {
+    background: rgba(241, 245, 249, 0.8);
+}
+
+.violations-table thead th.sorted-asc::after,
+.violations-table thead th.sorted-desc::after {
+    margin-left: 6px;
+    color: #4F46E5;
+}
+
+.violations-table thead th.sorted-asc::after {
+    content: "↑";
+}
+
+.violations-table thead th.sorted-desc::after {
+    content: "↓";
+}
+
+.violations-table tbody tr {
+    border-bottom: 1px solid #F1F5F9;
+    transition: background 0.15s ease;
+}
+
+.violations-table tbody tr:hover {
+    background: rgba(248, 250, 252, 0.6);
+}
+
+.violations-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.violations-table tbody td {
+    padding: 16px 20px;
+    font-size: 14px;
+    color: #334155;
+    vertical-align: middle;
+}
+
+/* Agent Name Cell */
+.agent-cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.agent-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: #EEF2FF;
+    color: #4F46E5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.agent-name-text {
+    font-size: 14px;
+    font-weight: 600;
+    color: #0F172A;
+}
+
+/* Count Badges */
+.count-badge {
+    display: inline-block;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 6px;
+    min-width: 36px;
+    text-align: center;
+}
+
+.count-badge-rose {
+    background: #FFF1F2;
+    color: #E11D48;
+}
+
+.count-badge-amber {
+    background: #FEF3C7;
+    color: #D97706;
+}
+
+.count-badge-green {
+    background: #F0FDF4;
+    color: #16A34A;
+}
+
+.count-badge-gray {
+    background: #F1F5F9;
+    color: #64748B;
+}
+
+/* Last Seen */
+.last-seen {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #64748B;
+    font-size: 13px;
+}
+
+.last-seen svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* =============================================
+   Policy Dropdown
+   ============================================= */
+.policy-dropdown-container {
+    position: relative;
+    display: inline-block;
+    min-width: 120px;
+}
+
+.policy-dropdown-button {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid;
+    background: transparent;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.15s ease;
+}
+
+.policy-dropdown-button:hover {
+    filter: brightness(0.98);
+}
+
+.policy-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.policy-arrow {
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+}
+
+.policy-dropdown-container.open .policy-arrow {
+    transform: rotate(180deg);
+}
+
+/* Policy States - Button */
+.policy-dropdown-container[data-policy="block"] .policy-dropdown-button,
+.policy-dropdown-button[data-current="block"] {
+    background: #FFF1F2;
+    color: #E11D48;
+    border-color: #FECDD3;
+}
+
+.policy-dropdown-container[data-policy="block"] .policy-status-dot,
+.policy-dropdown-button[data-current="block"] .policy-status-dot {
+    background: #E11D48;
+}
+
+.policy-dropdown-container[data-policy="allow"] .policy-dropdown-button,
+.policy-dropdown-button[data-current="allow"] {
+    background: #ECFDF5;
+    color: #059669;
+    border-color: #A7F3D0;
+}
+
+.policy-dropdown-container[data-policy="allow"] .policy-status-dot,
+.policy-dropdown-button[data-current="allow"] .policy-status-dot {
+    background: #059669;
+}
+
+.policy-dropdown-container[data-policy="monetize"] .policy-dropdown-button,
+.policy-dropdown-button[data-current="monetize"] {
+    background: #EFF6FF;
+    color: #2563EB;
+    border-color: #BFDBFE;
+}
+
+.policy-dropdown-container[data-policy="monetize"] .policy-status-dot,
+.policy-dropdown-button[data-current="monetize"] .policy-status-dot {
+    background: #2563EB;
+}
+
+/* Dropdown Menu */
+.policy-dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    margin-top: 4px;
+    background: #FFFFFF;
+    border-radius: 8px;
+    border: 1px solid #E2E8F0;
+    box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.1);
+    z-index: 50;
+    overflow: hidden;
+}
+
+.policy-dropdown-option {
+    padding: 10px 14px;
+    font-size: 13px;
+    color: #334155;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.policy-dropdown-option:hover {
+    background: #F8FAFC;
+}
+
+.policy-dropdown-option.active {
+    background: #EEF2FF;
+    color: #4F46E5;
+    font-weight: 500;
+}
+
+/* =============================================
+   Policy Actions / Save Status
+   ============================================= */
+.violations-policy-actions {
+    padding: 16px 20px;
+    border-top: 1px solid #F1F5F9;
+}
+
+.violations-save-error {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #DC2626;
+    font-size: 13px;
+}
+
+.violations-save-error svg {
+    width: 16px;
+    height: 16px;
+}
+
+.violations-save-success {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #059669;
+    font-size: 13px;
+}
+
+.violations-save-success svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* =============================================
+   Responsive Adjustments
+   ============================================= */
+@media (max-width: 768px) {
+    .violations-page-header {
+        flex-direction: column;
+        gap: 16px;
+    }
+    
+    .violations-header-right {
+        width: 100%;
+    }
+    
+    .violations-save-btn {
+        width: 100%;
+    }
+    
+    .violations-table {
+        display: block;
+        overflow-x: auto;
+    }
+    
+    .violations-table thead th,
+    .violations-table tbody td {
+        padding: 12px 16px;
+    }
 }

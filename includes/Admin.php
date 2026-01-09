@@ -264,7 +264,7 @@ class Admin {
      * Enqueue violations page assets
      */
     public static function enqueue_violations_page_assets($hook) {
-        if ($hook !== 'admin_page_agent-hub-violations') {
+        if ($hook !== 'toplevel_page_agent-hub') {
             return;
         }
         
