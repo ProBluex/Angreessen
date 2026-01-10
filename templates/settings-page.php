@@ -465,7 +465,7 @@ $agent_hub_is_connected = !empty($agent_hub_api_key) && !empty($agent_hub_site_i
                         <circle cx="11" cy="11" r="8"/>
                         <line x1="21" y1="21" x2="16.65" y2="16.65"/>
                     </svg>
-                    <input type="text" id="violations-search" class="violations-search-input" placeholder="">
+                    <input type="text" id="violations-search" class="violations-search-input" placeholder="" style="padding-left: 40px;">
                 </div>
             </div>
             
