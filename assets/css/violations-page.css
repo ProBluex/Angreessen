@@ -88,6 +88,7 @@
 }
 
 .stat-card-modern {
+    position: relative;
     background: #FFFFFF;
     border-radius: 12px;
     border: 1px solid #E2E8F0;
@@ -95,6 +96,78 @@
     display: flex;
     align-items: center;
     gap: 16px;
+}
+
+/* Info Button & Tooltip */
+.stat-info-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 20px;
+    height: 20px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #CBD5E1;
+    transition: color 0.2s ease;
+    z-index: 1;
+}
+
+.stat-info-btn:hover {
+    color: #64748B;
+}
+
+.stat-info-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+.stat-info-tooltip {
+    display: none;
+    position: absolute;
+    top: 36px;
+    right: 8px;
+    width: 260px;
+    background: #1E293B;
+    color: #F8FAFC;
+    padding: 12px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    line-height: 1.5;
+    z-index: 100;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.stat-info-tooltip.active {
+    display: block;
+}
+
+.stat-info-tooltip strong {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 13px;
+    color: #fff;
+}
+
+.stat-info-tooltip p {
+    margin: 0;
+    color: #CBD5E1;
+}
+
+/* Arrow for tooltip */
+.stat-info-tooltip::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    right: 12px;
+    width: 12px;
+    height: 12px;
+    background: #1E293B;
+    transform: rotate(45deg);
 }
 
 .stat-icon-modern {

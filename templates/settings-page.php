@@ -419,6 +419,13 @@ $agent_hub_is_connected = !empty($agent_hub_api_key) && !empty($agent_hub_site_i
         <!-- Statistics Cards -->
         <div class="violations-stats-grid">
             <div class="stat-card-modern">
+                <button class="stat-info-btn" data-tooltip="total-violations" type="button">
+                    <i data-feather="info"></i>
+                </button>
+                <div class="stat-info-tooltip" id="tooltip-total-violations">
+                    <strong>Total Violations</strong>
+                    <p>Sum of all policy violations detected. Includes robots.txt violations (agents ignoring disallow rules) and unpaid access attempts (agents accessing paid content without payment).</p>
+                </div>
                 <div class="stat-icon-modern stat-icon-rose">
                     <i data-feather="alert-triangle"></i>
                 </div>
@@ -428,6 +435,13 @@ $agent_hub_is_connected = !empty($agent_hub_api_key) && !empty($agent_hub_site_i
                 </div>
             </div>
             <div class="stat-card-modern">
+                <button class="stat-info-btn" data-tooltip="robots-txt" type="button">
+                    <i data-feather="info"></i>
+                </button>
+                <div class="stat-info-tooltip" id="tooltip-robots-txt">
+                    <strong>Robots.txt Violations</strong>
+                    <p>Number of times AI agents accessed pages explicitly disallowed in your robots.txt file. These agents ignored your crawling rules.</p>
+                </div>
                 <div class="stat-icon-modern stat-icon-amber">
                     <i data-feather="shield"></i>
                 </div>
@@ -437,6 +451,13 @@ $agent_hub_is_connected = !empty($agent_hub_api_key) && !empty($agent_hub_site_i
                 </div>
             </div>
             <div class="stat-card-modern">
+                <button class="stat-info-btn" data-tooltip="unpaid-access" type="button">
+                    <i data-feather="info"></i>
+                </button>
+                <div class="stat-info-tooltip" id="tooltip-unpaid-access">
+                    <strong>Unpaid Access</strong>
+                    <p>Number of times AI agents attempted to access paid content without completing payment. Includes invalid payments, bypassed paywalls, and scraped content after receiving a 402 response.</p>
+                </div>
                 <div class="stat-icon-modern stat-icon-yellow">
                     <i data-feather="dollar-sign"></i>
                 </div>
@@ -446,6 +467,13 @@ $agent_hub_is_connected = !empty($agent_hub_api_key) && !empty($agent_hub_site_i
                 </div>
             </div>
             <div class="stat-card-modern">
+                <button class="stat-info-btn" data-tooltip="unique-agents" type="button">
+                    <i data-feather="info"></i>
+                </button>
+                <div class="stat-info-tooltip" id="tooltip-unique-agents">
+                    <strong>Unique Agents</strong>
+                    <p>Count of distinct AI agents that have committed violations. Calculated by counting unique agent identifiers (User-Agent strings) from all recorded violations.</p>
+                </div>
                 <div class="stat-icon-modern stat-icon-indigo">
                     <i data-feather="users"></i>
                 </div>

@@ -90,6 +90,26 @@
                 }
             }, 100);
         });
+        
+        // Event handler for info buttons
+        $(document).on('click', '.stat-info-btn', function(e) {
+            e.stopPropagation();
+            const tooltipId = $(this).data('tooltip');
+            const $tooltip = $('#tooltip-' + tooltipId);
+            
+            // Close all other tooltips
+            $('.stat-info-tooltip').not($tooltip).removeClass('active');
+            
+            // Toggle this tooltip
+            $tooltip.toggleClass('active');
+        });
+
+        // Close tooltips when clicking outside
+        $(document).on('click', function(e) {
+            if (!$(e.target).closest('.stat-info-btn, .stat-info-tooltip').length) {
+                $('.stat-info-tooltip').removeClass('active');
+            }
+        });
     });
 
     /**
