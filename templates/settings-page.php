@@ -196,39 +196,91 @@ $agent_hub_is_connected = !empty($agent_hub_api_key) && !empty($agent_hub_site_i
     
     <!-- Content Tab -->
     <div id="tab-content" class="tab-content">
-        <div class="content-toolbar">
-            <button id="bulk-generate-links" class="button button-primary">
-                <i data-feather="refresh-cw"></i>
-                Generate Paid Links (Posts Only)
+        <!-- Page Header (matches violations design) -->
+        <div class="content-page-header">
+            <div class="content-header-left">
+                <h2 class="content-title">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                        <polyline points="10 9 9 9 8 9"/>
+                    </svg>
+                    My Content
+                </h2>
+                <p class="content-subtitle">Manage your protected content and payment links</p>
+            </div>
+            <button id="bulk-generate-links" class="content-generate-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                    <path d="M3 3v5h5"/>
+                    <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
+                    <path d="M16 16h5v5"/>
+                </svg>
+                Generate Paid Links
             </button>
-            <button id="refresh-content" class="button">
-                <i data-feather="refresh-cw"></i>
-                Refresh
-            </button>
-            <span id="post-count-indicator" style="margin-left: 15px; font-weight: 500; color: #666;"></span>
         </div>
         
-        <table class="wp-list-table widefat fixed striped" id="content-table">
-            <thead>
-                <tr>
-                    <th>Title</th>
-                    <th>Type</th>
-                    <th>Price</th>
-                    <th>Force Agents to Pay</th>
-                    <th>Force Humans to Pay</th>
-                </tr>
-            </thead>
-            <tbody id="content-table-body">
-                <tr>
-                    <td colspan="5" style="text-align: center;">
-                        <span class="spinner is-active" style="float: none; margin: 20px auto;"></span>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-        
-        <!-- Pagination Controls -->
-        <div id="content-pagination" style="margin-top: 20px;"></div>
+        <!-- Card Container -->
+        <div class="content-card">
+            <!-- Search & Filter Bar -->
+            <div class="content-search-bar">
+                <div class="content-search-input-wrapper">
+                    <svg class="content-search-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"/>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                    <input type="text" id="content-search" class="content-search-input" placeholder="Search content...">
+                </div>
+                <button id="refresh-content" class="content-refresh-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                        <path d="M3 3v5h5"/>
+                        <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
+                        <path d="M16 16h5v5"/>
+                    </svg>
+                    Refresh
+                </button>
+            </div>
+            
+            <!-- Loading State -->
+            <div id="content-loading-state" class="content-loading-state">
+                <span class="spinner is-active"></span>
+                Loading content...
+            </div>
+            
+            <!-- Table Container -->
+            <div id="content-table-container" style="display: none;">
+                <table class="content-table" id="content-table">
+                    <thead>
+                        <tr>
+                            <th data-sort="title" class="sortable-column">Title</th>
+                            <th data-sort="type" class="sortable-column">Type</th>
+                            <th data-sort="price" class="sortable-column">Price</th>
+                            <th>Agents Pay</th>
+                            <th>Humans Pay</th>
+                        </tr>
+                    </thead>
+                    <tbody id="content-table-body"></tbody>
+                </table>
+            </div>
+            
+            <!-- Empty State -->
+            <div id="content-empty-state" class="content-empty-state" style="display: none;">
+                <div class="content-empty-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                    </svg>
+                </div>
+                <h3>No content found</h3>
+                <p>Publish some posts to get started with monetization</p>
+            </div>
+            
+            <!-- Pagination Footer -->
+            <div id="content-pagination" class="content-pagination"></div>
+        </div>
     </div>
     
     <!-- Analytics Tab -->

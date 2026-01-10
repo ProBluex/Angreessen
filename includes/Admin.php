@@ -665,7 +665,8 @@ class Admin {
     }
     
     /**
-     * AJAX: Get content list with pagination
+     * AJAX: Get content list (LOCAL ONLY - no blocking external API calls)
+     * Analytics are fetched separately via ajax_get_content_analytics()
      */
     public static function ajax_get_content() {
         check_ajax_referer('agent_hub_nonce', 'nonce');
@@ -676,34 +677,16 @@ class Admin {
         
         // Get pagination params
         $page = isset($_POST['page']) ? intval($_POST['page']) : 1;
-        $per_page = isset($_POST['per_page']) ? intval($_POST['per_page']) : 10;
+        $per_page = isset($_POST['per_page']) ? intval($_POST['per_page']) : 20;
         $offset = ($page - 1) * $per_page;
-        
-        // Get site_id
-        $site_id = get_option('402links_site_id');
-        
-        // Fetch page analytics from backend API
-        $api = new API();
-        $analytics_result = $api->get_pages_analytics($site_id);
-        
-        $page_stats = [];
-        if ($analytics_result['success'] && isset($analytics_result['data']['pages'])) {
-            foreach ($analytics_result['data']['pages'] as $page_data) {
-                $wp_post_id = $page_data['wordpress_post_id'];
-                $page_stats[$wp_post_id] = [
-                    'crawls' => intval($page_data['crawls'] ?? 0),
-                    'revenue' => floatval($page_data['revenue'] ?? 0)
-                ];
-            }
-        }
         
         // Get total count first
         $total_posts = wp_count_posts('post')->publish;
         $total_pages = ceil($total_posts / $per_page);
         
-        // Get paginated posts
+        // Get paginated posts (LOCAL ONLY - no external API calls)
         $posts = get_posts([
-            'post_type' => 'post',  // ✅ ONLY posts, not pages
+            'post_type' => 'post',
             'post_status' => 'publish',
             'posts_per_page' => $per_page,
             'offset' => $offset,
@@ -711,38 +694,35 @@ class Admin {
             'order' => 'DESC'
         ]);
         
-        $wp_post_ids = array_map(function($p) { return $p->ID; }, $posts);
+        // Prime the meta cache for all posts in ONE query (reduces 80+ queries to 1)
+        $post_ids = wp_list_pluck($posts, 'ID');
+        update_postmeta_cache($post_ids);
+        
+        // Get default price from settings
+        $settings = get_option('402links_settings', []);
+        $default_price = $settings['default_price'] ?? 0.10;
         
         $content_list = [];
-        
         foreach ($posts as $post) {
             $post_id = $post->ID;
             
+            // These are now cache hits (no additional DB queries)
             $link_id = get_post_meta($post_id, '_402links_id', true);
             $link_url = get_post_meta($post_id, '_402links_url', true);
             $price = get_post_meta($post_id, '_402links_price', true);
             $block_humans = get_post_meta($post_id, '_402links_block_humans', true);
             
-            // Robust lookup with fallback
-            $crawls = 0;
-            $revenue = 0;
-            
-            if (isset($page_stats[$post_id])) {
-                $crawls = $page_stats[$post_id]['crawls'];
-                $revenue = $page_stats[$post_id]['revenue'];
-            }
-            
             $content_list[] = [
                 'id' => $post_id,
-                'title' => Helpers::get_clean_title($post_id),
+                'title' => html_entity_decode($post->post_title, ENT_QUOTES | ENT_HTML5, 'UTF-8'),
                 'url' => get_permalink($post_id),
                 'type' => $post->post_type,
                 'link_id' => $link_id,
                 'link_url' => $link_url,
-                'price' => $price ?: (get_option('402links_settings')['default_price'] ?? 0.10),
+                'price' => $price ?: $default_price,
                 'has_link' => !empty($link_id),
-                'crawls' => $crawls,
-                'revenue' => $revenue,
+                'crawls' => 0,  // Loaded async via separate endpoint
+                'revenue' => 0, // Loaded async via separate endpoint
                 'published' => $post->post_date,
                 'block_humans' => (bool)$block_humans
             ];
@@ -757,6 +737,53 @@ class Admin {
                 'per_page' => $per_page
             ]
         ]);
+    }
+    
+    /**
+     * AJAX: Get content analytics (async, non-blocking)
+     * Called separately after content loads for performance
+     */
+    public static function ajax_get_content_analytics() {
+        check_ajax_referer('agent_hub_nonce', 'nonce');
+        
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(['message' => 'Unauthorized']);
+        }
+        
+        $site_id = get_option('402links_site_id');
+        if (!$site_id) {
+            wp_send_json_success(['page_stats' => []]);
+            return;
+        }
+        
+        // Check transient cache first (5 minute TTL)
+        $cache_key = 'agent_hub_page_analytics_' . $site_id;
+        $cached = get_transient($cache_key);
+        if ($cached !== false) {
+            wp_send_json_success(['page_stats' => $cached]);
+            return;
+        }
+        
+        // Fetch from API (this can take time, but content is already displayed)
+        $api = new API();
+        $result = $api->get_pages_analytics($site_id);
+        
+        $page_stats = [];
+        if ($result['success'] && isset($result['data']['pages'])) {
+            foreach ($result['data']['pages'] as $page_data) {
+                $wp_post_id = $page_data['wordpress_post_id'] ?? null;
+                if ($wp_post_id) {
+                    $page_stats[$wp_post_id] = [
+                        'crawls' => intval($page_data['crawls'] ?? 0),
+                        'revenue' => floatval($page_data['revenue'] ?? 0)
+                    ];
+                }
+            }
+            // Cache for 5 minutes
+            set_transient($cache_key, $page_stats, 300);
+        }
+        
+        wp_send_json_success(['page_stats' => $page_stats]);
     }
     
     /**

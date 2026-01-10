@@ -115,7 +115,7 @@
     });
     
     /**
-     * Load content from WordPress with pagination
+     * Load content from WordPress with pagination (instant - no blocking API calls)
      */
     function loadContent(page = 1) {
         debugLog('[ContentManager] Loading content list - Page:', page);
@@ -125,6 +125,7 @@
         $.ajax({
             url: agentHubData.ajaxUrl,
             type: 'POST',
+            timeout: 10000, // 10 second timeout to prevent infinite hang
             data: {
                 action: 'agent_hub_get_content',
                 nonce: agentHubData.nonce,
@@ -155,19 +156,73 @@
                     renderPagination();
                     updateStats();
                     updatePostCountIndicator();
+                    
+                    // Fetch analytics in background (non-blocking)
+                    loadContentAnalytics();
                 } else {
                     console.error('[ContentManager] Failed to load content:', response);
                     showError('Failed to load content');
                 }
             },
             error: function(xhr, status, error) {
-                console.error('[ContentManager] AJAX error:', error);
-                showError('Error loading content: ' + error);
+                console.error('[ContentManager] AJAX error:', status, error);
+                if (status === 'timeout') {
+                    showError('Content loading timed out. Please try refreshing.');
+                } else {
+                    showError('Error loading content: ' + error);
+                }
             },
             complete: function() {
                 $('.content-loading').hide();
                 $('#content-table-container').show();
                 $('#content-pagination').show();
+            }
+        });
+    }
+    
+    /**
+     * Load content analytics asynchronously (non-blocking)
+     * Called after content is displayed to fetch crawls/revenue data
+     */
+    function loadContentAnalytics() {
+        debugLog('[ContentManager] Loading analytics in background...');
+        
+        $.ajax({
+            url: agentHubData.ajaxUrl,
+            type: 'POST',
+            timeout: 15000, // Allow more time for analytics API
+            data: {
+                action: 'agent_hub_get_content_analytics',
+                nonce: agentHubData.nonce
+            },
+            success: function(response) {
+                if (response.success && response.data.page_stats) {
+                    const stats = response.data.page_stats;
+                    debugLog('[ContentManager] Analytics loaded:', Object.keys(stats).length, 'pages');
+                    
+                    // Update currentContent with analytics data
+                    currentContent.forEach(item => {
+                        if (stats[item.id]) {
+                            item.crawls = stats[item.id].crawls || 0;
+                            item.revenue = stats[item.id].revenue || 0;
+                        }
+                    });
+                    
+                    // Update filteredContent as well
+                    filteredContent.forEach(item => {
+                        if (stats[item.id]) {
+                            item.crawls = stats[item.id].crawls || 0;
+                            item.revenue = stats[item.id].revenue || 0;
+                        }
+                    });
+                    
+                    // Analytics data is now available in the content objects
+                    debugLog('[ContentManager] Analytics merged into content data');
+                }
+            },
+            error: function(xhr, status, error) {
+                // Silently fail - analytics are non-critical
+                debugLog('[ContentManager] Analytics fetch failed (non-critical):', status);
             }
         });
     }

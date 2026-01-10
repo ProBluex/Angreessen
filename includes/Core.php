@@ -40,6 +40,7 @@ class Core {
         add_action('wp_ajax_agent_hub_check_existing_links', [Admin::class, 'ajax_check_existing_links']);
         add_action('wp_ajax_agent_hub_toggle_human_access', [Admin::class, 'ajax_toggle_human_access']);
         add_action('wp_ajax_agent_hub_get_content', [Admin::class, 'ajax_get_content']);
+        add_action('wp_ajax_agent_hub_get_content_analytics', [Admin::class, 'ajax_get_content_analytics']);
         add_action('wp_ajax_agent_hub_bulk_generate', [Admin::class, 'ajax_bulk_generate']);
         add_action('wp_ajax_agent_hub_complete_setup', [Admin::class, 'ajax_complete_setup']);
         
