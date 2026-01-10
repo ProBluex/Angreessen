@@ -244,8 +244,8 @@ $agent_hub_is_connected = !empty($agent_hub_api_key) && !empty($agent_hub_site_i
                 </button>
             </div>
             
-            <!-- Loading State -->
-            <div id="content-loading-state" class="content-loading-state">
+            <!-- Loading State (hidden by default, shown when loading) -->
+            <div id="content-loading-state" class="content-loading-state" style="display: none;">
                 <span class="spinner is-active"></span>
                 Loading content...
             </div>

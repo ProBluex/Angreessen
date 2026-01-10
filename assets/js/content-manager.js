@@ -28,8 +28,8 @@
     $(document).ready(function() {
         debugLog('[ContentManager] Initializing content manager');
         
-        // Load content when tab is clicked
-        $(document).on('click', '[data-tab="my-content"]', function() {
+        // Load content when tab is clicked (data-tab="content" matches the button)
+        $(document).on('click', '[data-tab="content"]', function() {
             setTimeout(() => loadContent(1), 100);
         });
         
@@ -687,7 +687,12 @@
         }
     }
     
-    // Expose functions globally
+    // Expose to agentHub namespace (used by admin.js)
+    window.agentHub = window.agentHub || {};
+    window.agentHub.loadContent = loadContent;
+    window.agentHub.refreshContent = loadContent;
+    
+    // Also expose to agentHubContent for backwards compatibility
     window.agentHubContent = {
         loadContent: loadContent,
         refreshContent: loadContent
