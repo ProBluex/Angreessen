@@ -302,6 +302,7 @@ class PaymentGate {
             'maxAmountRequired' => $maxAmountRequired,
             'payTo' => $payment_wallet,
             'resource' => $resource_url,
+            'discoverable' => true,
             'description' => sprintf(
                 'Access to "%s" - Premium WordPress content. Price: $%s USDC',
                 Helpers::get_clean_title($post_id),
