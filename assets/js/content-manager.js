@@ -133,8 +133,9 @@
                 per_page: perPage
             },
             beforeSend: function() {
-                $('.content-loading').show();
+                $('#content-loading-state').show();
                 $('#content-table-container').hide();
+                $('#content-empty-state').hide();
                 $('#content-pagination').hide();
             },
             success: function(response) {
@@ -155,27 +156,23 @@
                     renderContent();
                     renderPagination();
                     updateStats();
-                    updatePostCountIndicator();
                     
                     // Fetch analytics in background (non-blocking)
                     loadContentAnalytics();
                 } else {
                     console.error('[ContentManager] Failed to load content:', response);
-                    showError('Failed to load content');
+                    $('#content-empty-state').show();
                 }
             },
             error: function(xhr, status, error) {
                 console.error('[ContentManager] AJAX error:', status, error);
                 if (status === 'timeout') {
-                    showError('Content loading timed out. Please try refreshing.');
-                } else {
-                    showError('Error loading content: ' + error);
+                    showToast('Timeout', 'Content loading timed out. Please try refreshing.', 'warning');
                 }
+                $('#content-empty-state').show();
             },
             complete: function() {
-                $('.content-loading').hide();
-                $('#content-table-container').show();
-                $('#content-pagination').show();
+                $('#content-loading-state').hide();
             }
         });
     }
@@ -235,51 +232,85 @@
         tbody.empty();
         
         if (filteredContent.length === 0) {
-            tbody.html(
-                '<tr><td colspan="7" style="text-align:center; padding:40px; color:#666;">' +
-                'No content found. Try adjusting your filters or publish some posts.</td></tr>'
-            );
+            $('#content-table-container').hide();
+            $('#content-empty-state').show();
+            $('#content-pagination').hide();
             return;
         }
+        
+        $('#content-empty-state').hide();
+        $('#content-table-container').show();
         
         // Sort content
         const sorted = sortContent(filteredContent);
         
         sorted.forEach(item => {
-            const linkStatus = item.has_link 
-                ? '<span style="color:#00D091;">✓ Protected</span>' 
-                : `<span style="color:#999;">Not Protected</span>
-                   <button class="retry-link-btn button-link" data-post-id="${item.id}" 
-                           style="margin-left:8px; padding:2px 8px; font-size:11px; cursor:pointer; background:#2563EB; color:white; border:none; border-radius:4px;">
-                     Retry
-                   </button>`;
+            // Status badge for agent protection
+            const agentStatusClass = item.has_link ? 'status-badge-active' : 'status-badge-inactive';
+            const agentStatusText = item.has_link ? 'Active' : 'Inactive';
             
             // Human access toggle
             const toggleChecked = item.block_humans ? 'checked' : '';
-            const toggleLabel = item.block_humans ? 'Blocked' : 'Allowed';
-            const humanAccessToggle = `
-                <label class="human-access-toggle-wrapper">
-                    <input type="checkbox" class="human-access-toggle" 
-                           data-post-id="${item.id}" ${toggleChecked} />
-                    <span class="toggle-slider"></span>
-                    <span class="toggle-label">${toggleLabel}</span>
-                </label>
-            `;
+            const humanStatusClass = item.block_humans ? 'status-badge-blocked' : 'status-badge-allowed';
+            const humanStatusText = item.block_humans ? 'Blocked' : 'Allowed';
+            
+            // Build action links (WordPress style - under title)
+            let actionLinks = [];
+            
+            // Post View link (primary action - uses paid link if available)
+            const viewUrl = item.has_link && item.paid_link ? item.paid_link : item.url;
+            actionLinks.push(`<a href="${escapeHtml(viewUrl)}" target="_blank" class="action-link-primary">
+                <svg class="action-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                    <polyline points="15 3 21 3 21 9"/>
+                    <line x1="10" y1="14" x2="21" y2="3"/>
+                </svg>
+                Post View
+            </a>`);
+            
+            // View Link for Humans (user icon) - only if humans blocked
+            if (item.block_humans && item.has_link) {
+                actionLinks.push(`<a href="${escapeHtml(item.human_paid_link || item.url)}" target="_blank" class="action-link-human">
+                    <svg class="action-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                    Human View
+                </a>`);
+            }
+            
+            // Generate link button if no link
+            if (!item.has_link) {
+                actionLinks.push(`<button class="retry-link-btn action-link-generate" data-post-id="${item.id}">Generate Link</button>`);
+            }
             
             const row = `
                 <tr>
                     <td>
-                        <strong>${escapeHtml(item.title)}</strong>
-                        <div style="color:#666; font-size:12px; margin-top:4px;">
-                            <a href="${escapeHtml(item.url)}" target="_blank" style="color:#0073aa;">View Post</a>
+                        <div class="content-title-cell">
+                            <div class="content-title-text">${escapeHtml(item.title)}</div>
+                            <div class="content-actions-row">
+                                ${actionLinks.join(' <span class="action-separator">|</span> ')}
+                            </div>
                         </div>
                     </td>
-                    <td>${ucfirst(item.type)}</td>
-                    <td>$${formatMoney(item.price)}</td>
-                    <td>${formatNumber(item.crawls)}</td>
-                    <td>$${formatMoney(item.revenue)}</td>
-                    <td>${linkStatus}</td>
-                    <td>${humanAccessToggle}</td>
+                    <td>
+                        <span class="type-badge">${ucfirst(item.type)}</span>
+                    </td>
+                    <td>
+                        <span class="price-value">$${formatMoney(item.price)}</span>
+                    </td>
+                    <td>
+                        <span class="status-badge ${agentStatusClass}">${agentStatusText}</span>
+                    </td>
+                    <td>
+                        <label class="human-toggle-wrapper">
+                            <input type="checkbox" class="human-access-toggle" 
+                                   data-post-id="${item.id}" ${toggleChecked} />
+                            <span class="toggle-slider"></span>
+                            <span class="toggle-label ${humanStatusClass}">${humanStatusText}</span>
+                        </label>
+                    </td>
                 </tr>
             `;
             tbody.append(row);
@@ -604,16 +635,6 @@
     }
     
     /**
-     * Update post count indicator
-     */
-    function updatePostCountIndicator() {
-        const startIndex = (currentPage - 1) * perPage + 1;
-        const endIndex = Math.min(currentPage * perPage, totalPosts);
-        const countText = `Showing ${startIndex}-${endIndex} of ${formatNumber(totalPosts)} posts`;
-        $('#post-count-indicator').text(countText);
-    }
-    
-    /**
      * Render pagination controls
      */
     function renderPagination() {
@@ -621,41 +642,41 @@
         container.empty();
         
         if (totalPages <= 1) {
+            container.hide();
             return;
         }
         
-        const paginationHtml = [];
-        paginationHtml.push('<div class="tablenav-pages">');
-        paginationHtml.push(`<span class="displaying-num">${formatNumber(totalPosts)} items</span>`);
-        paginationHtml.push('<span class="pagination-links">');
+        container.show();
         
-        // First page
-        if (currentPage > 1) {
-            paginationHtml.push(`<a class="first-page button content-page-link" data-page="1" href="#">«</a>`);
-            paginationHtml.push(`<a class="prev-page button content-page-link" data-page="${currentPage - 1}" href="#">‹</a>`);
-        } else {
-            paginationHtml.push('<span class="tablenav-pages-navspan button disabled" aria-hidden="true">«</span>');
-            paginationHtml.push('<span class="tablenav-pages-navspan button disabled" aria-hidden="true">‹</span>');
-        }
+        const startIndex = (currentPage - 1) * perPage + 1;
+        const endIndex = Math.min(currentPage * perPage, totalPosts);
         
-        // Page numbers
-        paginationHtml.push('<span class="paging-input">');
-        paginationHtml.push(`<span class="tablenav-paging-text">${currentPage} of <span class="total-pages">${totalPages}</span></span>`);
-        paginationHtml.push('</span>');
+        const paginationHtml = `
+            <div class="pagination-info">
+                Showing ${startIndex}-${endIndex} of ${formatNumber(totalPosts)}
+            </div>
+            <div class="pagination-buttons">
+                <button class="pagination-btn content-page-link" 
+                        data-page="${currentPage - 1}" 
+                        ${currentPage === 1 ? 'disabled' : ''}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="15 18 9 12 15 6"/>
+                    </svg>
+                    Prev
+                </button>
+                <span class="pagination-current">${currentPage} / ${totalPages}</span>
+                <button class="pagination-btn content-page-link" 
+                        data-page="${currentPage + 1}" 
+                        ${currentPage === totalPages ? 'disabled' : ''}>
+                    Next
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="9 18 15 12 9 6"/>
+                    </svg>
+                </button>
+            </div>
+        `;
         
-        // Last page
-        if (currentPage < totalPages) {
-            paginationHtml.push(`<a class="next-page button content-page-link" data-page="${currentPage + 1}" href="#">›</a>`);
-            paginationHtml.push(`<a class="last-page button content-page-link" data-page="${totalPages}" href="#">»</a>`);
-        } else {
-            paginationHtml.push('<span class="tablenav-pages-navspan button disabled" aria-hidden="true">›</span>');
-            paginationHtml.push('<span class="tablenav-pages-navspan button disabled" aria-hidden="true">»</span>');
-        }
-        
-        paginationHtml.push('</span>');
-        paginationHtml.push('</div>');
-        
-        container.html(paginationHtml.join(''));
+        container.html(paginationHtml);
         debugLog('[ContentManager] Rendered pagination:', currentPage, 'of', totalPages);
     }
     
