@@ -461,8 +461,11 @@ $agent_hub_is_connected = !empty($agent_hub_api_key) && !empty($agent_hub_site_i
             <!-- Search Bar -->
             <div class="violations-search-bar">
                 <div class="violations-search-input-wrapper">
-                    <i data-feather="search" class="violations-search-icon"></i>
-                    <input type="text" id="violations-search" class="violations-search-input" placeholder="Search agents...">
+                    <svg class="violations-search-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"/>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                    <input type="text" id="violations-search" class="violations-search-input" placeholder="">
                 </div>
             </div>
             

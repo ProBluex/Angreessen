@@ -191,6 +191,11 @@
         const $table = $('#violations-table');
         const $tbody = $('#violations-table-body');
         const $empty = $('#violations-empty');
+        const $error = $('#violations-error');
+
+        // Always hide error and empty states first
+        $error.hide();
+        $empty.hide();
 
         // Update stats
         $('#violations-total').text(formatNumber(data.totals.total_violations));
