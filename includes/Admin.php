@@ -299,8 +299,7 @@ class Admin {
             'siteName' => get_bloginfo('name'),
             'siteId' => get_option('402links_site_id'),
             'pluginUrl' => AGENT_HUB_PLUGIN_URL,
-            'supabaseUrl' => 'https://cnionwnknwnzpwfuacse.supabase.co',
-            'supabaseAnonKey' => 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNuaW9ud25rbnduenB3ZnVhY3NlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzODQ5NTAsImV4cCI6MjA3NDk2MDk1MH0.vgBlogXLSPd5AA_nt6ISv69xrMa4a--__EXdWgI79Dc'
+            'apiEndpoint' => 'https://api.402links.com/v1'
         ]);
     }
     

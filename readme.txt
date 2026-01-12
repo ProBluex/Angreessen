@@ -112,7 +112,22 @@ This plugin loads the Coinbase OnchainKit SDK from Coinbase's official CDN (unpk
 
 This is analogous to how e-commerce plugins load Stripe.js or PayPal SDKs from their respective CDNs to process payments.
 
-**Important:** By using this plugin, you agree to the 402links.com Terms of Service and Privacy Policy. The plugin will not function without connecting to 402links.com services.
+**3. Google Fonts**
+
+The plugin admin dashboard uses the Inter font family loaded from Google Fonts for consistent typography.
+
+*What data is transmitted:*
+* Standard browser metadata (IP address, user agent) as part of the font request
+
+*When it loads:*
+* Only on the plugin's admin dashboard pages within WordPress
+
+*Service Information:*
+* Service URL: https://fonts.googleapis.com
+* Google Fonts FAQ: https://developers.google.com/fonts/faq
+* Google Privacy Policy: https://policies.google.com/privacy
+
+**Important:** By using this plugin, you agree to the 402links.com Terms of Service and Privacy Policy. The plugin requires connections to 402links.com API services for core functionality. Google Fonts is used for admin dashboard styling but is not required for the plugin's payment features.
 
 For more information about the x402 protocol used by this plugin, visit: https://github.com/coinbase/x402
 

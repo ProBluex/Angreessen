@@ -49,8 +49,8 @@ if (empty($agent_hub_site_id)) {
 $agent_hub_cache_key = 'angreessen_ecosystem_last_good_' . $agent_hub_timeframe;
 $agent_hub_cached = get_transient($agent_hub_cache_key);
 
-// Direct call to wordpress-ecosystem-stats edge function
-$agent_hub_edge_url = 'https://cnionwnknwnzpwfuacse.supabase.co/functions/v1/wordpress-ecosystem-stats';
+// Direct call to wordpress-ecosystem-stats via api.402links.com proxy
+$agent_hub_edge_url = 'https://api.402links.com/v1/wordpress-ecosystem-stats';
 
 $agent_hub_request_body = [
     'timeframe' => $agent_hub_timeframe
