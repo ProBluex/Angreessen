@@ -8,9 +8,9 @@
     /**
      * Generate monetization link from meta box
      * @param {number} postId - The post ID to generate link for
+     * @param {HTMLElement} button - The button element that was clicked
      */
-    window.generateLinkFromMetaBox = function(postId) {
-        var button = event.target;
+    function generateLinkFromMetaBox(postId, button) {
         button.disabled = true;
         button.textContent = 'Generating...';
 
@@ -28,22 +28,31 @@
                 } else {
                     var message = response.data && response.data.message ? response.data.message : 'Failed to generate link';
                     button.disabled = false;
-                    button.textContent = 'Generate 402link';
+                    button.textContent = 'Generate Monetization Link';
                     console.error('Link generation failed:', message);
                 }
             },
             error: function() {
                 button.disabled = false;
-                button.textContent = 'Generate 402link';
+                button.textContent = 'Generate Monetization Link';
                 console.error('Network error during link generation');
             }
         });
-    };
+    }
 
     /**
      * Initialize meta box functionality
      */
     $(document).ready(function() {
+        // Handle generate link button click via event delegation
+        $(document).on('click', '#agent-hub-generate-link-btn', function(e) {
+            e.preventDefault();
+            var postId = $(this).data('post-id');
+            if (postId) {
+                generateLinkFromMetaBox(postId, this);
+            }
+        });
+
         // Save custom price when post is saved
         $('#post').on('submit', function() {
             var price = $('#agent_hub_price').val();

@@ -57,21 +57,12 @@ class PaymentGate {
                 
                 // Enqueue CSS for admin bar warning
                 add_action('wp_enqueue_scripts', function() {
-                    wp_add_inline_style('admin-bar', '
-                        #wp-admin-bar-402links-preview-notice > .ab-item {
-                            background-color: #ff9800 !important;
-                            color: #000 !important;
-                            font-weight: bold !important;
-                            animation: pulse 2s infinite;
-                        }
-                        #wp-admin-bar-402links-preview-notice > .ab-item:hover {
-                            background-color: #f57c00 !important;
-                        }
-                        @keyframes pulse {
-                            0%, 100% { opacity: 1; }
-                            50% { opacity: 0.7; }
-                        }
-                    ');
+                    wp_enqueue_style(
+                        'agent-hub-admin-bar-preview',
+                        AGENT_HUB_PLUGIN_URL . 'assets/css/admin-bar-preview.css',
+                        array( 'admin-bar' ),
+                        AGENT_HUB_VERSION
+                    );
                 });
             }
             return;

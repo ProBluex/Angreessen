@@ -1,0 +1,20 @@
+/**
+ * Agent Angreessen - Admin Bar Preview Styles
+ * Warning banner for admin preview of protected content
+ */
+
+#wp-admin-bar-402links-preview-notice > .ab-item {
+    background-color: #ff9800 !important;
+    color: #000 !important;
+    font-weight: bold !important;
+    animation: agent-hub-pulse 2s infinite;
+}
+
+#wp-admin-bar-402links-preview-notice > .ab-item:hover {
+    background-color: #f57c00 !important;
+}
+
+@keyframes agent-hub-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}

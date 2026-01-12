@@ -22,6 +22,58 @@ class PaywallTemplate {
         $onchainkit_version = '1.1.1';
         $cdp_client_key = defined('CDP_CLIENT_KEY') ? CDP_CLIENT_KEY : '';
         
+        // Register and enqueue scripts/styles properly
+        wp_register_style(
+            'onchainkit',
+            'https://unpkg.com/@coinbase/onchainkit@' . $onchainkit_version . '/dist/onchainkit.css',
+            array(),
+            $onchainkit_version
+        );
+        wp_register_style(
+            'agent-hub-paywall',
+            AGENT_HUB_PLUGIN_URL . 'assets/css/paywall.css',
+            array(),
+            AGENT_HUB_VERSION
+        );
+        
+        wp_register_script(
+            'onchainkit',
+            'https://unpkg.com/@coinbase/onchainkit@' . $onchainkit_version . '/dist/onchainkit.umd.js',
+            array(),
+            $onchainkit_version,
+            false // Load in head
+        );
+        wp_register_script(
+            'agent-hub-paywall',
+            AGENT_HUB_PLUGIN_URL . 'assets/js/paywall.js',
+            array( 'onchainkit' ),
+            AGENT_HUB_VERSION,
+            true // Load in footer
+        );
+        
+        // Pass PHP data to JavaScript via wp_localize_script
+        wp_localize_script('agent-hub-paywall', 'x402Config', array(
+            'amount' => $amount_usd,
+            'paymentRequirements' => $requirements,
+            'x402Response' => $x402_response,
+            'testnet' => $testnet,
+            'currentUrl' => $resource_url,
+            'network' => $network,
+            'cdpClientKey' => $cdp_client_key
+        ));
+        
+        // Enqueue all assets
+        wp_enqueue_style('onchainkit');
+        wp_enqueue_style('agent-hub-paywall');
+        wp_enqueue_script('onchainkit');
+        wp_enqueue_script('agent-hub-paywall');
+        
+        // Capture enqueued assets HTML
+        ob_start();
+        wp_print_styles(array( 'onchainkit', 'agent-hub-paywall' ));
+        wp_print_scripts(array( 'onchainkit', 'agent-hub-paywall' ));
+        $enqueued_assets = ob_get_clean();
+        
         ob_start();
         ?>
 <!DOCTYPE html>
@@ -30,91 +82,10 @@ class PaywallTemplate {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Payment Required - <?php echo esc_html($description); ?></title>
-    <?php // phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedScript -- Standalone paywall page served via status_header(402), not a WordPress template ?>
-    <script src="<?php echo esc_url('https://unpkg.com/@coinbase/onchainkit@' . $onchainkit_version . '/dist/onchainkit.umd.js'); ?>"></script>
-    <?php // phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedStylesheet -- Standalone paywall page served via status_header(402), not a WordPress template ?>
-    <link href="<?php echo esc_url('https://unpkg.com/@coinbase/onchainkit@' . $onchainkit_version . '/dist/onchainkit.css'); ?>" rel="stylesheet">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-        .paywall-container {
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            max-width: 500px;
-            width: 100%;
-            padding: 40px;
-            text-align: center;
-        }
-        .paywall-icon {
-            width: 64px;
-            height: 64px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 24px;
-            font-size: 32px;
-        }
-        h1 {
-            font-size: 28px;
-            color: #1a1a1a;
-            margin-bottom: 16px;
-            font-weight: 700;
-        }
-        .price {
-            font-size: 48px;
-            font-weight: 800;
-            color: #667eea;
-            margin: 24px 0;
-        }
-        .description {
-            color: #666;
-            font-size: 16px;
-            line-height: 1.6;
-            margin-bottom: 32px;
-        }
-        .payment-widget {
-            margin: 32px 0;
-            min-height: 200px;
-        }
-        .resource-info {
-            background: #f5f5f5;
-            border-radius: 8px;
-            padding: 16px;
-            margin-top: 24px;
-            font-size: 14px;
-            color: #666;
-            word-break: break-all;
-        }
-        .powered-by {
-            margin-top: 32px;
-            color: #999;
-            font-size: 14px;
-        }
-        .powered-by a {
-            color: #667eea;
-            text-decoration: none;
-            font-weight: 600;
-        }
-        .loading {
-            color: #666;
-            font-size: 16px;
-        }
-    </style>
+    <?php
+    // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Output from wp_print_styles/wp_print_scripts is already escaped
+    echo $enqueued_assets;
+    ?>
 </head>
 <body>
     <div class="paywall-container">
@@ -136,43 +107,6 @@ class PaywallTemplate {
             Powered by <a href="https://402links.com" target="_blank">x402 Protocol</a>
         </div>
     </div>
-
-    <script>
-        // Inject x402 configuration into window object
-        window.x402 = {
-            amount: <?php echo esc_js($amount_usd); ?>,
-            paymentRequirements: <?php echo wp_json_encode($requirements); ?>,
-            x402Response: <?php echo wp_json_encode($x402_response); ?>,
-            testnet: <?php echo $testnet ? 'true' : 'false'; ?>,
-            currentUrl: <?php echo wp_json_encode($resource_url); ?>,
-            network: <?php echo wp_json_encode($network); ?>,
-            cdpClientKey: <?php echo wp_json_encode($cdp_client_key); ?>
-        };
-
-        console.log('x402 Payment Requirements:', window.x402);
-
-        // Initialize payment widget
-        document.addEventListener('DOMContentLoaded', function() {
-            const widgetContainer = document.getElementById('payment-widget');
-            
-            // Display payment instructions
-            widgetContainer.innerHTML = `
-                <div style="text-align: left; padding: 20px; background: #f9fafb; border-radius: 8px; border: 2px solid #e5e7eb;">
-                    <h3 style="margin-bottom: 16px; color: #1a1a1a; font-size: 18px;">How to Pay:</h3>
-                    <ol style="margin-left: 20px; color: #666; line-height: 2;">
-                        <li>Connect your wallet (MetaMask, Coinbase Wallet, etc.)</li>
-                        <li>Ensure you have <strong>$${window.x402.amount.toFixed(2)} USDC</strong> on <strong>${window.x402.network === 'base' ? 'Base' : 'Base Sepolia'}</strong></li>
-                        <li>Sign the payment authorization</li>
-                        <li>Access will be granted immediately</li>
-                    </ol>
-                    <div style="margin-top: 20px; padding: 16px; background: #fff3cd; border-radius: 6px; border-left: 4px solid #ffc107;">
-                        <strong>⚠️ Note:</strong> Payment widget integration in progress. 
-                        Please use the AI agent payment flow or contact support.
-                    </div>
-                </div>
-            `;
-        });
-    </script>
 </body>
 </html>
         <?php

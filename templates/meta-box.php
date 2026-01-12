@@ -90,8 +90,9 @@ $agent_hub_stats = $wpdb->get_row($wpdb->prepare(
             </div>
             <p>This page is not yet protected by Agent Angreessen.</p>
             <button type="button"
-                    class="button button-primary" 
-                    onclick="generateLinkFromMetaBox(<?php echo absint($post->ID); ?>)">
+                    class="button button-primary"
+                    id="agent-hub-generate-link-btn"
+                    data-post-id="<?php echo absint($post->ID); ?>">
                 Generate Monetization Link
             </button>
         </div>
