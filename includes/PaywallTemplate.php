@@ -18,17 +18,7 @@ class PaywallTemplate {
         $network = $requirements['network'];
         $testnet = ($network === 'base-sepolia');
         
-        // OnchainKit CDN
-        $onchainkit_version = '1.1.1';
-        $cdp_client_key = defined('CDP_CLIENT_KEY') ? CDP_CLIENT_KEY : '';
-        
         // Register and enqueue scripts/styles properly
-        wp_register_style(
-            'onchainkit',
-            'https://unpkg.com/@coinbase/onchainkit@' . $onchainkit_version . '/dist/onchainkit.css',
-            array(),
-            $onchainkit_version
-        );
         wp_register_style(
             'agent-hub-paywall',
             AGENT_HUB_PLUGIN_URL . 'assets/css/paywall.css',
@@ -37,16 +27,9 @@ class PaywallTemplate {
         );
         
         wp_register_script(
-            'onchainkit',
-            'https://unpkg.com/@coinbase/onchainkit@' . $onchainkit_version . '/dist/onchainkit.umd.js',
-            array(),
-            $onchainkit_version,
-            false // Load in head
-        );
-        wp_register_script(
             'agent-hub-paywall',
             AGENT_HUB_PLUGIN_URL . 'assets/js/paywall.js',
-            array( 'onchainkit' ),
+            array(),
             AGENT_HUB_VERSION,
             true // Load in footer
         );
@@ -58,20 +41,17 @@ class PaywallTemplate {
             'x402Response' => $x402_response,
             'testnet' => $testnet,
             'currentUrl' => $resource_url,
-            'network' => $network,
-            'cdpClientKey' => $cdp_client_key
+            'network' => $network
         ));
         
         // Enqueue all assets
-        wp_enqueue_style('onchainkit');
         wp_enqueue_style('agent-hub-paywall');
-        wp_enqueue_script('onchainkit');
         wp_enqueue_script('agent-hub-paywall');
         
         // Capture enqueued assets HTML
         ob_start();
-        wp_print_styles(array( 'onchainkit', 'agent-hub-paywall' ));
-        wp_print_scripts(array( 'onchainkit', 'agent-hub-paywall' ));
+        wp_print_styles(array( 'agent-hub-paywall' ));
+        wp_print_scripts(array( 'agent-hub-paywall' ));
         $enqueued_assets = ob_get_clean();
         
         ob_start();

@@ -94,25 +94,7 @@ This plugin connects to the 402links.com service to enable AI agent payments and
 * Privacy Policy: https://402links.com/privacy
 * Terms of Service: https://402links.com/terms
 
-**2. Coinbase OnchainKit SDK**
-
-This plugin loads the Coinbase OnchainKit SDK from Coinbase's official CDN (unpkg.com/@coinbase/onchainkit) to enable cryptocurrency payment processing for AI agents.
-
-*What it does:* Renders the payment widget and processes blockchain transactions on the Base network.
-
-*When it loads:* Only on the 402 payment page when an AI agent needs to pay for content access.
-
-*Why it's remote:* OnchainKit is a payment processing SDK that must connect to Coinbase's infrastructure. Like Stripe.js or PayPal's SDK, it cannot be bundled locally as it handles real-time payment verification and must stay synchronized with Coinbase's API versions.
-
-*Service Information:*
-* Service URL: https://www.coinbase.com/
-* OnchainKit Documentation: https://onchainkit.xyz/
-* GitHub: https://github.com/coinbase/onchainkit
-* Coinbase Privacy Policy: https://www.coinbase.com/legal/privacy
-
-This is analogous to how e-commerce plugins load Stripe.js or PayPal SDKs from their respective CDNs to process payments.
-
-**3. Google Fonts**
+**2. Google Fonts**
 
 The plugin admin dashboard uses the Inter font family loaded from Google Fonts for consistent typography.
 
