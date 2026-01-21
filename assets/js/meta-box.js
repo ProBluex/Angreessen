@@ -15,11 +15,11 @@
         button.textContent = 'Generating...';
 
         $.ajax({
-            url: agentHubData.ajaxUrl,
+            url: angreessen49Data.ajaxUrl,
             type: 'POST',
             data: {
-                action: 'agent_hub_generate_link',
-                nonce: agentHubData.nonce,
+                action: 'angreessen49_generate_link',
+                nonce: angreessen49Data.nonce,
                 post_id: postId
             },
             success: function(response) {
@@ -45,7 +45,7 @@
      */
     $(document).ready(function() {
         // Handle generate link button click via event delegation
-        $(document).on('click', '#agent-hub-generate-link-btn', function(e) {
+        $(document).on('click', '#angreessen49-generate-link-btn', function(e) {
             e.preventDefault();
             var postId = $(this).data('post-id');
             if (postId) {
@@ -55,11 +55,11 @@
 
         // Save custom price when post is saved
         $('#post').on('submit', function() {
-            var price = $('#agent_hub_price').val();
+            var price = $('#angreessen49_price').val();
             if (price) {
                 $('<input>').attr({
                     type: 'hidden',
-                    name: 'agent_hub_price',
+                    name: 'angreessen49_price',
                     value: price
                 }).appendTo('#post');
             }

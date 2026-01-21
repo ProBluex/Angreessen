@@ -79,11 +79,11 @@
             const indicator = $('#wallet-sync-indicator');
             
             $.ajax({
-                url: agentHubData.ajaxUrl,
+                url: angreessen49Data.ajaxUrl,
                 type: 'POST',
                 data: {
-                    action: 'agent_hub_save_wallet',
-                    nonce: agentHubData.nonce,
+                    action: 'angreessen49_save_wallet',
+                    nonce: angreessen49Data.nonce,
                     wallet: wallet,
                     default_price: defaultPrice
                 },
@@ -157,8 +157,8 @@
         let rqOverview = null; // Track active request for deduplication
         
         // Browser-level cache - FIXED: Include siteId to prevent stale cross-install data
-        const siteId = window.agentHubData?.siteId || 'unknown';
-        const CACHE_KEY = 'agent_hub_overview_cache_' + siteId;
+        const siteId = window.angreessen49Data?.siteId || 'unknown';
+        const CACHE_KEY = 'angreessen49_overview_cache_' + siteId;
         const CACHE_TTL = 300000; // 5 minutes
 
         function getCachedData() {
@@ -216,11 +216,11 @@
             // Show loading skeleton
             showLoadingSkeleton();
             
-            debugLog('🔵 [Overview] AJAX URL:', agentHubData.ajaxUrl);
+            debugLog('🔵 [Overview] AJAX URL:', angreessen49Data.ajaxUrl);
             
             const requestPayload = {
-                action: 'agent_hub_get_analytics',
-                nonce: agentHubData.nonce,
+                action: 'angreessen49_get_analytics',
+                nonce: angreessen49Data.nonce,
                 timeframe: '30d'
             };
             debugLog('🔵 [Overview] Request payload:', requestPayload);
@@ -235,7 +235,7 @@
             }, 10000);
             
             rqOverview = $.ajax({
-                url: agentHubData.ajaxUrl,
+                url: angreessen49Data.ajaxUrl,
                 type: 'POST',
                 data: requestPayload,
                 success: function(response) {
@@ -291,7 +291,7 @@
                     </button>
                 </div>
             `;
-            $('.agent-hub-stats').prepend(errorHtml);
+            $('.angreessen49-stats').prepend(errorHtml);
         }
 
         function updateMetrics(data) {
@@ -341,11 +341,11 @@
         function checkExistingLinksAndAlert() {
             debugLog('[Overview] Checking for existing links...');
             $.ajax({
-                url: agentHubData.ajaxUrl,
+                url: angreessen49Data.ajaxUrl,
                 type: 'POST',
                 data: {
-                    action: 'agent_hub_check_existing_links',
-                    nonce: agentHubData.nonce
+                    action: 'angreessen49_check_existing_links',
+                    nonce: angreessen49Data.nonce
                 },
                 success: function(response) {
                     debugLog('[Overview] Check links response:', response);
@@ -375,35 +375,54 @@
                         You have <strong>${linkCount} existing paid link${linkCount !== 1 ? 's' : ''}</strong> that ${linkCount !== 1 ? 'are' : 'is'} still using the old price.
                         To apply the new price to all your content, please regenerate your paid links.
                     </p>
-                    <p>
-                        <button type="button" class="button button-primary" id="go-to-content-tab" style="margin-right: 10px;">
-                            <span class="dashicons dashicons-update"></span>
-                            Go to My Content & Regenerate Links
+                    <div style="margin-top: 10px;">
+                        <a href="#" class="button button-primary" id="regenerate-all-links-btn">
+                            <span class="dashicons dashicons-update" style="margin-top: 4px;"></span>
+                            Regenerate All Links
+                        </a>
+                        <button type="button" class="button" onclick="jQuery('#price-change-alert').fadeOut();">
+                            Dismiss
                         </button>
-                        <button type="button" class="button" id="dismiss-price-alert">Dismiss</button>
-                    </p>
+                    </div>
                 </div>
             `;
             
-            // Insert after the configuration card
+            // Insert after config card
             $('.agent-hub-config-card').after(alertHtml);
             
-            // Handle button clicks
-            $('#go-to-content-tab').on('click', function() {
-                console.log('[Overview] Switching to content tab');
-                $('.tab-button[data-tab="content"]').trigger('click');
-                $('#price-change-alert').fadeOut(300, function() { $(this).remove(); });
-            });
-            
-            $('#dismiss-price-alert').on('click', function() {
-                $('#price-change-alert').fadeOut(300, function() { $(this).remove(); });
-            });
-            
-            // Allow dismissing via close button
-            $('#price-change-alert').on('click', '.notice-dismiss', function() {
-                $('#price-change-alert').fadeOut(300, function() { $(this).remove(); });
+            // Handle regenerate button
+            $('#regenerate-all-links-btn').on('click', function(e) {
+                e.preventDefault();
+                
+                if (!confirm('This will regenerate all paid links with the new price. Continue?')) {
+                    return;
+                }
+                
+                const btn = $(this);
+                btn.prop('disabled', true).html('<span class="dashicons dashicons-update spinning"></span> Regenerating...');
+                
+                $.ajax({
+                    url: angreessen49Data.ajaxUrl,
+                    type: 'POST',
+                    data: {
+                        action: 'angreessen49_regenerate_all_links',
+                        nonce: angreessen49Data.nonce
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            window.showToast('Success', response.data.message || 'Links regenerated successfully', 'success');
+                            $('#price-change-alert').fadeOut();
+                        } else {
+                            window.showToast('Error', response.data?.message || 'Failed to regenerate links', 'error');
+                            btn.prop('disabled', false).html('<span class="dashicons dashicons-update"></span> Regenerate All Links');
+                        }
+                    },
+                    error: function() {
+                        window.showToast('Error', 'Network error occurred', 'error');
+                        btn.prop('disabled', false).html('<span class="dashicons dashicons-update"></span> Regenerate All Links');
+                    }
+                });
             });
         }
     });
-    
 })(jQuery);

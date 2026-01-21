@@ -10,9 +10,9 @@
             var button = $(this);
             button.prop('disabled', true).text('Setting up...');
 
-            $.post(angreessenSetup.ajaxUrl, {
-                action: 'agent_hub_complete_setup',
-                nonce: angreessenSetup.nonce
+            $.post(angreessen49Setup.ajaxUrl, {
+                action: 'angreessen49_complete_setup',
+                nonce: angreessen49Setup.nonce
             }, function(response) {
                 if (response.success) {
                     $('#angreessen-setup-notice').html(

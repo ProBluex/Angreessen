@@ -1,5 +1,5 @@
 <?php
-namespace AgentHub;
+namespace Angreessen49;
 
 class PaymentGate {
     /**
@@ -28,7 +28,7 @@ class PaymentGate {
         }
         
         // ============= STEP 2: PROTECTION CHECK =============
-        $short_id = get_post_meta($post->ID, '_402links_short_id', true);
+        $short_id = get_post_meta($post->ID, '_angreessen49_short_id', true);
         
         if (empty($short_id)) {
             return; // Not protected - serve content normally
@@ -39,7 +39,7 @@ class PaymentGate {
             // If admin is viewing protected post, show preview notice
             if (!empty($short_id)) {
                 add_action('admin_bar_menu', function($wp_admin_bar) use ($post) {
-                    $block_humans = get_post_meta($post->ID, '_402links_block_humans', true);
+                    $block_humans = get_post_meta($post->ID, '_angreessen49_block_humans', true);
                     $protection_type = ($block_humans === '1' || $block_humans === 1) 
                         ? 'Agents + Humans' 
                         : 'Agents Only';
@@ -58,10 +58,10 @@ class PaymentGate {
                 // Enqueue CSS for admin bar warning
                 add_action('wp_enqueue_scripts', function() {
                     wp_enqueue_style(
-                        'agent-hub-admin-bar-preview',
-                        AGENT_HUB_PLUGIN_URL . 'assets/css/admin-bar-preview.css',
+                        'angreessen49-admin-bar-preview',
+                        ANGREESSEN49_PLUGIN_URL . 'assets/css/admin-bar-preview.css',
                         array( 'admin-bar' ),
-                        AGENT_HUB_VERSION
+                        ANGREESSEN49_VERSION
                     );
                 });
             }
@@ -75,7 +75,7 @@ class PaymentGate {
         // ============= STEP 5: HUMAN PATH =============
         if ($human_check['is_human']) {
             // Check if humans are blocked for this content
-            $block_humans = get_post_meta($post->ID, '_402links_block_humans', true);
+            $block_humans = get_post_meta($post->ID, '_angreessen49_block_humans', true);
             
             if ($block_humans === '1' || $block_humans === 1) {
                 $return_url = get_permalink($post->ID);
@@ -93,7 +93,7 @@ class PaymentGate {
         $agent_name = HumanDetector::extract_agent_name($user_agent);
         
         // Check if agent is blacklisted FIRST (before recording)
-        $site_id = get_option('402links_site_id');
+        $site_id = get_option('angreessen49_site_id');
         if (AgentDetector::is_blacklisted($user_agent, $site_id)) {
             status_header(403);
             header('Content-Type: application/json');
@@ -143,12 +143,16 @@ class PaymentGate {
         }
         
         // ============= STEP 8: CHECK CACHED PAYMENT =============
+        // Check for X-Agent-Wallet header (primary identity for re-access)
+        $agent_wallet = sanitize_text_field(wp_unslash($_SERVER['HTTP_X_AGENT_WALLET'] ?? ''));
+        
         $cached_payment = $api->verify_agent_payment(
             $site_id,
             $post->ID,
             get_permalink($post->ID),
             $user_agent,
-            Helpers::get_validated_ip()
+            Helpers::get_validated_ip(),
+            $agent_wallet // Pass wallet for wallet-based verification
         );
         
         if ($cached_payment && $cached_payment['payment_verified']) {
@@ -159,7 +163,7 @@ class PaymentGate {
         
         // ============= STEP 9: SEND 402 PAYMENT REQUIRED =============
         // Track repeated failed access attempts for brute force detection
-        $attempt_key = '402links_failed_attempts_' . md5($user_agent . $post->ID);
+        $attempt_key = 'angreessen49_failed_attempts_' . md5($user_agent . $post->ID);
         $failed_attempts = (int) get_transient($attempt_key);
         
         if ($failed_attempts >= 3) {
@@ -237,10 +241,10 @@ class PaymentGate {
      * SECURITY FIX: bind_hash is now persisted in post meta to prevent replay attacks
      */
     private static function get_payment_requirements($post_id) {
-        $settings = get_option('402links_settings');
+        $settings = get_option('angreessen49_settings');
         
         // Get post-specific price or use default
-        $price = get_post_meta($post_id, '_402links_price', true);
+        $price = get_post_meta($post_id, '_angreessen49_price', true);
         if (empty($price)) {
             $price = $settings['default_price'] ?? 0.10;
         }
@@ -249,7 +253,7 @@ class PaymentGate {
         // CRITICAL: Use agent_payment_wallet (splitter address) for 402 responses
         // This is the address synced from backend with 99/1 revenue split
         // Fallback to payment_wallet only if agent_payment_wallet not yet synced
-        $payment_wallet = get_option('402links_agent_payment_wallet');
+        $payment_wallet = get_option('angreessen49_agent_payment_wallet');
         if (empty($payment_wallet)) {
             $payment_wallet = $settings['payment_wallet'] ?? '';
         }
@@ -281,7 +285,7 @@ class PaymentGate {
         $invoice_id = self::get_or_create_invoice_id($post_id);
         
         // Get short_id for API resource URL
-        $short_id = get_post_meta($post_id, '_402links_short_id', true);
+        $short_id = get_post_meta($post_id, '_angreessen49_short_id', true);
         $resource_url = $short_id 
             ? 'https://api.402links.com/v1/access-link?short_id=' . $short_id
             : get_permalink($post_id);
@@ -385,18 +389,18 @@ class PaymentGate {
      */
     private static function get_or_create_bind_hash($post_id, $payment_wallet, $price) {
         // Check if bind_hash already exists
-        $existing_hash = get_post_meta($post_id, '_402links_bind_hash', true);
+        $existing_hash = get_post_meta($post_id, '_angreessen49_bind_hash', true);
         if (!empty($existing_hash)) {
             return $existing_hash;
         }
         
         // Generate new unique nonce for this post (never changes after creation)
         $unique_nonce = wp_generate_password(32, false);
-        update_post_meta($post_id, '_402links_nonce', $unique_nonce);
+        update_post_meta($post_id, '_angreessen49_nonce', $unique_nonce);
         
         // Generate bind_hash using post-specific nonce
         $bind_hash = hash('sha256', $post_id . $payment_wallet . $price . $unique_nonce);
-        update_post_meta($post_id, '_402links_bind_hash', $bind_hash);
+        update_post_meta($post_id, '_angreessen49_bind_hash', $bind_hash);
         
         return $bind_hash;
     }
@@ -409,14 +413,14 @@ class PaymentGate {
      */
     private static function get_or_create_invoice_id($post_id) {
         // Check if invoice_id already exists
-        $existing_invoice_id = get_post_meta($post_id, '_402links_invoice_id', true);
+        $existing_invoice_id = get_post_meta($post_id, '_angreessen49_invoice_id', true);
         if (!empty($existing_invoice_id)) {
             return $existing_invoice_id;
         }
         
         // Generate new invoice_id
         $invoice_id = 'wp_' . $post_id . '_' . time() . '_' . wp_generate_password(8, false);
-        update_post_meta($post_id, '_402links_invoice_id', $invoice_id);
+        update_post_meta($post_id, '_angreessen49_invoice_id', $invoice_id);
         
         return $invoice_id;
     }
@@ -429,244 +433,71 @@ class PaymentGate {
         $user_agent = sanitize_text_field(wp_unslash($_SERVER['HTTP_USER_AGENT'] ?? ''));
         
         // Browser will request text/html and have Mozilla in user agent
-        return (strpos($accept, 'text/html') !== false && 
-                strpos($user_agent, 'Mozilla') !== false);
+        return (strpos($accept, 'text/html') !== false) && (strpos($user_agent, 'Mozilla') !== false);
     }
     
     /**
      * Send 402 Payment Required response
-     * x402 spec compliant with proper PaymentRequirements in body
-     * Returns HTML paywall for browsers, JSON for agents
      */
-    private static function send_402_response($requirements, $error_msg = 'Payment Required') {
-        // Add provider URL to requirements for agent clarity
-        if (!isset($requirements['extra']['provider'])) {
-            $requirements['extra']['provider'] = $requirements['resource'];
-        }
+    private static function send_402_response($requirements, $error = null) {
+        status_header(402);
+        header('Content-Type: application/json');
+        header('Access-Control-Allow-Origin: *');
+        header('Access-Control-Expose-Headers: X-PAYMENT');
         
-        $x402_response = [
+        $response = [
             'x402Version' => 1,
-            'error' => $error_msg,
-            'accepts' => [$requirements]
+            'accepts' => [$requirements],
+            'error' => $error
         ];
         
-        // Encode for WWW-Authenticate header
-        $www_auth_payload = base64_encode(json_encode($x402_response));
-        
-        // Anti-cache headers (prevent proxies from caching 402)
-        header('Cache-Control: private, no-store, max-age=0, must-revalidate');
-        header('Pragma: no-cache');
-        header('Vary: Accept, User-Agent');
-        
-        // Use X-402-Authenticate instead of WWW-Authenticate to prevent nginx from overriding 402 to 401
-        // nginx enforces RFC 7235 which requires 401 when WWW-Authenticate is present
-        header('X-402-Authenticate: x402="' . $www_auth_payload . '"');
-        header('X-402-Version: 1');
-        header('X-402-Scheme: exact');
-        header('X-402-Network: ' . $requirements['network']);
-        header('X-402-Amount: ' . $requirements['maxAmountRequired']);
-        header('X-402-Currency: USDC');
-        header('X-402-Asset: ' . $requirements['asset']);
-        header('X-402-PayTo: ' . $requirements['payTo']);
-        header('X-402-Resource: ' . $requirements['resource']);
-        header('X-402-Discovery: ' . get_site_url() . '/.well-known/402.json');
-        header('X-402-Discoverable: true');
-        
-        // Robots.txt reference (flow step d)
-        header('X-402-Robots: ' . get_site_url() . '/robots.txt');
-        header('X-Robots-Tag: noindex, nofollow');
-        header('Link: <' . get_site_url() . '/robots.txt>; rel="robots"');
-        
-        // Advertise payment provider endpoint
-        header('X-402-Provider: ' . ($requirements['resource'] ?? ''));
-        header('Link: <' . ($requirements['resource'] ?? '') . '>; rel="payment", <' . get_site_url() . '/robots.txt>; rel="robots"');
-        
-        // Add CORS headers for x402 protocol
-        header('Access-Control-Allow-Origin: *');
-        header('Access-Control-Allow-Headers: X-PAYMENT, Content-Type, Authorization');
-        header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-        header('Access-Control-Expose-Headers: X-402-Authenticate, X-402-Version, X-402-Scheme, X-402-Network, X-402-Amount, X-402-Currency, X-402-Asset, X-402-PayTo, X-402-Resource, X-402-Discovery, X-402-Provider, Link, X-PAYMENT-RESPONSE');
-        
-        // Force HTTP 402 AFTER all headers (prevents nginx override)
-        $code = 402;
-        status_header($code);      // WordPress-native status handling
-        http_response_code($code); // PHP standard
-        header('Status: 402 Payment Required'); // CGI/FastCGI compatibility
-        
-        // BROWSER vs AGENT: Return HTML for browsers, JSON for agents
-        if (self::is_browser_request()) {
-            require_once plugin_dir_path(__FILE__) . 'PaywallTemplate.php';
-            header('Content-Type: text/html; charset=UTF-8');
-            // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- PaywallTemplate::render() returns a complete HTML document with all values properly escaped internally using htmlspecialchars(), esc_url(), esc_js(), and wp_json_encode()
-            echo PaywallTemplate::render($x402_response, $requirements);
-        } else {
-            header('Content-Type: application/json');
-            echo json_encode($x402_response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-        }
-        
-        exit;
+        echo wp_json_encode($response, JSON_PRETTY_PRINT);
     }
     
     /**
-     * Verify payment with backend edge function
-     * Calls: verify-wordpress-payment edge function
+     * Verify payment header
      */
     private static function verify_payment($payment_header, $requirements) {
-        $settings = get_option('402links_settings');
-        $api_key = get_option('402links_api_key');
-        $api_endpoint = $settings['api_endpoint'] ?? 'https://api.402links.com/v1';
-        
-        $response = wp_remote_post($api_endpoint . '/verify-wordpress-payment', [
-            'timeout' => 30,
-            'headers' => [
-                'Content-Type' => 'application/json',
-                'Authorization' => 'Bearer ' . $api_key
-            ],
-            'body' => json_encode([
-                'payment_header' => $payment_header,
-                'payment_requirements' => $requirements,
-                'post_id' => get_the_ID(),
-                'site_url' => get_site_url()
-            ])
-        ]);
-        
-        if (is_wp_error($response)) {
-            return ['isValid' => false, 'error' => $response->get_error_message()];
+        // Decode base64 payment payload
+        $decoded = base64_decode($payment_header);
+        if (!$decoded) {
+            return ['isValid' => false, 'error' => 'Invalid base64 encoding'];
         }
         
-        $body = wp_remote_retrieve_body($response);
-        $data = json_decode($body, true);
-        
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            return ['isValid' => false, 'error' => 'Invalid JSON response'];
+        $payload = json_decode($decoded, true);
+        if (!$payload) {
+            return ['isValid' => false, 'error' => 'Invalid JSON payload'];
         }
         
-        return $data;
-    }
-    
-    /**
-     * Validate invoice with 402links API
-     */
-    private static function validate_invoice($invoice_id, $post_id, $site_url) {
-        $api_url = 'https://402links.com/api/v1/invoices/validate';
-        
-        $response = wp_remote_post($api_url, [
-            'timeout' => 15,
-            'headers' => [
-                'Content-Type' => 'application/json'
-            ],
-            'body' => json_encode([
-                'invoice_id' => $invoice_id,
-                'site_url' => $site_url,
-                'wordpress_post_id' => $post_id
-            ])
-        ]);
-        
-        if (is_wp_error($response)) {
-            return ['isValid' => false, 'error' => 'API request failed'];
-        }
-        
-        $body = wp_remote_retrieve_body($response);
-        $result = json_decode($body, true);
-        
-        // Handle new public API response format
-        if (isset($result['success']) && $result['success'] === true) {
-            // Convert new format to old format for backward compatibility
-            $result['isValid'] = true;
-            if (isset($result['data'])) {
-                $result = array_merge($result, $result['data']);
-            }
-        } elseif (isset($result['success']) && $result['success'] === false) {
-            $result['isValid'] = false;
-        }
-        
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            return ['isValid' => false, 'error' => 'Invalid JSON response'];
-        }
+        // For now, forward to backend for verification
+        $api = new API();
+        $result = $api->verify_payment($payload, $requirements);
         
         return $result;
     }
     
     /**
-     * Log agent access for analytics
+     * Log successful agent payment
      */
-    private static function log_agent_access($post_id, $invoice_id, $validation) {
+    private static function log_agent_payment($post_id, $verification, $context) {
         global $wpdb;
-        $table_name = $wpdb->prefix . '402links_agent_logs';
         
-        // Insert access log
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Intentional logging to custom table
+        $table_name = $wpdb->prefix . 'angreessen49_agent_logs';
+        
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
         $wpdb->insert(
             $table_name,
             [
                 'post_id' => $post_id,
-                'invoice_id' => $invoice_id,
-                'payment_tx_hash' => $validation['transaction_hash'] ?? null,
-                'amount_paid' => $validation['amount'] ?? 0,
-                'payment_status' => 'paid',
-                'accessed_at' => current_time('mysql'),
-                'user_agent' => Helpers::get_sanitized_user_agent() ?: 'Unknown',
-                'ip_address' => AgentDetector::get_client_ip()
-            ],
-            ['%d', '%s', '%s', '%f', '%s', '%s', '%s', '%s']
-        );
-    }
-    
-    /**
-     * Increment link usage count
-     */
-    private static function increment_link_usage($post_id) {
-        $current_uses = (int) get_post_meta($post_id, '_402links_usage_count', true);
-        $new_uses = $current_uses + 1;
-        update_post_meta($post_id, '_402links_usage_count', $new_uses);
-    }
-    
-    /**
-     * Log successful payment to backend and local database
-     */
-    private static function log_agent_payment($post_id, $verification, $agent_check) {
-        global $wpdb;
-        $table_name = $wpdb->prefix . '402links_agent_logs';
-        
-        // Update local log
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Intentional update to custom logging table
-        $wpdb->update(
-            $table_name,
-            [
-                'payment_status' => 'paid',
-                'payment_tx_hash' => $verification['transaction'] ?? '',
-                'amount_paid' => $verification['amount'] ?? 0
-            ],
-            [
-                'post_id' => $post_id,
-                'payment_status' => 'pending'
-            ],
-            ['%s', '%s', '%f'],
-            ['%d', '%s']
-        );
-        
-        // Send to backend for aggregation
-        $settings = get_option('402links_settings');
-        $api_key = get_option('402links_api_key');
-        $api_endpoint = $settings['api_endpoint'] ?? 'https://api.402links.com/v1';
-        
-        wp_remote_post($api_endpoint . '/log-agent-payment', [
-            'timeout' => 15,
-            'blocking' => false, // Don't wait for response
-            'headers' => [
-                'Content-Type' => 'application/json',
-                'Authorization' => 'Bearer ' . $api_key
-            ],
-            'body' => json_encode([
-                'post_id' => $post_id,
-                'site_url' => get_site_url(),
-                'agent_name' => $agent_check['agent_name'],
+                'agent_name' => $context['agent_name'] ?? 'Unknown',
                 'user_agent' => Helpers::get_sanitized_user_agent(),
-                'ip_address' => AgentDetector::get_client_ip(),
-                'payment_tx_hash' => $verification['transaction'] ?? '',
-                'amount' => $verification['amount'] ?? 0,
-                'payer_address' => $verification['payer'] ?? ''
-            ])
-        ]);
+                'ip_address' => Helpers::get_validated_ip(),
+                'payment_status' => 'paid',
+                'amount_paid' => $verification['amount'] ?? 0,
+                'tx_hash' => $verification['tx_hash'] ?? null,
+                'created_at' => current_time('mysql')
+            ],
+            ['%d', '%s', '%s', '%s', '%s', '%f', '%s', '%s']
+        );
     }
 }

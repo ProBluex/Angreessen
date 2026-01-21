@@ -1,5 +1,5 @@
 <?php
-namespace AgentHub;
+namespace Angreessen49;
 
 class Installer {
     /**
@@ -7,15 +7,15 @@ class Installer {
      */
     public static function activate() {
         // Check if already provisioned
-        $existing_key = get_option('402links_api_key');
-        $existing_site_id = get_option('402links_site_id');
+        $existing_key = get_option('angreessen49_api_key');
+        $existing_site_id = get_option('angreessen49_site_id');
         
         if ($existing_key && $existing_site_id) {
             return;
         }
         
         // Set flag for deferred setup (user consent required)
-        update_option('402links_needs_setup', true);
+        update_option('angreessen49_needs_setup', true);
     }
     
     /**
@@ -31,19 +31,19 @@ class Installer {
             if ($result['success']) {
                 // Store credentials on success
                 if (isset($result['api_key'])) {
-                    update_option('402links_api_key', $result['api_key']);
-                    update_option('402links_api_key_id', $result['api_key_id']);
-                    update_option('402links_site_id', $result['site_id']);
-                    update_option('402links_provisioned_url', get_site_url());
+                    update_option('angreessen49_api_key', $result['api_key']);
+                    update_option('angreessen49_api_key_id', $result['api_key_id']);
+                    update_option('angreessen49_site_id', $result['site_id']);
+                    update_option('angreessen49_provisioned_url', get_site_url());
                     
-                    update_option('402links_provisioning_success', true);
+                    update_option('angreessen49_provisioning_success', true);
                     return $result;
                 } elseif (isset($result['already_provisioned']) && $result['already_provisioned']) {
                     // Site was already provisioned
-                    update_option('402links_site_id', $result['site_id']);
-                    update_option('402links_api_key_id', $result['api_key_id']);
+                    update_option('angreessen49_site_id', $result['site_id']);
+                    update_option('angreessen49_api_key_id', $result['api_key_id']);
                     
-                    update_option('402links_provisioning_info', 'Site was already registered. Please contact support if you need your API key.');
+                    update_option('angreessen49_provisioning_info', 'Site was already registered. Please contact support if you need your API key.');
                     return $result;
                 }
             }
@@ -54,16 +54,16 @@ class Installer {
                 sleep($delay);
             } else {
                 // All attempts failed
-                update_option('402links_provisioning_error', 'Failed after ' . $max_attempts . ' attempts. Last error: ' . $result['error']);
+                update_option('angreessen49_provisioning_error', 'Failed after ' . $max_attempts . ' attempts. Last error: ' . $result['error']);
             }
         }
         
         // Final fallback: plugin still works, just not connected
-        update_option('402links_needs_setup', true);
+        update_option('angreessen49_needs_setup', true);
         
         return [
             'success' => false,
-            'error' => get_option('402links_provisioning_error', 'Unknown provisioning error')
+            'error' => get_option('angreessen49_provisioning_error', 'Unknown provisioning error')
         ];
     }
     
@@ -78,7 +78,7 @@ class Installer {
      * Single provisioning attempt (used by retry logic)
      */
     private static function attempt_provision() {
-        $settings = get_option('402links_settings', []);
+        $settings = get_option('angreessen49_settings', []);
         $api_endpoint = $settings['api_endpoint'] ?? 'https://api.402links.com/v1';
         
         $payload = [
@@ -86,7 +86,7 @@ class Installer {
             'site_name' => get_bloginfo('name'),
             'admin_email' => get_bloginfo('admin_email'),
             'wordpress_version' => get_bloginfo('version'),
-            'plugin_version' => AGENT_HUB_VERSION,
+            'plugin_version' => ANGREESSEN49_VERSION,
             'site_fingerprint' => self::generate_site_fingerprint()
         ];
         

@@ -1,5 +1,5 @@
 <?php
-namespace AgentHub;
+namespace Angreessen49;
 
 class ContentSync {
     /**
@@ -18,8 +18,8 @@ class ContentSync {
         }
         
         // SECURITY: Verify nonce for manual saves (not for programmatic updates)
-        if (isset($_POST['402links_meta_nonce'])) {
-            if (!wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['402links_meta_nonce'])), '402links_save_meta_' . $post_id)) {
+        if (isset($_POST['angreessen49_meta_nonce'])) {
+            if (!wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['angreessen49_meta_nonce'])), 'angreessen49_save_meta_' . $post_id)) {
                 return;
             }
         }
@@ -36,19 +36,19 @@ class ContentSync {
         }
         
         // Check if auto-generate is enabled
-        $settings = get_option('402links_settings');
+        $settings = get_option('angreessen49_settings');
         if (!isset($settings['auto_generate']) || !$settings['auto_generate']) {
             return;
         }
         
         // Check if API key is set
-        $api_key = get_option('402links_api_key');
+        $api_key = get_option('angreessen49_api_key');
         if (empty($api_key)) {
             return;
         }
         
         // Check if already synced
-        $link_id = get_post_meta($post_id, '_402links_id', true);
+        $link_id = get_post_meta($post_id, '_angreessen49_link_id', true);
         
         $api = new API();
         
@@ -71,24 +71,24 @@ class ContentSync {
         if ($result['success']) {
             // Store link metadata
             if (isset($result['link_id'])) {
-                update_post_meta($post_id, '_402links_id', $result['link_id']);
+                update_post_meta($post_id, '_angreessen49_link_id', $result['link_id']);
             }
             
             // ⭐ CRITICAL FIX: Store short_id in post meta
             if (isset($result['short_id'])) {
-                update_post_meta($post_id, '_402links_short_id', $result['short_id']);
+                update_post_meta($post_id, '_angreessen49_short_id', $result['short_id']);
             }
             
             // Store the correct 402link URL using production domain
             if (isset($result['link_url'])) {
-                update_post_meta($post_id, '_402links_url', $result['link_url']);
+                update_post_meta($post_id, '_angreessen49_url', $result['link_url']);
             } elseif (isset($result['short_id'])) {
                 // Construct the URL from short_id using production domain
                 $link_url = 'https://402links.com/p/' . $result['short_id'];
-                update_post_meta($post_id, '_402links_url', $link_url);
+                update_post_meta($post_id, '_angreessen49_url', $link_url);
             }
             
-            update_post_meta($post_id, '_402links_synced_at', current_time('mysql'));
+            update_post_meta($post_id, '_angreessen49_synced_at', current_time('mysql'));
         }
         
         return $result;
@@ -114,7 +114,7 @@ class ContentSync {
         ];
         
         foreach ($posts as $post_id) {
-            $link_id = get_post_meta($post_id, '_402links_id', true);
+            $link_id = get_post_meta($post_id, '_angreessen49_link_id', true);
             $api = new API();
             
             if ($link_id) {
@@ -160,7 +160,7 @@ class ContentSync {
                 continue;
             }
             
-            $link_id = get_post_meta($post_id, '_402links_id', true);
+            $link_id = get_post_meta($post_id, '_angreessen49_link_id', true);
             $api = new API();
             
             if ($link_id) {

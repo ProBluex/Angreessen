@@ -1,5 +1,5 @@
 <?php
-namespace AgentHub;
+namespace Angreessen49;
 
 class Admin {
     /**
@@ -7,37 +7,37 @@ class Admin {
      */
     public static function show_provisioning_notice() {
         // Check if wallet is configured
-        $settings = get_option('402links_settings', []);
+        $settings = get_option('angreessen49_settings', []);
         $wallet = $settings['payment_wallet'] ?? '';
-        $site_id = get_option('402links_site_id');
+        $site_id = get_option('angreessen49_site_id');
         
         
         // Show success notice
-        if (get_option('402links_provisioning_success')) {
-            $site_id = get_option('402links_site_id');
+        if (get_option('angreessen49_provisioning_success')) {
+            $site_id = get_option('angreessen49_site_id');
             ?>
             <div class="notice notice-success is-dismissible">
                 <p><strong>🎉 Agent Angreessen - Ai Agent Pay Collector:</strong> Your site has been automatically registered! 
                 Site ID: <code><?php echo esc_html($site_id); ?></code></p>
-                <p>Configure your payment wallet in the <a href="<?php echo esc_url(admin_url('admin.php?page=agent-hub')); ?>">Agent Angreessen dashboard</a> to start protecting and monetizing your content.</p>
+                <p>Configure your payment wallet in the <a href="<?php echo esc_url(admin_url('admin.php?page=angreessen49')); ?>">Agent Angreessen dashboard</a> to start protecting and monetizing your content.</p>
             </div>
             <?php
-            delete_option('402links_provisioning_success');
+            delete_option('angreessen49_provisioning_success');
         }
         
         // Show info notice (for already provisioned sites)
-        $info = get_option('402links_provisioning_info');
+        $info = get_option('angreessen49_provisioning_info');
         if ($info) {
             ?>
             <div class="notice notice-info is-dismissible">
                 <p><strong>ℹ️ Agent Angreessen:</strong> <?php echo esc_html($info); ?></p>
             </div>
             <?php
-            delete_option('402links_provisioning_info');
+            delete_option('angreessen49_provisioning_info');
         }
         
         // Show error notice
-        $error = get_option('402links_provisioning_error');
+        $error = get_option('angreessen49_provisioning_error');
         if ($error) {
             ?>
             <div class="notice notice-error is-dismissible">
@@ -45,7 +45,7 @@ class Admin {
                 <p>You can manually register at <a href="https://402links.com" target="_blank">402links.com</a> or contact support for assistance.</p>
             </div>
             <?php
-            delete_option('402links_provisioning_error');
+            delete_option('angreessen49_provisioning_error');
         }
     }
     
@@ -53,29 +53,29 @@ class Admin {
      * Show setup wizard notice (requires user consent before provisioning)
      */
     public static function show_setup_notice() {
-        if (!get_option('402links_needs_setup')) {
+        if (!get_option('angreessen49_needs_setup')) {
             return;
         }
         
-        $site_id = get_option('402links_site_id');
+        $site_id = get_option('angreessen49_site_id');
         if ($site_id) {
             // Already provisioned, clear flag
-            delete_option('402links_needs_setup');
+            delete_option('angreessen49_needs_setup');
             return;
         }
         
         // Enqueue the setup wizard script
         wp_enqueue_script(
-            'agent-hub-setup-wizard',
-            AGENT_HUB_PLUGIN_URL . 'assets/js/setup-wizard.js',
+            'angreessen49-setup-wizard',
+            ANGREESSEN49_PLUGIN_URL . 'assets/js/setup-wizard.js',
             ['jquery'],
-            AGENT_HUB_VERSION,
+            ANGREESSEN49_VERSION,
             true
         );
         
-        wp_localize_script('agent-hub-setup-wizard', 'angreessenSetup', [
+        wp_localize_script('angreessen49-setup-wizard', 'angreessen49Setup', [
             'ajaxUrl' => admin_url('admin-ajax.php'),
-            'nonce' => wp_create_nonce('angreessen_setup')
+            'nonce' => wp_create_nonce('angreessen49_setup')
         ]);
         
         ?>
@@ -109,7 +109,7 @@ class Admin {
             'Agent Angreessen - Ai Agent Pay Collector',
             'Angreessen',
             'manage_options',
-            'agent-hub',
+            'angreessen49',
             [self::class, 'render_dashboard'],
             'dashicons-shield-alt',
             30
@@ -121,116 +121,107 @@ class Admin {
      * Enqueue admin assets
      */
     public static function enqueue_assets($hook) {
-        if ($hook !== 'toplevel_page_agent-hub') {
+        if ($hook !== 'toplevel_page_angreessen49') {
             return;
         }
         
         wp_enqueue_style(
-            'agent-hub-admin',
-            AGENT_HUB_PLUGIN_URL . 'assets/css/admin.css',
+            'angreessen49-admin',
+            ANGREESSEN49_PLUGIN_URL . 'assets/css/admin.css',
             [],
-            AGENT_HUB_VERSION
+            ANGREESSEN49_VERSION
         );
         
         wp_enqueue_style(
-            'agent-hub-batch-processor',
-            AGENT_HUB_PLUGIN_URL . 'assets/css/batch-processor.css',
+            'angreessen49-batch-processor',
+            ANGREESSEN49_PLUGIN_URL . 'assets/css/batch-processor.css',
             [],
-            AGENT_HUB_VERSION
+            ANGREESSEN49_VERSION
         );
         
         // Feather Icons library (bundled locally)
         wp_enqueue_script(
             'feather-icons',
-            AGENT_HUB_PLUGIN_URL . 'assets/js/vendor/feather.min.js',
+            ANGREESSEN49_PLUGIN_URL . 'assets/js/vendor/feather.min.js',
             [],
-            AGENT_HUB_VERSION,
+            ANGREESSEN49_VERSION,
             true
         );
         
         // Chart.js for Analytics rendering (bundled locally)
         wp_enqueue_script(
             'chartjs',
-            AGENT_HUB_PLUGIN_URL . 'assets/js/vendor/chart.umd.min.js',
+            ANGREESSEN49_PLUGIN_URL . 'assets/js/vendor/chart.umd.min.js',
             [],
-            AGENT_HUB_VERSION,
+            ANGREESSEN49_VERSION,
             true
         );
         
         // Load admin.js first - other scripts depend on it
         wp_enqueue_script(
-            'agent-hub-admin',
-            AGENT_HUB_PLUGIN_URL . 'assets/js/admin.js',
+            'angreessen49-admin',
+            ANGREESSEN49_PLUGIN_URL . 'assets/js/admin.js',
             ['jquery'],
-            AGENT_HUB_VERSION,
+            ANGREESSEN49_VERSION,
             true
         );
         
         // Analytics depends on admin.js being loaded - use filemtime for cache busting
-        $analytics_version = AGENT_HUB_VERSION . '.' . filemtime(AGENT_HUB_PLUGIN_DIR . 'assets/js/analytics.js');
+        $analytics_version = ANGREESSEN49_VERSION . '.' . filemtime(ANGREESSEN49_PLUGIN_DIR . 'assets/js/analytics.js');
         wp_enqueue_script(
-            'agent-hub-analytics',
-            AGENT_HUB_PLUGIN_URL . 'assets/js/analytics.js',
-            ['jquery', 'agent-hub-admin', 'chartjs'],
+            'angreessen49-analytics',
+            ANGREESSEN49_PLUGIN_URL . 'assets/js/analytics.js',
+            ['jquery', 'angreessen49-admin', 'chartjs'],
             $analytics_version,
             true
         );
         
         // Content manager depends on admin.js
         wp_enqueue_script(
-            'agent-hub-content',
-            AGENT_HUB_PLUGIN_URL . 'assets/js/content-manager.js',
-            ['jquery', 'agent-hub-admin'],
-            AGENT_HUB_VERSION,
+            'angreessen49-content',
+            ANGREESSEN49_PLUGIN_URL . 'assets/js/content-manager.js',
+            ['jquery', 'angreessen49-admin'],
+            ANGREESSEN49_VERSION,
             true
         );
         
         // Overview depends on admin.js
         wp_enqueue_script(
-            'agent-hub-overview',
-            AGENT_HUB_PLUGIN_URL . 'assets/js/overview.js',
-            ['jquery', 'agent-hub-admin'],
-            AGENT_HUB_VERSION,
+            'angreessen49-overview',
+            ANGREESSEN49_PLUGIN_URL . 'assets/js/overview.js',
+            ['jquery', 'angreessen49-admin'],
+            ANGREESSEN49_VERSION,
             true
         );
         
         // Contact depends on admin.js
         wp_enqueue_script(
-            'agent-hub-contact',
-            AGENT_HUB_PLUGIN_URL . 'assets/js/contact.js',
-            ['jquery', 'agent-hub-admin'],
-            AGENT_HUB_VERSION,
+            'angreessen49-contact',
+            ANGREESSEN49_PLUGIN_URL . 'assets/js/contact.js',
+            ['jquery', 'angreessen49-admin'],
+            ANGREESSEN49_VERSION,
             true
         );
         
         // Violations depends on admin.js
         wp_enqueue_script(
-            'agent-hub-violations',
-            AGENT_HUB_PLUGIN_URL . 'assets/js/violations.js',
-            ['jquery', 'agent-hub-admin'],
-            AGENT_HUB_VERSION,
+            'angreessen49-violations',
+            ANGREESSEN49_PLUGIN_URL . 'assets/js/violations.js',
+            ['jquery', 'angreessen49-admin'],
+            ANGREESSEN49_VERSION,
             true
         );
         
         // Batch processor depends on admin.js
         wp_enqueue_script(
-            'agent-hub-batch-processor',
-            AGENT_HUB_PLUGIN_URL . 'assets/js/batch-processor.js',
-            ['jquery', 'agent-hub-admin'],
-            AGENT_HUB_VERSION,
+            'angreessen49-batch-processor',
+            ANGREESSEN49_PLUGIN_URL . 'assets/js/batch-processor.js',
+            ['jquery', 'angreessen49-admin'],
+            ANGREESSEN49_VERSION,
             true
         );
         
-        wp_localize_script('agent-hub-admin', 'agentHubData', [
-            'ajaxUrl' => admin_url('admin-ajax.php'),
-            'nonce' => wp_create_nonce('agent_hub_nonce'),
-            'siteUrl' => get_site_url(),
-            'siteName' => get_bloginfo('name'),
-            'siteId' => get_option('402links_site_id'),
-            'pluginUrl' => AGENT_HUB_PLUGIN_URL,
-            'supabaseUrl' => 'https://cnionwnknwnzpwfuacse.supabase.co',
-            'supabaseAnonKey' => 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNuaW9ud25rbnduenB3ZnVhY3NlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzODQ5NTAsImV4cCI6MjA3NDk2MDk1MH0.vgBlogXLSPd5AA_nt6ISv69xrMa4a--__EXdWgI79Dc'
-        ]);
+        self::localize_angreessen49_data('angreessen49-admin');
     }
     
     /**
@@ -243,62 +234,62 @@ class Admin {
         }
         
         wp_enqueue_style(
-            'agent-hub-meta-box',
-            AGENT_HUB_PLUGIN_URL . 'assets/css/meta-box.css',
+            'angreessen49-meta-box',
+            ANGREESSEN49_PLUGIN_URL . 'assets/css/meta-box.css',
             [],
-            AGENT_HUB_VERSION
+            ANGREESSEN49_VERSION
         );
         
         wp_enqueue_script(
-            'agent-hub-meta-box',
-            AGENT_HUB_PLUGIN_URL . 'assets/js/meta-box.js',
+            'angreessen49-meta-box',
+            ANGREESSEN49_PLUGIN_URL . 'assets/js/meta-box.js',
             ['jquery'],
-            AGENT_HUB_VERSION,
+            ANGREESSEN49_VERSION,
             true
         );
         
-        self::localize_agent_hub_data('agent-hub-meta-box');
+        self::localize_angreessen49_data('angreessen49-meta-box');
     }
     
     /**
      * Enqueue violations page assets
      */
     public static function enqueue_violations_page_assets($hook) {
-        if ($hook !== 'toplevel_page_agent-hub') {
+        if ($hook !== 'toplevel_page_angreessen49') {
             return;
         }
         
         wp_enqueue_style(
-            'agent-hub-violations-page',
-            AGENT_HUB_PLUGIN_URL . 'assets/css/violations-page.css',
+            'angreessen49-violations-page',
+            ANGREESSEN49_PLUGIN_URL . 'assets/css/violations-page.css',
             [],
-            AGENT_HUB_VERSION
+            ANGREESSEN49_VERSION
         );
         
         wp_enqueue_script(
-            'agent-hub-violations-page',
-            AGENT_HUB_PLUGIN_URL . 'assets/js/violations-page.js',
+            'angreessen49-violations-page',
+            ANGREESSEN49_PLUGIN_URL . 'assets/js/violations-page.js',
             ['jquery'],
-            AGENT_HUB_VERSION,
+            ANGREESSEN49_VERSION,
             true
         );
         
-        self::localize_agent_hub_data('agent-hub-violations-page');
+        self::localize_angreessen49_data('angreessen49-violations-page');
     }
     
     /**
-     * Localize agentHubData for scripts
+     * Localize angreessen49Data for scripts
      * 
      * @param string $handle Script handle to attach data to
      */
-    private static function localize_agent_hub_data($handle) {
-        wp_localize_script($handle, 'agentHubData', [
+    private static function localize_angreessen49_data($handle) {
+        wp_localize_script($handle, 'angreessen49Data', [
             'ajaxUrl' => admin_url('admin-ajax.php'),
-            'nonce' => wp_create_nonce('agent_hub_nonce'),
+            'nonce' => wp_create_nonce('angreessen49_nonce'),
             'siteUrl' => get_site_url(),
             'siteName' => get_bloginfo('name'),
-            'siteId' => get_option('402links_site_id'),
-            'pluginUrl' => AGENT_HUB_PLUGIN_URL,
+            'siteId' => get_option('angreessen49_site_id'),
+            'pluginUrl' => ANGREESSEN49_PLUGIN_URL,
             'apiEndpoint' => 'https://api.402links.com/v1'
         ]);
     }
@@ -311,7 +302,7 @@ class Admin {
             return;
         }
         
-        include AGENT_HUB_PLUGIN_DIR . 'templates/settings-page.php';
+        include ANGREESSEN49_PLUGIN_DIR . 'templates/settings-page.php';
     }
     
     /**
@@ -319,7 +310,7 @@ class Admin {
      */
     public static function add_meta_box() {
         add_meta_box(
-            'agent-hub-meta-box',
+            'angreessen49-meta-box',
             '402links Agent Protection',
             [self::class, 'render_meta_box'],
             ['post', 'page'],
@@ -335,23 +326,23 @@ class Admin {
      */
     public static function render_meta_box($post) {
         // Add nonce field for CSRF protection
-        wp_nonce_field('402links_save_meta_' . $post->ID, '402links_meta_nonce');
+        wp_nonce_field('angreessen49_save_meta_' . $post->ID, 'angreessen49_meta_nonce');
         
-        include AGENT_HUB_PLUGIN_DIR . 'templates/meta-box.php';
+        include ANGREESSEN49_PLUGIN_DIR . 'templates/meta-box.php';
     }
     
     /**
      * AJAX: Save settings
      */
     public static function ajax_save_settings() {
-        check_ajax_referer('agent_hub_nonce', 'nonce');
+        check_ajax_referer('angreessen49_nonce', 'nonce');
         
         if (!current_user_can('manage_options')) {
             wp_send_json_error(['message' => 'Unauthorized']);
         }
         
         // Get old settings to detect price changes
-        $old_settings = get_option('402links_settings', []);
+        $old_settings = get_option('angreessen49_settings', []);
         
         $settings = [
             'default_price' => floatval($_POST['default_price'] ?? 0.10),
@@ -361,14 +352,14 @@ class Admin {
             'api_endpoint' => sanitize_text_field(wp_unslash($_POST['api_endpoint'] ?? 'https://api.402links.com/v1'))
         ];
         
-        update_option('402links_settings', $settings);
+        update_option('angreessen49_settings', $settings);
         
         if (isset($_POST['api_key'])) {
-            update_option('402links_api_key', sanitize_text_field(wp_unslash($_POST['api_key'])));
+            update_option('angreessen49_api_key', sanitize_text_field(wp_unslash($_POST['api_key'])));
         }
         
         // Sync default_price and payment_wallet to Supabase registered_sites table
-        $site_id = get_option('402links_site_id');
+        $site_id = get_option('angreessen49_site_id');
         if ($site_id) {
             $api = new API();
             $sync_result = $api->sync_site_settings([
@@ -379,7 +370,7 @@ class Admin {
             // CRITICAL: Store the agent_payment_wallet (splitter address) returned from backend
             // This is the address agents should pay to (99% creator / 1% platform split)
             if (isset($sync_result['data']['agent_payment_wallet'])) {
-                update_option('402links_agent_payment_wallet', $sync_result['data']['agent_payment_wallet']);
+                update_option('angreessen49_agent_payment_wallet', $sync_result['data']['agent_payment_wallet']);
             }
         }
         
@@ -409,13 +400,13 @@ class Admin {
      * AJAX: Check if existing links exist
      */
     public static function ajax_check_existing_links() {
-        check_ajax_referer('agent_hub_nonce', 'nonce');
+        check_ajax_referer('angreessen49_nonce', 'nonce');
         
         if (!current_user_can('manage_options')) {
             wp_send_json_error(['message' => 'Unauthorized']);
         }
         
-        $site_id = get_option('402links_site_id');
+        $site_id = get_option('angreessen49_site_id');
         
         if (!$site_id) {
             wp_send_json_success([
@@ -438,7 +429,7 @@ class Admin {
      * AJAX: Register site
      */
     public static function ajax_register_site() {
-        check_ajax_referer('agent_hub_nonce', 'nonce');
+        check_ajax_referer('angreessen49_nonce', 'nonce');
         
         if (!current_user_can('manage_options')) {
             wp_send_json_error(['message' => 'Unauthorized']);
@@ -449,13 +440,13 @@ class Admin {
         
         if ($result['success']) {
             if (isset($result['site_id'])) {
-                update_option('402links_site_id', $result['site_id']);
+                update_option('angreessen49_site_id', $result['site_id']);
             }
             
             // CRITICAL: Store the agent_payment_wallet from registration response
             // This is the splitter address that agents should pay to
             if (isset($result['agent_payment_wallet'])) {
-                update_option('402links_agent_payment_wallet', $result['agent_payment_wallet']);
+                update_option('angreessen49_agent_payment_wallet', $result['agent_payment_wallet']);
             }
             
             // Auto-generate 402links for all published content
@@ -480,7 +471,7 @@ class Admin {
      * AJAX: Generate link for post
      */
     public static function ajax_generate_link() {
-        check_ajax_referer('agent_hub_nonce', 'nonce');
+        check_ajax_referer('angreessen49_nonce', 'nonce');
         
         if (!current_user_can('edit_posts')) {
             wp_send_json_error(['message' => 'Unauthorized']);
@@ -504,7 +495,7 @@ class Admin {
      * AJAX: Get analytics
      */
     public static function ajax_get_analytics() {
-        check_ajax_referer('agent_hub_nonce', 'nonce');
+        check_ajax_referer('angreessen49_nonce', 'nonce');
         
         if (!current_user_can('manage_options')) {
             wp_send_json_error(['message' => 'Unauthorized']);
@@ -512,284 +503,103 @@ class Admin {
         
         $timeframe = sanitize_text_field(wp_unslash($_POST['timeframe'] ?? '30d'));
         
-        // Check cache first (30 second TTL for better real-time experience)
-        $cache_key = 'agent_hub_analytics_' . $timeframe;
-        $cached = get_transient($cache_key);
-        
-        if ($cached !== false) {
-            wp_send_json_success($cached);
-            return;
-        }
-        
-        // Check for in-flight request (deduplication)
-        $lock_key = 'agent_hub_api_lock_' . $timeframe;
-        if (get_transient($lock_key)) {
-            usleep(500000); // Wait 0.5s for in-flight request
-            $cached = get_transient($cache_key);
-            if ($cached !== false) {
-                wp_send_json_success($cached);
-                return;
-            }
-        }
-        
-        // Set lock to prevent duplicate requests
-        set_transient($lock_key, true, 5);
-        
         $api = new API();
+        $result = $api->get_analytics($timeframe);
         
-        // 🚀 PARALLEL API CALLS - Make both requests simultaneously
-        $site_id = get_option('402links_site_id');
-        $api_endpoint = $api->get_api_endpoint();
-        $api_key = $api->get_api_key();
-        
-        $requests = [
-            'site' => [
-                'url' => $api_endpoint . '/get-site-analytics?site_id=' . $site_id . '&period=' . $timeframe,
-                'type' => 'GET',
-                'timeout' => 8,
-                'headers' => [
-                    'Authorization' => 'Bearer ' . $api_key,
-                    'Content-Type' => 'application/json'
-                ]
-            ],
-            'ecosystem' => [
-                'url' => $api_endpoint . '/wordpress-ecosystem-stats',
-                'type' => 'POST',
-                'timeout' => 8,
-                'data' => ['timeframe' => $timeframe],
-                'headers' => [
-                    'Authorization' => 'Bearer ' . $api_key,
-                    'Content-Type' => 'application/json'
-                ]
-            ]
-        ];
-        
-        // Execute parallel requests
-        $responses = [];
-        foreach ($requests as $key => $config) {
-            $responses[$key] = wp_remote_request($config['url'], [
-                'method' => $config['type'],
-                'headers' => $config['headers'],
-                'body' => isset($config['data']) ? json_encode($config['data']) : null,
-                'timeout' => $config['timeout']
-            ]);
+        if ($result['success']) {
+            wp_send_json_success($result['data']);
+        } else {
+            wp_send_json_error($result);
         }
-        
-        // Process responses
-        $site_result = ['success' => false];
-        if (!is_wp_error($responses['site'])) {
-            $body = json_decode(wp_remote_retrieve_body($responses['site']), true);
-            $site_result = $body ?: ['success' => false];
-        }
-        
-        $ecosystem_result = ['success' => false];
-        if (!is_wp_error($responses['ecosystem'])) {
-            $body = json_decode(wp_remote_retrieve_body($responses['ecosystem']), true);
-            $ecosystem_result = $body ?: ['success' => false];
-        }
-        
-        if (($site_result['success'] ?? false) || ($ecosystem_result['success'] ?? false)) {
-            // Add cache-busting headers
-            header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-            header('Pragma: no-cache');
-            header('Expires: 0');
-            
-            // Normalize shapes to avoid collisions (note key names!)
-            $site_data = $site_result['data'] ?? $site_result ?? [];
-            $ecosystem_data = $ecosystem_result['data'] ?? $ecosystem_result ?? [];
-            
-            // Extract metrics safely - tolerate both nested and flat structures
-            $site_metrics = $site_data['metrics'] ?? $site_data;
-            
-            // Count protected pages with 5-minute cache
-            // FIXED: Use _402links_short_id (not _402links_id) and require non-empty value
-            $pages_cache_key = 'agent_hub_protected_pages_count';
-            $protected_pages_count = get_transient($pages_cache_key);
-            
-            if ($protected_pages_count === false) {
-                global $wpdb;
-                // Use _402links_short_id as source of truth for protection status
-                // Only count posts with non-empty short_id values
-                // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Complex JOIN for dashboard stats, short cache TTL makes caching less valuable
-                $protected_pages_count = $wpdb->get_var("
-                    SELECT COUNT(DISTINCT p.ID) 
-                    FROM {$wpdb->posts} p
-                    INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
-                    WHERE p.post_status = 'publish'
-                    AND p.post_type IN ('post', 'page')
-                    AND pm.meta_key = '_402links_short_id'
-                    AND pm.meta_value != ''
-                    AND pm.meta_value IS NOT NULL
-                ");
-                $protected_pages_count = intval($protected_pages_count);
-                set_transient($pages_cache_key, $protected_pages_count, 300); // 5 min cache
-            }
-            
-            $final_response = [
-                'site' => [
-                    // Site-only metrics (from /get-site-analytics)
-                    'total_crawls'   => $site_metrics['total_crawls']   ?? 0,
-                    'paid_crawls'    => $site_metrics['paid_crawls']    ?? 0,
-                    'unpaid_crawls'  => $site_metrics['unpaid_crawls']  ?? 0,
-                    'total_revenue'  => $site_metrics['total_revenue']  ?? 0.0,
-                    'conversion_rate'=> $site_metrics['conversion_rate']?? 0.0,
-                    'protected_pages'=> ($protected_pages_count > 0) ? $protected_pages_count : ($site_metrics['protected_pages'] ?? 0),
-                    // Keep bucket for charts if endpoint returns it
-                    'bucketed_data'  => $site_data['bucketed_data']  ?? []
-                ],
-                'ecosystem' => [
-                    // Global metrics (from /wordpress-ecosystem-stats)
-                    'total_transactions' => $ecosystem_data['total_transactions'] ?? 0,
-                    'unique_buyers'      => $ecosystem_data['unique_buyers']      ?? 0,
-                    'unique_sellers'     => $ecosystem_data['unique_sellers']     ?? 0,
-                    'total_amount'       => $ecosystem_data['total_amount']       ?? 0.0,
-                    'bucketed_data'      => $ecosystem_data['bucketed_data']      ?? []
-                ]
-            ];
-            
-            // Cache the response for 30 seconds (better real-time experience)
-            set_transient($cache_key, $final_response, 30);
-            
-            // Release lock
-            delete_transient($lock_key);
-            
-            wp_send_json_success($final_response);
-        }
-        
-        // If both failed, release lock
-        delete_transient($lock_key);
-        $site_err = $site_result['error'] ?? $site_result['message'] ?? 'unknown';
-        $eco_err  = $ecosystem_result['error'] ?? $ecosystem_result['message'] ?? 'unknown';
-        wp_send_json_error(['message' => "Site analytics: $site_err | Ecosystem stats: $eco_err"]);
     }
     
     /**
-     * AJAX: Get content list (LOCAL ONLY - no blocking external API calls)
-     * Analytics are fetched separately via ajax_get_content_analytics()
+     * AJAX: Get content list
      */
     public static function ajax_get_content() {
-        check_ajax_referer('agent_hub_nonce', 'nonce');
+        check_ajax_referer('angreessen49_nonce', 'nonce');
         
-        if (!current_user_can('edit_posts')) {
+        if (!current_user_can('manage_options')) {
             wp_send_json_error(['message' => 'Unauthorized']);
         }
         
-        // Get pagination params
-        $page = isset($_POST['page']) ? intval($_POST['page']) : 1;
-        $per_page = isset($_POST['per_page']) ? intval($_POST['per_page']) : 20;
-        $offset = ($page - 1) * $per_page;
+        $page = intval($_POST['page'] ?? 1);
+        $per_page = intval($_POST['per_page'] ?? 20);
         
-        // Get total count first
-        $total_posts = wp_count_posts('post')->publish;
-        $total_pages = ceil($total_posts / $per_page);
-        
-        // Get paginated posts (LOCAL ONLY - no external API calls)
-        $posts = get_posts([
-            'post_type' => 'post',
+        $args = [
+            'post_type' => ['post', 'page'],
             'post_status' => 'publish',
             'posts_per_page' => $per_page,
-            'offset' => $offset,
+            'paged' => $page,
             'orderby' => 'date',
             'order' => 'DESC'
-        ]);
+        ];
         
-        // Prime the meta cache for all posts in ONE query (reduces 80+ queries to 1)
-        $post_ids = wp_list_pluck($posts, 'ID');
-        update_postmeta_cache($post_ids);
+        $query = new \WP_Query($args);
+        $content = [];
         
-        // Get default price from settings
-        $settings = get_option('402links_settings', []);
-        $default_price = $settings['default_price'] ?? 0.10;
-        
-        $content_list = [];
-        foreach ($posts as $post) {
-            $post_id = $post->ID;
+        foreach ($query->posts as $post) {
+            $link_id = get_post_meta($post->ID, '_angreessen49_link_id', true);
+            $link_url = get_post_meta($post->ID, '_angreessen49_url', true);
+            $short_id = get_post_meta($post->ID, '_angreessen49_short_id', true);
+            $price = get_post_meta($post->ID, '_angreessen49_price', true);
+            $block_humans = get_post_meta($post->ID, '_angreessen49_block_humans', true);
             
-            // These are now cache hits (no additional DB queries)
-            $link_id = get_post_meta($post_id, '_402links_id', true);
-            $link_url = get_post_meta($post_id, '_402links_url', true);
-            $price = get_post_meta($post_id, '_402links_price', true);
-            $block_humans = get_post_meta($post_id, '_402links_block_humans', true);
+            $settings = get_option('angreessen49_settings', []);
+            $default_price = $settings['default_price'] ?? 0.10;
             
-            $content_list[] = [
-                'id' => $post_id,
-                'title' => html_entity_decode($post->post_title, ENT_QUOTES | ENT_HTML5, 'UTF-8'),
-                'url' => get_permalink($post_id),
+            $content[] = [
+                'id' => $post->ID,
+                'title' => $post->post_title,
                 'type' => $post->post_type,
-                'link_id' => $link_id,
-                'link_url' => $link_url,
-                'price' => $price ?: $default_price,
+                'url' => get_permalink($post->ID),
                 'has_link' => !empty($link_id),
-                'crawls' => 0,  // Loaded async via separate endpoint
-                'revenue' => 0, // Loaded async via separate endpoint
-                'published' => $post->post_date,
-                'block_humans' => (bool)$block_humans
+                'link_url' => $link_url,
+                'short_id' => $short_id,
+                'price' => !empty($price) ? floatval($price) : floatval($default_price),
+                'block_humans' => $block_humans === '1' || $block_humans === 1,
+                'paid_link' => $short_id ? 'https://402links.com/p/' . $short_id : null,
+                'human_paid_link' => $short_id ? 'https://402links.com/p/' . $short_id : null
             ];
         }
         
         wp_send_json_success([
-            'content' => $content_list,
+            'content' => $content,
             'pagination' => [
                 'current_page' => $page,
-                'total_pages' => $total_pages,
-                'total_posts' => $total_posts,
-                'per_page' => $per_page
+                'total_pages' => $query->max_num_pages,
+                'total_posts' => $query->found_posts
             ]
         ]);
     }
     
     /**
-     * AJAX: Get content analytics (async, non-blocking)
-     * Called separately after content loads for performance
+     * AJAX: Toggle human access
      */
-    public static function ajax_get_content_analytics() {
-        check_ajax_referer('agent_hub_nonce', 'nonce');
+    public static function ajax_toggle_human_access() {
+        check_ajax_referer('angreessen49_nonce', 'nonce');
         
         if (!current_user_can('edit_posts')) {
             wp_send_json_error(['message' => 'Unauthorized']);
         }
         
-        $site_id = get_option('402links_site_id');
-        if (!$site_id) {
-            wp_send_json_success(['page_stats' => []]);
-            return;
+        $post_id = intval($_POST['post_id'] ?? 0);
+        $block_humans = $_POST['block_humans'] === 'true' ? '1' : '0';
+        
+        if (!$post_id) {
+            wp_send_json_error(['message' => 'Invalid post ID']);
         }
         
-        // Check transient cache first (5 minute TTL)
-        $cache_key = 'agent_hub_page_analytics_' . $site_id;
-        $cached = get_transient($cache_key);
-        if ($cached !== false) {
-            wp_send_json_success(['page_stats' => $cached]);
-            return;
-        }
+        update_post_meta($post_id, '_angreessen49_block_humans', $block_humans);
         
-        // Fetch from API (this can take time, but content is already displayed)
-        $api = new API();
-        $result = $api->get_pages_analytics($site_id);
-        
-        $page_stats = [];
-        if ($result['success'] && isset($result['data']['pages'])) {
-            foreach ($result['data']['pages'] as $page_data) {
-                $wp_post_id = $page_data['wordpress_post_id'] ?? null;
-                if ($wp_post_id) {
-                    $page_stats[$wp_post_id] = [
-                        'crawls' => intval($page_data['crawls'] ?? 0),
-                        'revenue' => floatval($page_data['revenue'] ?? 0)
-                    ];
-                }
-            }
-            // Cache for 5 minutes
-            set_transient($cache_key, $page_stats, 300);
-        }
-        
-        wp_send_json_success(['page_stats' => $page_stats]);
+        wp_send_json_success(['message' => 'Human access updated']);
     }
     
     /**
-     * AJAX: Save wallet address
+     * AJAX: Save wallet configuration
      */
     public static function ajax_save_wallet() {
-        check_ajax_referer('agent_hub_nonce', 'nonce');
+        check_ajax_referer('angreessen49_nonce', 'nonce');
         
         if (!current_user_can('manage_options')) {
             wp_send_json_error(['message' => 'Unauthorized']);
@@ -798,389 +608,98 @@ class Admin {
         $wallet = sanitize_text_field(wp_unslash($_POST['wallet'] ?? ''));
         $default_price = floatval($_POST['default_price'] ?? 0.10);
         
-        if (empty($wallet)) {
-            wp_send_json_error(['message' => 'Wallet address is required']);
-        }
-        
-        // Enhanced validation: Check Ethereum/Base address format
-        if (!preg_match('/^0x[a-fA-F0-9]{40}$/', $wallet)) {
-            wp_send_json_error([
-                'message' => 'Invalid wallet address format. Must be a valid Ethereum/Base address (0x + 40 hex characters)',
-                'sync_success' => false
-            ]);
-        }
-        
-        // Save locally first
-        $settings = get_option('402links_settings', []);
+        $settings = get_option('angreessen49_settings', []);
         $settings['payment_wallet'] = $wallet;
         $settings['default_price'] = $default_price;
-        update_option('402links_settings', $settings);
         
-        // CHECK IF SITE IS PROVISIONED
-        $site_id = get_option('402links_site_id');
-        $api_key = get_option('402links_api_key');
+        update_option('angreessen49_settings', $settings);
         
-        // SCENARIO 1: Site not provisioned at all
-        if (!$site_id) {
-            // Trigger auto-provisioning
-            Installer::activate();
+        // Sync to backend
+        $site_id = get_option('angreessen49_site_id');
+        $sync_success = false;
+        $sync_error = '';
+        
+        if ($site_id) {
+            $api = new API();
+            $sync_result = $api->sync_site_settings([
+                'default_price' => $default_price,
+                'payment_wallet' => $wallet
+            ]);
             
-            // Wait a moment for provisioning to complete
-            sleep(2);
+            $sync_success = $sync_result['success'] ?? false;
+            $sync_error = $sync_result['error'] ?? '';
             
-            // Re-check if provisioning succeeded
-            $site_id = get_option('402links_site_id');
-            $api_key = get_option('402links_api_key');
-            
-            if (!$site_id) {
-                $provision_error = get_option('402links_provisioning_error', 'Auto-provisioning failed');
-                
-                wp_send_json_success([
-                    'message' => 'Configuration saved locally',
-                    'sync_success' => false,
-                    'sync_error' => 'Site registration pending. ' . $provision_error,
-                    'wallet' => $wallet
-                ]);
-                return;
+            if (isset($sync_result['data']['agent_payment_wallet'])) {
+                update_option('angreessen49_agent_payment_wallet', $sync_result['data']['agent_payment_wallet']);
             }
-        }
-        
-        // SCENARIO 2: Site provisioned but no API key
-        if (!$api_key) {
-            wp_send_json_success([
-                'message' => 'Configuration saved locally',
-                'sync_success' => false,
-                'sync_error' => 'Site registered but API key is missing. Please contact support.',
-                'wallet' => $wallet
-            ]);
-            return;
-        }
-        
-        // SCENARIO 3: Everything is ready - sync to backend
-        $api = new API();
-        $result = $api->sync_site_settings([
-            'default_price' => $default_price,
-            'payment_wallet' => $wallet
-        ]);
-        
-        // Store the agent_payment_wallet (splitter address) returned from backend
-        // This ensures reinstallations get the correct payment address
-        if (isset($result['data']['agent_payment_wallet']) && !empty($result['data']['agent_payment_wallet'])) {
-            update_option('402links_agent_payment_wallet', $result['data']['agent_payment_wallet']);
-        }
-        
-        if ($result['success']) {
-            $links_updated = $result['links_updated'] ?? 0;
-            $message = $links_updated > 0 
-                ? "Configuration saved and synced successfully. Automatically updated prices for {$links_updated} existing link(s) to \${$default_price}."
-                : 'Configuration saved and synced successfully.';
-            
-            wp_send_json_success([
-                'message' => $message,
-                'sync_success' => true,
-                'wallet' => $wallet,
-                'links_updated' => $links_updated
-            ]);
         } else {
-            $sync_error = $result['error'] ?? 'Unknown sync error';
-            
-            wp_send_json_success([
-                'message' => 'Configuration saved locally',
-                'sync_success' => false,
-                'sync_error' => $sync_error,
-                'wallet' => $wallet
-            ]);
+            $sync_error = 'Site not provisioned';
         }
-    }
-    
-    /**
-     * AJAX: Toggle human access for a post
-     */
-    public static function ajax_toggle_human_access() {
-        check_ajax_referer('agent_hub_nonce', 'nonce');
-        
-        if (!current_user_can('edit_posts')) {
-            wp_send_json_error(['message' => 'Unauthorized']);
-        }
-        
-        $post_id = intval($_POST['post_id'] ?? 0);
-        $block_humans = isset($_POST['block_humans']) && $_POST['block_humans'] === 'true';
-        
-        if (!$post_id) {
-            wp_send_json_error(['message' => 'Invalid post ID']);
-        }
-        
-        update_post_meta($post_id, '_402links_block_humans', $block_humans);
         
         wp_send_json_success([
-            'message' => 'Human access updated',
-            'block_humans' => $block_humans
+            'message' => 'Configuration saved',
+            'sync_success' => $sync_success,
+            'sync_error' => $sync_error
         ]);
     }
     
     /**
-     * AJAX: Get top performing pages
+     * AJAX: Get rogue agents
      */
-    public static function ajax_get_top_pages() {
-        check_ajax_referer('agent_hub_nonce', 'nonce');
+    public static function ajax_get_rogue_agents() {
+        check_ajax_referer('angreessen49_nonce', 'nonce');
         
         if (!current_user_can('manage_options')) {
             wp_send_json_error(['message' => 'Unauthorized']);
         }
         
         $timeframe = sanitize_text_field(wp_unslash($_POST['timeframe'] ?? '30d'));
-        $limit = intval($_POST['limit'] ?? 10);
-        $offset = intval($_POST['offset'] ?? 0);
-        
-        $site_id = get_option('402links_site_id');
         
         $api = new API();
-        $result = $api->get_top_pages($timeframe, $limit, $offset);
+        $result = $api->get_rogue_agents($timeframe);
         
         if ($result['success']) {
-            wp_send_json_success($result);
+            wp_send_json_success($result['data']);
         } else {
             wp_send_json_error($result);
         }
     }
     
     /**
-     * AJAX: Bulk generate links
+     * AJAX: Get violations
      */
-    public static function ajax_bulk_generate() {
-        check_ajax_referer('agent_hub_nonce', 'nonce');
+    public static function ajax_get_violations() {
+        check_ajax_referer('angreessen49_nonce', 'nonce');
         
-        if (!current_user_can('edit_posts')) {
+        if (!current_user_can('manage_options')) {
             wp_send_json_error(['message' => 'Unauthorized']);
         }
         
-        // Generate for all published posts
-        $result = ContentSync::bulk_sync_all();
-        
-        if ($result['created'] > 0 || $result['updated'] > 0) {
-            $message = sprintf(
-                'Successfully generated %d new links and updated %d existing links.',
-                $result['created'],
-                $result['updated']
-            );
-            
-            if ($result['failed'] > 0) {
-                $message .= sprintf(' %d failed.', $result['failed']);
-            }
-            
-            wp_send_json_success([
-                'message' => $message,
-                'stats' => $result
-            ]);
-        } else {
-            wp_send_json_error([
-                'message' => 'No links were generated. Please check your content.',
-                'errors' => $result['errors'] ?? []
-            ]);
-        }
-    }
-    
-    /**
-     * AJAX: Start batch generation
-     */
-    public static function ajax_start_batch_generation() {
-        check_ajax_referer('agent_hub_nonce', 'nonce');
-        
-        if (!current_user_can('edit_posts')) {
-            wp_send_json_error(['message' => 'Unauthorized']);
-        }
-        
-        // REMOVED: repair_existing_links() was causing 30-60s delay before batch start
-        // Use manual "Repair Links" button if WordPress meta needs syncing
-        
-        $progress = BatchProcessor::start_batch();
-        wp_send_json_success($progress);
-    }
-    
-    /**
-     * Repair existing links that have short_id in database but missing WordPress meta
-     */
-    private static function repair_existing_links() {
-        global $wpdb;
-        
-        $site_id = get_option('402links_site_id');
-        if (!$site_id) {
-            return;
-        }
-        
-        // Query Supabase to get all existing links for this site
         $api = new API();
-        $response = $api->get_site_pages_with_links($site_id);
-        
-        if (!($response['success'] ?? false)) {
-            return;
-        }
-        
-        $links = $response['links'] ?? [];
-        $repaired_count = 0;
-        
-        // Update WordPress post meta for each existing link
-        foreach ($links as $link) {
-            $post_id = $link['wordpress_post_id'] ?? null;
-            $link_id = $link['link_id'] ?? null;
-            $short_id = $link['short_id'] ?? null;
-            $link_url = $link['link_url'] ?? null;
-            
-            if (!$post_id || !$link_id || !$short_id || !$link_url) {
-                continue;
-            }
-            
-            // Check if WordPress post meta is missing or incorrect
-            $existing_url = get_post_meta($post_id, '_402links_url', true);
-            
-            if (empty($existing_url) || $existing_url !== $link_url) {
-                // Update WordPress post meta
-                update_post_meta($post_id, '_402links_id', $link_id);
-                update_post_meta($post_id, '_402links_short_id', $short_id);
-                update_post_meta($post_id, '_402links_url', $link_url);
-                
-                $repaired_count++;
-            }
-        }
-    }
-    
-    /**
-     * AJAX: Process next batch
-     */
-    public static function ajax_process_batch() {
-        check_ajax_referer('agent_hub_nonce', 'nonce');
-        
-        if (!current_user_can('edit_posts')) {
-            wp_send_json_error(['message' => 'Unauthorized']);
-        }
-        
-        $result = BatchProcessor::process_next_batch();
+        $result = $api->get_violations();
         
         if ($result['success']) {
-            // Extract progress from nested structure for consistency with start_batch
-            $progress = $result['progress'] ?? $result;
-            
-            wp_send_json_success($progress);  // Return progress directly like start_batch
+            wp_send_json_success($result['data']);
         } else {
             wp_send_json_error($result);
         }
-    }
-    
-    /**
-     * AJAX: Get batch status
-     */
-    public static function ajax_get_batch_status() {
-        check_ajax_referer('agent_hub_nonce', 'nonce');
-        
-        $status = BatchProcessor::get_status();
-        wp_send_json_success($status);
     }
     
     /**
      * AJAX: Get violations summary
      */
     public static function ajax_get_violations_summary() {
-        check_ajax_referer('agent_hub_nonce', 'nonce');
+        check_ajax_referer('angreessen49_nonce', 'nonce');
         
         if (!current_user_can('manage_options')) {
             wp_send_json_error(['message' => 'Unauthorized']);
-            return;
         }
         
         $api = new API();
         $result = $api->get_violations_summary();
         
         if ($result['success']) {
-            // Extract agents and totals from flat result structure
-            $response_data = [
-                'agents' => $result['agents'] ?? [],
-                'totals' => $result['totals'] ?? []
-            ];
-            
-            wp_send_json_success($response_data);
-        } else {
-            wp_send_json_error([
-                'message' => $result['error'] ?? 'Failed to fetch violations data'
-            ]);
-        }
-    }
-    
-    /**
-     * AJAX: Cancel batch
-     */
-    public static function ajax_cancel_batch() {
-        check_ajax_referer('agent_hub_nonce', 'nonce');
-        
-        $result = BatchProcessor::cancel_batch();
-        wp_send_json_success($result);
-    }
-    
-    /**
-     * AJAX: Check wallet sync status
-     * Returns whether the current wallet is already synced to Supabase
-     */
-    public static function ajax_check_wallet_sync_status() {
-        check_ajax_referer('agent_hub_nonce', 'nonce');
-        
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(['message' => 'Unauthorized']);
-        }
-        
-        $settings = get_option('402links_settings', []);
-        $local_wallet = $settings['payment_wallet'] ?? '';
-        $site_id = get_option('402links_site_id');
-        
-        if (!$site_id || !$local_wallet) {
-            wp_send_json_success([
-                'synced' => false,
-                'wallet' => $local_wallet,
-                'reason' => 'no_site_or_wallet'
-            ]);
-            return;
-        }
-        
-        // Check if wallet matches what's in Supabase
-        $api = new API();
-        $result = $api->get_site_info($site_id);
-        
-        if ($result['success'] && isset($result['data']['agent_payment_wallet'])) {
-            $remote_wallet = strtolower($result['data']['agent_payment_wallet'] ?? '');
-            $is_synced = (strtolower($local_wallet) === $remote_wallet);
-            
-            wp_send_json_success([
-                'synced' => $is_synced,
-                'wallet' => $local_wallet,
-                'remote_wallet' => $result['data']['agent_payment_wallet']
-            ]);
-        } else {
-            wp_send_json_success([
-                'synced' => false,
-                'wallet' => $local_wallet,
-                'reason' => 'api_error'
-            ]);
-        }
-    }
-    
-    /**
-     * AJAX: Get agent violations
-     */
-    public static function ajax_get_violations() {
-        check_ajax_referer('agent_hub_nonce', 'nonce');
-        
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(['message' => 'Unauthorized']);
-        }
-        
-        $site_id = get_option('402links_site_id');
-        if (!$site_id) {
-            wp_send_json_error(['message' => 'Site not registered']);
-        }
-        
-        $api = new API();
-        $result = $api->get_violations($site_id);
-        
-        if ($result['success']) {
-            wp_send_json_success($result);
+            wp_send_json_success($result['data']);
         } else {
             wp_send_json_error($result);
         }
@@ -1190,19 +709,75 @@ class Admin {
      * AJAX: Get site bot policies
      */
     public static function ajax_get_site_bot_policies() {
-        check_ajax_referer('agent_hub_nonce', 'nonce');
+        check_ajax_referer('angreessen49_nonce', 'nonce');
         
         if (!current_user_can('manage_options')) {
             wp_send_json_error(['message' => 'Unauthorized']);
         }
         
-        $site_id = get_option('402links_site_id');
-        if (!$site_id) {
-            wp_send_json_error(['message' => 'Site not registered']);
+        $api = new API();
+        $result = $api->get_site_bot_policies();
+        
+        if ($result['success']) {
+            wp_send_json_success($result['data']);
+        } else {
+            wp_send_json_error($result);
+        }
+    }
+    
+    /**
+     * AJAX: Save site bot policies
+     */
+    public static function ajax_save_site_bot_policies() {
+        check_ajax_referer('angreessen49_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Unauthorized']);
+        }
+        
+        $policies = isset($_POST['policies']) ? json_decode(stripslashes($_POST['policies']), true) : [];
+        
+        $api = new API();
+        $result = $api->save_site_bot_policies($policies);
+        
+        if ($result['success']) {
+            wp_send_json_success($result['data']);
+        } else {
+            wp_send_json_error($result);
+        }
+    }
+    
+    /**
+     * AJAX: Get content analytics
+     */
+    public static function ajax_get_content_analytics() {
+        check_ajax_referer('angreessen49_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Unauthorized']);
         }
         
         $api = new API();
-        $result = $api->get_site_bot_policies($site_id);
+        $result = $api->get_content_analytics();
+        
+        if ($result['success']) {
+            wp_send_json_success($result['data']);
+        } else {
+            wp_send_json_error($result);
+        }
+    }
+    
+    /**
+     * AJAX: Start batch generation
+     */
+    public static function ajax_start_batch_generation() {
+        check_ajax_referer('angreessen49_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Unauthorized']);
+        }
+        
+        $result = BatchProcessor::start_batch();
         
         if ($result['success']) {
             wp_send_json_success($result);
@@ -1212,36 +787,16 @@ class Admin {
     }
     
     /**
-     * AJAX: Update site bot policies
+     * AJAX: Process batch
      */
-    public static function ajax_update_site_bot_policies() {
-        check_ajax_referer('agent_hub_nonce', 'nonce');
+    public static function ajax_process_batch() {
+        check_ajax_referer('angreessen49_nonce', 'nonce');
         
         if (!current_user_can('manage_options')) {
             wp_send_json_error(['message' => 'Unauthorized']);
         }
         
-        $site_id = get_option('402links_site_id');
-        if (!$site_id) {
-            wp_send_json_error(['message' => 'Site not registered']);
-        }
-        
-        // Sanitize policies array input
-        $policies = [];
-        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized in loop below
-        $raw_policies = isset($_POST['policies']) && is_array($_POST['policies']) ? wp_unslash($_POST['policies']) : [];
-        foreach ($raw_policies as $key => $value) {
-            if (is_string($key) && is_string($value)) {
-                $policies[sanitize_key($key)] = sanitize_text_field($value);
-            }
-        }
-        
-        if (empty($policies)) {
-            wp_send_json_error(['message' => 'No policies provided']);
-        }
-        
-        $api = new API();
-        $result = $api->update_site_bot_policies($site_id, $policies);
+        $result = BatchProcessor::process_next_batch();
         
         if ($result['success']) {
             wp_send_json_success($result);
@@ -1251,29 +806,17 @@ class Admin {
     }
     
     /**
-     * AJAX handler for completing setup (triggers provisioning)
+     * AJAX: Cancel batch
      */
-    public static function ajax_complete_setup() {
-        check_ajax_referer('angreessen_setup', 'nonce');
+    public static function ajax_cancel_batch() {
+        check_ajax_referer('angreessen49_nonce', 'nonce');
         
         if (!current_user_can('manage_options')) {
             wp_send_json_error(['message' => 'Unauthorized']);
         }
         
-        // Trigger provisioning
-        require_once AGENT_HUB_PLUGIN_DIR . 'includes/Installer.php';
-        $result = Installer::manual_provision();
+        BatchProcessor::cancel_batch();
         
-        if ($result['success']) {
-            delete_option('402links_needs_setup');
-            wp_send_json_success([
-                'site_id' => $result['site_id'],
-                'message' => 'Setup completed successfully'
-            ]);
-        } else {
-            wp_send_json_error([
-                'message' => $result['error'] ?? 'Unknown error'
-            ]);
-        }
+        wp_send_json_success(['message' => 'Batch cancelled']);
     }
 }

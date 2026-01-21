@@ -1,20 +1,20 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
 
-$agent_hub_settings = get_option('402links_settings');
-$agent_hub_api_key = get_option('402links_api_key');
-$agent_hub_site_id = get_option('402links_site_id');
-$agent_hub_is_connected = !empty($agent_hub_api_key) && !empty($agent_hub_site_id);
+$angreessen49_settings = get_option('angreessen49_settings');
+$angreessen49_api_key = get_option('angreessen49_api_key');
+$angreessen49_site_id = get_option('angreessen49_site_id');
+$angreessen49_is_connected = !empty($angreessen49_api_key) && !empty($angreessen49_site_id);
 ?>
 
-<div class="wrap agent-hub-dashboard">
+<div class="wrap angreessen49-dashboard">
     <!-- Modern Header -->
     <div class="angreessen-header">
         <header class="angreessen-header-inner">
             <!-- Brand Section -->
             <div class="header-brand">
                 <div class="brand-logo-wrapper">
-                    <img src="<?php echo esc_url(AGENT_HUB_PLUGIN_URL . 'assets/images/angreessen-logo.png'); ?>" 
+                    <img src="<?php echo esc_url(ANGREESSEN49_PLUGIN_URL . 'assets/images/angreessen-logo.png'); ?>" 
                          alt="Agent Angreessen" class="brand-logo">
                 </div>
                 <div class="brand-info">
@@ -24,14 +24,14 @@ $agent_hub_is_connected = !empty($agent_hub_api_key) && !empty($agent_hub_site_i
             </div>
             
             <!-- Connection Status -->
-            <div class="connection-pill <?php echo $agent_hub_is_connected ? 'connected' : 'disconnected'; ?>">
+            <div class="connection-pill <?php echo $angreessen49_is_connected ? 'connected' : 'disconnected'; ?>">
                 <span class="status-dot"></span>
-                <?php echo $agent_hub_is_connected ? 'Connected' : 'Offline'; ?>
+                <?php echo $angreessen49_is_connected ? 'Connected' : 'Offline'; ?>
             </div>
         </header>
     </div>
     
-    <div class="agent-hub-tabs">
+    <div class="angreessen49-tabs">
         <button class="tab-button active" data-tab="overview">
             <i data-feather="grid"></i>
             Overview
@@ -56,7 +56,7 @@ $agent_hub_is_connected = !empty($agent_hub_api_key) && !empty($agent_hub_site_i
     
     <!-- Overview Tab -->
     <div id="tab-overview" class="tab-content active">
-        <div class="agent-hub-stats-grid">
+        <div class="angreessen49-stats-grid">
             <div class="stat-card stat-card-overview">
                 <div class="stat-icon stat-icon-flat">
                     <i data-feather="eye"></i>
@@ -98,21 +98,21 @@ $agent_hub_is_connected = !empty($agent_hub_api_key) && !empty($agent_hub_site_i
             </div>
         </div>
         
-        <div class="agent-hub-config-card">
+        <div class="angreessen49-config-card">
             <h3><i data-feather="settings"></i> Configuration</h3>
             
-            <?php if ($agent_hub_site_id): ?>
+            <?php if ($angreessen49_site_id): ?>
                 <div class="config-site-id">
                     <span class="site-id-label">Site ID:</span>
-                    <?php if ($agent_hub_is_connected): ?>
+                    <?php if ($angreessen49_is_connected): ?>
                         <span class="site-id-badge connected">
                             <i data-feather="check-circle"></i>
-                            <code><?php echo esc_html($agent_hub_site_id); ?></code>
+                            <code><?php echo esc_html($angreessen49_site_id); ?></code>
                         </span>
                     <?php else: ?>
                         <span class="site-id-badge disconnected">
                             <i data-feather="alert-circle"></i>
-                            <code><?php echo esc_html($agent_hub_site_id); ?></code>
+                            <code><?php echo esc_html($angreessen49_site_id); ?></code>
                         </span>
                     <?php endif; ?>
                 </div>
@@ -126,27 +126,27 @@ $agent_hub_is_connected = !empty($agent_hub_api_key) && !empty($agent_hub_site_i
                     </label>
                     <?php
                     // Determine initial sync status based on saved wallet
-                    $agent_hub_saved_wallet = $agent_hub_settings['payment_wallet'] ?? '';
-                    $agent_hub_has_wallet = !empty(trim($agent_hub_saved_wallet));
+                    $angreessen49_saved_wallet = $angreessen49_settings['payment_wallet'] ?? '';
+                    $angreessen49_has_wallet = !empty(trim($angreessen49_saved_wallet));
                     
                     // Set indicator state
-                    if ($agent_hub_has_wallet) {
-                        $agent_hub_indicator_class = 'wallet-sync-indicator wallet-status-synced';
-                        $agent_hub_dot_color = 'green';
-                        $agent_hub_status_text = 'Synced';
+                    if ($angreessen49_has_wallet) {
+                        $angreessen49_indicator_class = 'wallet-sync-indicator wallet-status-synced';
+                        $angreessen49_dot_color = 'green';
+                        $angreessen49_status_text = 'Synced';
                     } else {
-                        $agent_hub_indicator_class = 'wallet-sync-indicator wallet-status-empty';
-                        $agent_hub_dot_color = 'gray';
-                        $agent_hub_status_text = 'Not synced';
+                        $angreessen49_indicator_class = 'wallet-sync-indicator wallet-status-empty';
+                        $angreessen49_dot_color = 'gray';
+                        $angreessen49_status_text = 'Not synced';
                     }
                     ?>
                     <div class="wallet-input-wrapper">
                         <input type="text" id="overview-payment-wallet" class="config-input" 
-                               value="<?php echo esc_attr($agent_hub_settings['payment_wallet'] ?? ''); ?>" 
+                               value="<?php echo esc_attr($angreessen49_settings['payment_wallet'] ?? ''); ?>" 
                                placeholder="0x..." />
-                        <div id="wallet-sync-indicator" class="<?php echo esc_attr($agent_hub_indicator_class); ?>" data-server-rendered="true">
-                            <span class="status-dot <?php echo esc_attr($agent_hub_dot_color); ?>"></span>
-                            <span class="status-text"><?php echo esc_html($agent_hub_status_text); ?></span>
+                        <div id="wallet-sync-indicator" class="<?php echo esc_attr($angreessen49_indicator_class); ?>" data-server-rendered="true">
+                            <span class="status-dot <?php echo esc_attr($angreessen49_dot_color); ?>"></span>
+                            <span class="status-text"><?php echo esc_html($angreessen49_status_text); ?></span>
                         </div>
                     </div>
                     <p class="config-description">
@@ -163,7 +163,7 @@ $agent_hub_is_connected = !empty($agent_hub_api_key) && !empty($agent_hub_site_i
                     </label>
                     <input type="number" id="overview-default-price" class="config-input" 
                            step="0.01" min="0"
-                           value="<?php echo esc_attr($agent_hub_settings['default_price'] ?? 0.10); ?>" />
+                           value="<?php echo esc_attr($angreessen49_settings['default_price'] ?? 0.10); ?>" />
                     <p class="config-description">Default price for AI agents to access each page</p>
                 </div>
                 
@@ -176,7 +176,7 @@ $agent_hub_is_connected = !empty($agent_hub_api_key) && !empty($agent_hub_site_i
             </div>
         </div>
         
-        <div class="agent-hub-info-box">
+        <div class="angreessen49-info-box">
             <h3>
                 <i data-feather="info"></i> 
                 About Agent Angreessen - Ai Agent Pay Collector
@@ -298,7 +298,7 @@ $agent_hub_is_connected = !empty($agent_hub_api_key) && !empty($agent_hub_site_i
         <!-- Ecosystem Stats Cards with Sparklines -->
         <div class="analytics-section">
             <h3>HTTP 402 Ecosystem</h3>
-            <div class="agent-hub-stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+            <div class="angreessen49-stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
                 <div class="stat-card stat-card-with-sparkline">
                     <div class="stat-header">
                         <div class="stat-icon stat-icon-flat">
@@ -365,273 +365,201 @@ $agent_hub_is_connected = !empty($agent_hub_api_key) && !empty($agent_hub_site_i
             </div>
         </div>
         
-        <!-- Top Facilitators Section -->
-        <div class="analytics-section">
-            <h3>Top Facilitators</h3>
-            <div id="facilitators-loading" style="text-align: center; padding: 40px;">
-                <span class="spinner is-active"></span> Loading facilitators...
-            </div>
-            <div id="facilitators-grid" class="facilitators-grid" style="display: none;"></div>
-            <div id="facilitators-error" style="display: none; text-align: center; padding: 40px; color: #999;">
-                No facilitator data available
-            </div>
-        </div>
-        
-        <div class="analytics-loading" style="display:none; text-align:center; padding:40px;">
-            <span class="spinner is-active"></span> Loading analytics...
-        </div>
-        
-        <!-- Market Overview Chart -->
+        <!-- Main Market Overview Chart -->
         <div class="analytics-section">
             <h3>Market Overview</h3>
-            <div class="chart-controls" style="margin-bottom: 15px;">
-                <button class="metric-toggle active" data-metric="transactions">Transactions</button>
-                <button class="metric-toggle active" data-metric="volume">Volume</button>
-                <button class="metric-toggle active" data-metric="buyers">Buyers</button>
-                <button class="metric-toggle active" data-metric="sellers">Sellers</button>
+            <div class="chart-container">
+                <canvas id="market-overview-chart" height="300"></canvas>
             </div>
-            <div id="market-chart-container" style="position: relative; height: 400px; width: 100%;">
-                <canvas id="market-chart"></canvas>
-            </div>
-            <div class="chart-empty-state" style="display:none;"></div>
         </div>
         
+        <!-- Top Pages Section -->
+        <div class="analytics-section">
+            <h3>Top Performing Pages</h3>
+            <div id="top-pages-list" class="top-pages-list"></div>
+            <div id="top-pages-pagination" class="top-pages-pagination"></div>
+        </div>
+        
+        <!-- Facilitators Section -->
+        <div class="analytics-section">
+            <h3>Payment Facilitators</h3>
+            <div class="facilitators-grid">
+                <div id="facilitators-list" class="facilitators-list"></div>
+                <div id="facilitators-chart" class="facilitators-chart">
+                    <canvas id="facilitators-pie-chart"></canvas>
+                </div>
+            </div>
+        </div>
     </div>
     
     <!-- Violations Tab -->
     <div id="tab-violations" class="tab-content">
-        <!-- Header with title and save button -->
-        <div class="violations-page-header">
-            <div class="violations-header-left">
-                <h2 class="violations-title">
-                    <i data-feather="shield-off"></i>
-                    Agent Violations Dashboard
-                </h2>
-                <p class="violations-subtitle">Monitor and manage AI agent access policies for your site.</p>
-            </div>
-            <div class="violations-header-right">
-                <button type="button" id="violations-save-policies" class="violations-save-btn" style="display:none;">
-                    Save Policy Changes
-                </button>
-            </div>
-        </div>
-        
-        <!-- Statistics Cards -->
-        <div class="violations-stats-grid">
-            <div class="stat-card-modern">
-                <button class="stat-info-btn" data-tooltip="total-violations" type="button">
-                    <i data-feather="info"></i>
-                </button>
-                <div class="stat-info-tooltip" id="tooltip-total-violations">
-                    <strong>Total Violations</strong>
-                    <p>Sum of all policy violations detected. Includes robots.txt violations (agents ignoring disallow rules) and unpaid access attempts (agents accessing paid content without payment).</p>
+        <!-- Stats Row -->
+        <div class="violations-stats-row">
+            <div class="violations-stat-card">
+                <div class="stat-icon stat-icon-rose">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                        <line x1="12" y1="9" x2="12" y2="13"/>
+                        <line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
                 </div>
-                <div class="stat-icon-modern stat-icon-rose">
-                    <i data-feather="alert-triangle"></i>
-                </div>
-                <div class="stat-content-modern">
-                    <span class="stat-value-modern" id="violations-total">0</span>
-                    <span class="stat-label-modern">Total Violations</span>
+                <div class="stat-content">
+                    <div class="stat-value" id="violations-total">0</div>
+                    <div class="stat-label">Total Violations</div>
                 </div>
             </div>
-            <div class="stat-card-modern">
-                <button class="stat-info-btn" data-tooltip="robots-txt" type="button">
-                    <i data-feather="info"></i>
-                </button>
-                <div class="stat-info-tooltip" id="tooltip-robots-txt">
-                    <strong>Robots.txt Violations</strong>
-                    <p>Number of times AI agents accessed pages explicitly disallowed in your robots.txt file. These agents ignored your crawling rules.</p>
+            
+            <div class="violations-stat-card">
+                <div class="stat-icon stat-icon-amber">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="9" y1="15" x2="15" y2="15"/>
+                    </svg>
                 </div>
-                <div class="stat-icon-modern stat-icon-amber">
-                    <i data-feather="shield"></i>
-                </div>
-                <div class="stat-content-modern">
-                    <span class="stat-value-modern" id="violations-robots">0</span>
-                    <span class="stat-label-modern">Robots.txt</span>
+                <div class="stat-content">
+                    <div class="stat-value" id="violations-robots">0</div>
+                    <div class="stat-label">Robots.txt</div>
                 </div>
             </div>
-            <div class="stat-card-modern">
-                <button class="stat-info-btn" data-tooltip="unpaid-access" type="button">
-                    <i data-feather="info"></i>
-                </button>
-                <div class="stat-info-tooltip" id="tooltip-unpaid-access">
-                    <strong>Unpaid Access</strong>
-                    <p>Number of times AI agents attempted to access paid content without completing payment. Includes invalid payments, bypassed paywalls, and scraped content after receiving a 402 response.</p>
+            
+            <div class="violations-stat-card">
+                <div class="stat-icon stat-icon-purple">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+                        <line x1="1" y1="10" x2="23" y2="10"/>
+                    </svg>
                 </div>
-                <div class="stat-icon-modern stat-icon-yellow">
-                    <i data-feather="dollar-sign"></i>
-                </div>
-                <div class="stat-content-modern">
-                    <span class="stat-value-modern" id="violations-unpaid">0</span>
-                    <span class="stat-label-modern">Unpaid Access</span>
+                <div class="stat-content">
+                    <div class="stat-value" id="violations-unpaid">0</div>
+                    <div class="stat-label">Unpaid Access</div>
                 </div>
             </div>
-            <div class="stat-card-modern">
-                <button class="stat-info-btn" data-tooltip="unique-agents" type="button">
-                    <i data-feather="info"></i>
-                </button>
-                <div class="stat-info-tooltip" id="tooltip-unique-agents">
-                    <strong>Unique Agents</strong>
-                    <p>Count of distinct AI agents that have committed violations. Calculated by counting unique agent identifiers (User-Agent strings) from all recorded violations.</p>
+            
+            <div class="violations-stat-card">
+                <div class="stat-icon stat-icon-blue">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
                 </div>
-                <div class="stat-icon-modern stat-icon-indigo">
-                    <i data-feather="users"></i>
-                </div>
-                <div class="stat-content-modern">
-                    <span class="stat-value-modern" id="violations-unique-agents">0</span>
-                    <span class="stat-label-modern">Unique Agents</span>
+                <div class="stat-content">
+                    <div class="stat-value" id="violations-unique-agents">0</div>
+                    <div class="stat-label">Unique Agents</div>
                 </div>
             </div>
         </div>
         
-        <!-- Table Card -->
-        <div class="violations-card">
-            <!-- Search Bar -->
-            <div class="violations-search-bar">
-                <div class="violations-search-input-wrapper">
-                    <svg class="violations-search-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <!-- Violations Table -->
+        <div class="violations-table-card">
+            <div class="violations-table-header">
+                <h3>Agent Violations</h3>
+                <div class="violations-search-wrapper">
+                    <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="11" cy="11" r="8"/>
                         <line x1="21" y1="21" x2="16.65" y2="16.65"/>
                     </svg>
-                    <input type="text" id="violations-search" class="violations-search-input" placeholder="" style="padding-left: 40px;">
+                    <input type="text" id="violations-search" placeholder="Search agents...">
                 </div>
             </div>
             
             <!-- Loading State -->
-            <div id="violations-loading" class="violations-loading-state">
+            <div id="violations-loading" class="violations-loading">
                 <span class="spinner is-active"></span>
                 <span>Loading violations data...</span>
             </div>
             
-            <!-- Error State -->
-            <div id="violations-error" class="violations-error-state" style="display:none;">
-                <i data-feather="alert-circle"></i>
-                <span id="violations-error-message">Failed to load data</span>
-            </div>
-            
-            <!-- Empty State -->
-            <div id="violations-empty" class="violations-empty-state" style="display:none;">
-                <div class="violations-empty-icon">
-                    <i data-feather="check-circle"></i>
-                </div>
-                <h3>No violations detected!</h3>
-                <p>All AI agents are respecting your site's access rules.</p>
-            </div>
-            
             <!-- Table -->
-            <table id="violations-table" class="violations-table" style="display:none;">
+            <table id="violations-table" class="violations-table" style="display: none;">
                 <thead>
                     <tr>
-                        <th class="sortable" data-sort="agent_name">AGENT NAME</th>
-                        <th class="sortable" data-sort="total_violations">TOTAL</th>
-                        <th class="sortable" data-sort="robots_txt_violations">ROBOTS.TXT</th>
-                        <th class="sortable" data-sort="unpaid_access_violations">UNPAID</th>
-                        <th class="sortable" data-sort="last_seen">LAST SEEN</th>
-                        <th>POLICY</th>
+                        <th class="sortable" data-sort="agent_name">Agent</th>
+                        <th class="sortable" data-sort="total_violations">Total</th>
+                        <th class="sortable" data-sort="robots_txt_violations">Robots.txt</th>
+                        <th class="sortable" data-sort="unpaid_access_violations">Unpaid</th>
+                        <th class="sortable" data-sort="last_seen">Last Seen</th>
+                        <th>Policy</th>
                     </tr>
                 </thead>
-                <tbody id="violations-table-body">
-                </tbody>
+                <tbody id="violations-table-body"></tbody>
             </table>
             
-            <!-- Save Status Messages -->
-            <div id="violations-policy-actions" class="violations-policy-actions" style="display:none;">
-                <span id="violations-save-loading" style="display:none;">
-                    <span class="spinner is-active"></span>
-                    Saving policies...
-                </span>
-                <div id="violations-save-error" class="violations-save-error" style="display:none;">
-                    <i data-feather="x-circle"></i>
-                    <span id="violations-save-error-message"></span>
-                </div>
-                <div id="violations-save-success" class="violations-save-success" style="display:none;">
-                    <i data-feather="check-circle"></i>
-                    Bot policies updated successfully.
-                </div>
+            <!-- Empty State -->
+            <div id="violations-empty" class="violations-empty" style="display: none;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                    <polyline points="22 4 12 14.01 9 11.01"/>
+                </svg>
+                <h4>All Clear!</h4>
+                <p>No violations detected. All AI agents are respecting your access policies.</p>
             </div>
-        </div>
-    </div>
-    
-    <!-- Contact Us Tab -->
-    <div id="tab-contact" class="tab-content">
-        <div class="contact-intro">
-            <h2>About Agent Angreessen</h2>
-            <div class="contact-description">
-                <p>This plugin is developed by the team at <a href="https://402links.com" target="_blank">402links.com</a> by using the emerging "HTTP 402 Payment Required" standard. Leveraging novel advancements in agentic payment technologies, the plugin enables websites to convert any page or endpoint into a monetizable digital SKU. This means that both humans and AI agents can seamlessly pay for access, data, or functionality - directly through standard web requests - with instant settlement in stablecoins on the Base blockchain.</p>
-                
-                <p>The 402 Links project is experimental and open to collaboration. We're continuously refining the protocol and invite feedback, suggestions, and partnership ideas from early adopters and developers.</p>
-                
-                <p>If you have questions, encounter issues, or wish to contribute, please reach out using the form below. Your feedback helps shape the next generation of web-native payments.</p>
-                
-        <div class="contact-links">
-            <p>
-                🔗 <a href="https://402links.com/details" target="_blank">Learn more about the technology</a>
-            </p>
-            <p>
-                🧠 <a href="https://402links.com/developers" target="_blank">For developers & integration docs</a>
-            </p>
-            <p style="margin-left: 20px; margin-top: 8px;">
-                <strong>Open Source Protocol Implementations:</strong>
-            </p>
-            <p style="margin-left: 20px;">
-                📦 <a href="https://github.com/coinbase/x402" target="_blank">x402 Protocol (Coinbase)</a> - The core HTTP 402 payment protocol implementation that enables AI agents to make payments through standard HTTP headers. This is the foundation of our agent payment system.
-            </p>
-            <p style="margin-left: 20px;">
-                📦 <a href="https://github.com/google-agentic-commerce/AP2" target="_blank">AP2 Protocol (Google Agentic Commerce)</a> - Google's Agent Payment Protocol 2 specification that defines how AI agents discover and interact with paywall-protected content. We've integrated this to ensure broad agent compatibility.
-            </p>
-        </div>
-            </div>
-        </div>
-        
-        <div class="contact-form-wrapper">
-            <h3>Send Us a Message</h3>
-            <form id="contact-form" class="contact-form">
-                <div class="form-row">
-                    <div class="form-field">
-                        <label for="contact-name">Name <span class="required">*</span></label>
-                        <input type="text" id="contact-name" name="name" placeholder="Your name" required maxlength="100" />
-                        <span class="field-error" id="name-error"></span>
-                    </div>
-                    
-                    <div class="form-field">
-                        <label for="contact-email">Email <span class="required">*</span></label>
-                        <input type="email" id="contact-email" name="email" placeholder="your.email@example.com" required maxlength="255" />
-                        <span class="field-error" id="email-error"></span>
-                    </div>
-                </div>
-                
-                <div class="form-field">
-                    <label for="contact-subject">Subject (Optional)</label>
-                    <input type="text" id="contact-subject" name="subject" placeholder="What's this about?" maxlength="200" />
-                </div>
-                
-                <div class="form-field">
-                    <label for="contact-message">Message <span class="required">*</span></label>
-                    <textarea id="contact-message" name="message" placeholder="Tell us what's on your mind..." required maxlength="2000" rows="6"></textarea>
-                    <span class="field-error" id="message-error"></span>
-                    <div class="character-count">
-                        <span id="message-count">0</span> / 2000 characters
-                    </div>
-                </div>
-                
-                <div class="form-actions">
-                    <button type="submit" class="button button-primary" id="contact-submit">
-                        <span class="dashicons dashicons-email-alt"></span>
-                        Send Message
-                    </button>
-                </div>
-            </form>
             
-            <div id="contact-success" class="contact-success" style="display: none;">
-                <div class="success-icon">
-                    <span class="dashicons dashicons-yes-alt"></span>
-                </div>
-                <h3>Thank you - Message sent!</h3>
-                <p>We've received your message and will get back to you as soon as possible.</p>
-                <button class="button" id="send-another">Send Another Message</button>
+            <!-- Policy Actions -->
+            <div id="violations-policy-actions" class="violations-policy-actions" style="display: none;">
+                <button id="violations-save-policies" class="button button-primary" style="display: none;">
+                    Save Policy Changes
+                </button>
             </div>
         </div>
     </div>
     
-    <div id="agent-hub-toast" class="agent-hub-toast"></div>
+    <!-- Contact Tab -->
+    <div id="tab-contact" class="tab-content">
+        <div class="contact-section">
+            <h3><i data-feather="mail"></i> Contact Us</h3>
+            <p>Have questions or need support? Reach out to us!</p>
+            
+            <div class="contact-form">
+                <div class="form-field">
+                    <label for="contact-name">Your Name</label>
+                    <input type="text" id="contact-name" placeholder="Enter your name">
+                </div>
+                
+                <div class="form-field">
+                    <label for="contact-email">Email Address</label>
+                    <input type="email" id="contact-email" placeholder="Enter your email">
+                </div>
+                
+                <div class="form-field">
+                    <label for="contact-subject">Subject</label>
+                    <input type="text" id="contact-subject" placeholder="What is this about?">
+                </div>
+                
+                <div class="form-field">
+                    <label for="contact-message">Message</label>
+                    <textarea id="contact-message" rows="5" placeholder="Your message..."></textarea>
+                </div>
+                
+                <button type="button" id="send-contact" class="button button-primary">
+                    <i data-feather="send"></i>
+                    Send Message
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
+
+<script>
+// Tab switching
+jQuery(document).ready(function($) {
+    $('.tab-button').on('click', function() {
+        const tabId = $(this).data('tab');
+        
+        // Update active tab button
+        $('.tab-button').removeClass('active');
+        $(this).addClass('active');
+        
+        // Show active tab content
+        $('.tab-content').removeClass('active');
+        $('#tab-' + tabId).addClass('active');
+    });
+    
+    // Initialize Feather icons
+    if (typeof feather !== 'undefined') {
+        feather.replace();
+    }
+});
+</script>

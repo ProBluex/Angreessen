@@ -137,8 +137,8 @@
             url: ajaxurl,
             method: 'POST',
             data: {
-                action: 'agent_hub_get_violations_summary',
-                nonce: agentHubData.nonce
+                action: 'angreessen49_get_violations_summary',
+                nonce: angreessen49Data.nonce
             },
             success: function(response) {
                 if (response.success && response.data) {
@@ -168,8 +168,8 @@
             url: ajaxurl,
             method: 'POST',
             data: {
-                action: 'agent_hub_get_site_bot_policies',
-                nonce: agentHubData.nonce
+                action: 'angreessen49_get_site_bot_policies',
+                nonce: angreessen49Data.nonce
             },
             success: function(response) {
                 $loading.hide();
@@ -454,191 +454,120 @@
                 // String comparison
                 aVal = (aVal || '').toLowerCase();
                 bVal = (bVal || '').toLowerCase();
-                return direction === 'asc' 
-                    ? aVal.localeCompare(bVal)
-                    : bVal.localeCompare(aVal);
             }
             
-            // Numeric comparison
-            if (direction === 'asc') {
-                return aVal - bVal;
-            } else {
-                return bVal - aVal;
-            }
+            if (aVal < bVal) return direction === 'asc' ? -1 : 1;
+            if (aVal > bVal) return direction === 'asc' ? 1 : -1;
+            return 0;
         });
         
         return sorted;
     }
     
     /**
-     * Update sort indicator arrows in table headers
+     * Update sort indicators in table headers
      */
     function updateSortIndicators() {
-        // Remove all sort indicators
         $('#violations-table th.sortable').removeClass('sorted-asc sorted-desc');
-        
-        // Add indicator to current sort column
         $('#violations-table th.sortable[data-sort="' + currentSortColumn + '"]')
             .addClass('sorted-' + currentSortDirection);
-    }
-
-    // Close dropdowns when clicking outside
-    $(document).on('click', function(e) {
-        if (!$(e.target).closest('.policy-dropdown-container').length) {
-            $('.policy-dropdown-container.open').removeClass('open')
-                .find('.policy-dropdown-menu').hide();
-        }
-    });
-
-    /**
-     * Save bot policies to backend
-     */
-    function savePolicies() {
-        const $saveBtn = $('#violations-save-policies');
-        const $loading = $('#violations-save-loading');
-        const $error = $('#violations-save-error');
-
-        // Show loading state
-        $saveBtn.prop('disabled', true);
-        if ($loading.length) {
-            $loading.show();
-        }
-        if ($error.length) {
-            $error.hide();
-        }
-
-        // Collect changed policies from dropdowns
-        $('.policy-dropdown-container.policy-changed').each(function() {
-            const botId = $(this).attr('data-bot-id');
-            const newValue = $(this).attr('data-new-value');
-            botPolicies[botId] = newValue;
-        });
-
-        // Convert botPolicies object to array format
-        const policies = [];
-        Object.keys(botPolicies).forEach(function(bot_registry_id) {
-            policies.push({
-                bot_registry_id: bot_registry_id,
-                action: botPolicies[bot_registry_id]
-            });
-        });
-
-        debugLog('[Violations] Saving policies:', policies);
-
-        $.ajax({
-            url: ajaxurl,
-            method: 'POST',
-            data: {
-                action: 'agent_hub_update_site_bot_policies',
-                nonce: agentHubData.nonce,
-                policies: policies
-            },
-            success: function(response) {
-                $saveBtn.prop('disabled', false);
-                if ($loading.length) {
-                    $loading.hide();
-                }
-
-                if (response.success) {
-                    debugLog('[Violations] Policies saved successfully');
-                    
-                    // Clear changed policies
-                    changedPolicies.clear();
-                    
-                    // Hide save button
-                    $saveBtn.hide();
-                    
-                    // Show success message
-                    const $success = $('#violations-save-success');
-                    if ($success.length) {
-                        $success.show();
-                        setTimeout(function() {
-                            $success.fadeOut();
-                        }, 3000);
-                    }
-                } else {
-                    console.error('[Violations] Failed to save policies:', response.data);
-                    if ($error.length) {
-                        $('#violations-save-error-message').text(
-                            response.data || 'Failed to save policies'
-                        );
-                        $error.show();
-                    }
-                }
-            },
-            error: function(xhr, status, error) {
-                $saveBtn.prop('disabled', false);
-                if ($loading.length) {
-                    $loading.hide();
-                }
-                
-                console.error('[Violations] Network error saving policies:', error);
-                if ($error.length) {
-                    $('#violations-save-error-message').text('Network error: ' + error);
-                    $error.show();
-                }
-            }
-        });
     }
 
     /**
      * Show error message
      */
     function showError(message) {
-        console.error('[Violations] Error:', message);
-        console.log('[Violations] Debug - AJAX URL:', ajaxurl);
-        console.log('[Violations] Debug - Nonce:', agentHubData?.nonce);
-        console.log('[Violations] Debug - Site URL:', agentHubData?.siteUrl);
-        
-        $('#violations-error-message').text(message);
-        $('#violations-error').show();
+        $('#violations-error').show().find('#error-message').text(message);
     }
 
     /**
      * Format number with commas
      */
     function formatNumber(num) {
-        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        return new Intl.NumberFormat().format(num || 0);
     }
 
     /**
-     * Format datetime string
-     */
-    function formatDateTime(dateStr) {
-        // Return "Never" for null, undefined, or empty strings
-        if (!dateStr || dateStr === null) return 'Never';
-        
-        const date = new Date(dateStr);
-        
-        // Validate date is actually valid
-        if (isNaN(date.getTime())) return 'Never';
-        
-        const now = new Date();
-        const diffMs = now - date;
-        const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMs / 3600000);
-        const diffDays = Math.floor(diffMs / 86400000);
-
-        if (diffMins < 1) return 'Just now';
-        if (diffMins < 60) return diffMins + ' min ago';
-        if (diffHours < 24) return diffHours + ' hour' + (diffHours > 1 ? 's' : '') + ' ago';
-        if (diffDays < 30) return diffDays + ' day' + (diffDays > 1 ? 's' : '') + ' ago';
-        
-        return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
-    }
-
-    /**
-     * Escape HTML to prevent XSS
+     * Escape HTML
      */
     function escapeHtml(text) {
-        const map = {
-            '&': '&amp;',
-            '<': '&lt;',
-            '>': '&gt;',
-            '"': '&quot;',
-            "'": '&#039;'
-        };
-        return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
+
+    /**
+     * Save changed policies
+     */
+    function savePolicies() {
+        const $saveBtn = $('#violations-save-policies');
+        const originalText = $saveBtn.text();
+        
+        // Collect all changed policies
+        const policiesToSave = [];
+        $('.policy-dropdown-container.policy-changed').each(function() {
+            policiesToSave.push({
+                bot_registry_id: $(this).attr('data-bot-id'),
+                action: $(this).attr('data-new-value')
+            });
+        });
+        
+        if (policiesToSave.length === 0) {
+            $saveBtn.hide();
+            return;
+        }
+        
+        debugLog('[Violations] Saving policies:', policiesToSave);
+        
+        $saveBtn.prop('disabled', true).text('Saving...');
+        
+        $.ajax({
+            url: ajaxurl,
+            method: 'POST',
+            data: {
+                action: 'angreessen49_save_site_bot_policies',
+                nonce: angreessen49Data.nonce,
+                policies: JSON.stringify(policiesToSave)
+            },
+            success: function(response) {
+                if (response.success) {
+                    // Update local state
+                    policiesToSave.forEach(function(policy) {
+                        botPolicies[policy.bot_registry_id] = policy.action;
+                    });
+                    
+                    // Remove changed indicators
+                    $('.policy-dropdown-container.policy-changed').removeClass('policy-changed');
+                    
+                    $saveBtn.text('Saved!');
+                    setTimeout(function() {
+                        $saveBtn.prop('disabled', false).text(originalText).hide();
+                    }, 2000);
+                    
+                    if (typeof window.showToast === 'function') {
+                        window.showToast('Success', 'Bot policies saved successfully', 'success');
+                    }
+                } else {
+                    $saveBtn.prop('disabled', false).text(originalText);
+                    if (typeof window.showToast === 'function') {
+                        window.showToast('Error', response.data?.message || 'Failed to save policies', 'error');
+                    }
+                }
+            },
+            error: function(xhr, status, error) {
+                $saveBtn.prop('disabled', false).text(originalText);
+                console.error('[Violations] Failed to save policies:', error);
+                if (typeof window.showToast === 'function') {
+                    window.showToast('Error', 'Network error: ' + error, 'error');
+                }
+            }
+        });
+    }
+
+    // Close dropdowns when clicking outside
+    $(document).on('click', function() {
+        $('.policy-dropdown-container.open').removeClass('open')
+            .find('.policy-dropdown-menu').hide();
+    });
 
 })(jQuery);

@@ -1,5 +1,5 @@
 <?php
-namespace AgentHub;
+namespace Angreessen49;
 
 class AgentDetector {
     // Cache for bot registry (loaded from Supabase via API)
@@ -71,7 +71,7 @@ class AgentDetector {
         }
         
         // Check transient cache
-        $cached = get_transient('402links_bot_registry');
+        $cached = get_transient('angreessen49_bot_registry');
         if ($cached !== false) {
             self::$bot_registry_cache = $cached;
             return $cached;
@@ -86,7 +86,7 @@ class AgentDetector {
         
         if (!empty($registry)) {
             // Cache for 1 hour
-            set_transient('402links_bot_registry', $registry, self::$cache_duration);
+            set_transient('angreessen49_bot_registry', $registry, self::$cache_duration);
             self::$bot_registry_cache = $registry;
             return $registry;
         }
@@ -294,7 +294,7 @@ class AgentDetector {
      */
     public static function log_crawl($post_id, $agent_info, $payment_status = 'unpaid', $violation_data = null) {
         global $wpdb;
-        $table_name = $wpdb->prefix . '402links_agent_logs';
+        $table_name = $wpdb->prefix . 'angreessen49_agent_logs';
         
         $data = [
             'post_id' => $post_id,

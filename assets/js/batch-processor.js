@@ -9,8 +9,8 @@
   const debugLog = DEBUG_MODE ? console.log.bind(console) : () => {};
   const debugWarn = DEBUG_MODE ? console.warn.bind(console) : () => {};
 
-  if (!w.agentHubData || !w.agentHubData.ajaxUrl || !w.agentHubData.nonce) {
-    console.error("[batch-processor] Missing agentHubData config.");
+  if (!w.angreessen49Data || !w.angreessen49Data.ajaxUrl || !w.angreessen49Data.nonce) {
+    console.error("[batch-processor] Missing angreessen49Data config.");
     return;
   }
 
@@ -144,12 +144,12 @@
     }
 
     $.ajax({
-      url: w.agentHubData.ajaxUrl,
+      url: w.angreessen49Data.ajaxUrl,
       type: "POST",
       dataType: "json",
       data: {
-        action: "agent_hub_cancel_batch",
-        nonce: w.agentHubData.nonce,
+        action: "angreessen49_cancel_batch",
+        nonce: w.angreessen49Data.nonce,
       },
     })
       .done(() => {
@@ -221,13 +221,13 @@
   /* ---------- Poll Batch Progress ---------- */
   function pollBatchProgress() {
     $.ajax({
-      url: w.agentHubData.ajaxUrl,
+      url: w.angreessen49Data.ajaxUrl,
       type: "POST",
       dataType: "json",
       timeout: 30000,
       data: {
-        action: "agent_hub_process_batch",
-        nonce: w.agentHubData.nonce,
+        action: "angreessen49_process_batch",
+        nonce: w.angreessen49Data.nonce,
       },
     })
       .done((res) => {
@@ -292,13 +292,13 @@
     showModal();
 
     $.ajax({
-      url: w.agentHubData.ajaxUrl,
+      url: w.angreessen49Data.ajaxUrl,
       type: "POST",
       dataType: "json",
       timeout: 15000,
       data: {
-        action: "agent_hub_start_batch_generation",
-        nonce: w.agentHubData.nonce,
+        action: "angreessen49_start_batch_generation",
+        nonce: w.angreessen49Data.nonce,
       },
     })
       .done((res) => {

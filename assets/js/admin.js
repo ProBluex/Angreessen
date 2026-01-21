@@ -9,16 +9,16 @@
   const debugLog = DEBUG_MODE ? console.log.bind(console) : () => {};
   const debugWarn = DEBUG_MODE ? console.warn.bind(console) : () => {};
 
-  if (!w.agentHubData || !w.agentHubData.ajaxUrl || !w.agentHubData.nonce) {
-    console.error("[agent-hub] Missing agentHubData config. Aborting.");
+  if (!w.angreessen49Data || !w.angreessen49Data.ajaxUrl || !w.angreessen49Data.nonce) {
+    console.error("[angreessen49] Missing angreessen49Data config. Aborting.");
     return;
   }
 
   /* ---------- Utils ---------- */
 
   const $DOM = {
-    toast: $("#agent-hub-toast"),
-    settingsForm: $("#agent-hub-settings-form"),
+    toast: $("#angreessen49-toast"),
+    settingsForm: $("#angreessen49-settings-form"),
     contentTBody: $("#content-table-body"),
     contentPagination: $("#content-pagination"),
     bulkGenerateBtn: $("#bulk-generate-links"),
@@ -41,11 +41,11 @@
 
   const ajaxPost = (action, payload = {}) =>
     $.ajax({
-      url: w.agentHubData.ajaxUrl,
+      url: w.angreessen49Data.ajaxUrl,
       type: "POST",
       dataType: "json",
       timeout: 15000,
-      data: { action, nonce: w.agentHubData.nonce, ...payload },
+      data: { action, nonce: w.angreessen49Data.nonce, ...payload },
     });
 
   /* ---------- Toast (global for other scripts) ---------- */
@@ -76,7 +76,7 @@
 
   /* ---------- Namespace ---------- */
 
-  const hub = (w.agentHub = w.agentHub || {});
+  const hub = (w.angreessen49 = w.angreessen49 || {});
   debugLog('[admin.js] Hub namespace initialized');
 
   /* ---------- Tabs (hash-aware) ---------- */
@@ -147,7 +147,7 @@
     const prev = $btn.html();
     $btn.prop("disabled", true).html('<span class="spinner is-active" style="float:none;"></span> Saving...');
 
-    ajaxPost("agent_hub_save_settings", {
+    ajaxPost("angreessen49_save_settings", {
       api_key: $("#api_key").val(),
       payment_wallet: $("#payment_wallet").val(),
       default_price: $("#default_price").val(),
@@ -170,7 +170,7 @@
     const prev = $btn.html();
     $btn.prop("disabled", true).html('<span class="spinner is-active" style="float:none;"></span> Registering...');
 
-    ajaxPost("agent_hub_register_site")
+    ajaxPost("angreessen49_register_site")
       .done((res) => {
         if (res?.success) {
           w.showToast("Success", "Site registered successfully!", "success");
@@ -190,7 +190,7 @@
       '<tr><td colspan="5" style="text-align:center;"><span class="spinner is-active" style="float:none;margin:20px auto;"></span></td></tr>',
     );
 
-    ajaxPost("agent_hub_get_content", { page, per_page: 10 })
+    ajaxPost("angreessen49_get_content", { page, per_page: 10 })
       .done((res) => {
         const content = res?.success && Array.isArray(res?.data?.content) ? res.data.content : [];
         renderContentTable(content);
@@ -291,7 +291,7 @@
 
   /* ---------- Toggle Human Access (kept public) ---------- */
   hub.toggleHumanAccess = function (postId, blockHumans) {
-    ajaxPost("agent_hub_toggle_human_access", {
+    ajaxPost("angreessen49_toggle_human_access", {
       post_id: postId,
       block_humans: blockHumans ? "true" : "false",
     })
@@ -309,12 +309,12 @@
   /* ---------- Generate Link (kept public) ---------- */
   hub.generateLink = function (postId) {
     if (!w.confirm("Generate 402link for this page?")) return;
-    ajaxPost("agent_hub_generate_link", { post_id: postId })
+    ajaxPost("angreessen49_generate_link", { post_id: postId })
       .done((res) => {
         if (res?.success) {
           w.showToast("Success", "402link generated successfully!", "success");
           hub.loadContent();
-          if (w.agentHubAnalytics?.loadAnalyticsData) w.agentHubAnalytics.loadAnalyticsData();
+          if (w.angreessen49Analytics?.loadAnalyticsData) w.angreessen49Analytics.loadAnalyticsData();
         } else {
           w.showToast("Error", res?.data?.error || "Failed to generate link.", "error");
         }
@@ -333,7 +333,7 @@
     const prev = $btn.html();
     $btn.prop("disabled", true).html('<span class="spinner is-active" style="float:none;"></span> Generating...');
 
-    ajaxPost("agent_hub_bulk_generate")
+    ajaxPost("angreessen49_bulk_generate")
       .done((res) => {
         res?.success
           ? w.showToast("Success", res?.data?.message || "Links generated.", "success")
@@ -350,7 +350,7 @@
   /* ---------- Analytics ---------- */
   hub.loadAnalytics = function () {
     const timeframe = $DOM.timeframeSel.val();
-    ajaxPost("agent_hub_get_analytics", { timeframe }).done((res) => {
+    ajaxPost("angreessen49_get_analytics", { timeframe }).done((res) => {
       if (res?.success && res.data) renderAnalytics(res.data);
     });
   };

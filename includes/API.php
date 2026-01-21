@@ -1,13 +1,13 @@
 <?php
-namespace AgentHub;
+namespace Angreessen49;
 
 class API {
     private $api_key;
     private $api_endpoint;
     
     public function __construct() {
-        $this->api_key = get_option('402links_api_key');
-        $settings = get_option('402links_settings');
+        $this->api_key = get_option('angreessen49_api_key');
+        $settings = get_option('angreessen49_settings');
         $this->api_endpoint = $settings['api_endpoint'] ?? 'https://api.402links.com/v1';
     }
     
@@ -57,8 +57,9 @@ class API {
     
     /**
      * Verify if agent has already paid for content (within 24h cache)
+     * UPDATED: Now supports wallet-based identity (primary) + fallback to user_agent
      */
-    public function verify_agent_payment($site_id, $wordpress_post_id, $page_url, $user_agent, $ip_address) {
+    public function verify_agent_payment($site_id, $wordpress_post_id, $page_url, $user_agent, $ip_address, $agent_wallet = null) {
         if (!$this->api_endpoint || !$this->api_key) {
             return null;
         }
@@ -72,6 +73,11 @@ class API {
             'user_agent' => $user_agent,
             'ip_address' => $ip_address
         ];
+        
+        // Add wallet if provided (primary identity method)
+        if (!empty($agent_wallet)) {
+            $payload['agent_wallet'] = $agent_wallet;
+        }
 
         $response = wp_remote_post($endpoint, [
             'headers' => [
@@ -107,7 +113,7 @@ class API {
             'site_name' => get_bloginfo('name'),
             'admin_email' => get_bloginfo('admin_email'),
             'wordpress_version' => get_bloginfo('version'),
-            'plugin_version' => AGENT_HUB_VERSION
+            'plugin_version' => ANGREESSEN49_VERSION
         ];
         
         // Only include api_key_id if we have one
@@ -134,7 +140,7 @@ class API {
      * Now uses edge function instead of direct REST API call
      */
     public function sync_site_settings($settings) {
-        $site_id = get_option('402links_site_id');
+        $site_id = get_option('angreessen49_site_id');
         
         if (!$site_id) {
             return [
@@ -159,7 +165,7 @@ class API {
      * Now uses edge function instead of direct REST API call
      */
     public function check_existing_links_count() {
-        $site_id = get_option('402links_site_id');
+        $site_id = get_option('angreessen49_site_id');
         
         if (!$site_id) {
             return ['count' => 0];
@@ -200,9 +206,9 @@ class API {
      */
     public function create_link($post_id) {
         $post = get_post($post_id);
-        $settings = get_option('402links_settings');
+        $settings = get_option('angreessen49_settings');
         
-        $price = get_post_meta($post_id, '_402links_price', true);
+        $price = get_post_meta($post_id, '_angreessen49_price', true);
         if (empty($price)) {
             $price = $settings['default_price'] ?? 0.10;
         }
@@ -295,7 +301,7 @@ class API {
             'errors' => []
         ];
         
-        $settings = get_option('402links_settings');
+        $settings = get_option('angreessen49_settings');
         $curl_handles = [];
         $post_map = []; // Map curl handle resource ID to post_id
         
@@ -334,7 +340,7 @@ class API {
                 continue;
             }
             
-            $price = get_post_meta($post_id, '_402links_price', true);
+            $price = get_post_meta($post_id, '_angreessen49_price', true);
             if (empty($price)) {
                 $price = $settings['default_price'] ?? 0.10;
             }
@@ -453,12 +459,12 @@ class API {
                     $message = $data['message'] ?? $link_data['message'] ?? '';
                     $is_existing = (stripos($message, 'already exists') !== false);
                     
-                    update_post_meta($post_id, '_402links_id', $link_id);
-                    update_post_meta($post_id, '_402links_short_id', $short_id);
-                    update_post_meta($post_id, '_402links_url', $link_url);
+                    update_post_meta($post_id, '_angreessen49_link_id', $link_id);
+                    update_post_meta($post_id, '_angreessen49_short_id', $short_id);
+                    update_post_meta($post_id, '_angreessen49_url', $link_url);
                     
                     // Verify meta was actually saved
-                    $saved_url = get_post_meta($post_id, '_402links_url', true);
+                    $saved_url = get_post_meta($post_id, '_angreessen49_url', true);
                     
                     // Count as already_linked or created
                     if ($is_existing) {
@@ -468,411 +474,27 @@ class API {
                     }
                 } else {
                     $results['failed']++;
-                    $error_msg = $data['error'] ?? $link_data['error'] ?? 'Unknown error - link_id missing';
+                    $error_msg = $data['error'] ?? $data['message'] ?? 'Unknown error';
                     $results['errors'][] = "Post {$post_id}: {$error_msg}";
                 }
             }
             
-            // Clean up individual handle
             curl_multi_remove_handle($multi_handle, $ch);
-            // Note: curl_close() deprecated in PHP 8.0+ - handles are automatically cleaned up
+            curl_close($ch);
         }
         
-        // Note: curl_multi_close() deprecated in PHP 8.0+ - multi handles are automatically cleaned up
+        curl_multi_close($multi_handle);
         // phpcs:enable
         
         return $results;
     }
     
     /**
-     * Update existing 402link
-     */
-    public function update_link($post_id, $link_id) {
-        $post = get_post($post_id);
-        $settings = get_option('402links_settings');
-        
-        $price = get_post_meta($post_id, '_402links_price', true);
-        if (empty($price)) {
-            $price = $settings['default_price'] ?? 0.10;
-        }
-        
-        // Get post metadata
-        $excerpt = $post->post_excerpt;
-        if (empty($excerpt)) {
-            $excerpt = wp_trim_words(wp_strip_all_tags($post->post_content), 30);
-        }
-        
-        $author = get_the_author_meta('display_name', $post->post_author);
-        $featured_image_url = get_the_post_thumbnail_url($post_id, 'large');
-        $word_count = str_word_count(wp_strip_all_tags($post->post_content));
-        
-        // Get tags
-        $tags = [];
-        $post_tags = get_the_tags($post_id);
-        if ($post_tags && !is_wp_error($post_tags)) {
-            foreach ($post_tags as $tag) {
-                $tags[] = $tag->name;
-            }
-        }
-        
-        // Get categories
-        $categories = get_the_category($post_id);
-        $category_names = [];
-        if ($categories) {
-            foreach ($categories as $category) {
-                $category_names[] = $category->name;
-            }
-        }
-        
-        // Convert post content to agent-readable JSON format
-        $json_content = [
-            'version' => '1.0',
-            'content_type' => 'blog_post',
-            'title' => Helpers::get_clean_title($post_id),
-            'body' => wp_strip_all_tags($post->post_content),
-            'excerpt' => $excerpt,
-            'author' => $author,
-            'published_at' => $post->post_date,
-            'modified_at' => $post->post_modified,
-            'word_count' => $word_count,
-            'categories' => $category_names,
-            'tags' => $tags,
-            'featured_image_url' => $featured_image_url ?: null
-        ];
-        
-        return $this->request('PUT', '/update-wordpress-link', [
-            'site_url' => get_site_url(),
-            'link_id' => $link_id,
-            'post_id' => $post_id,
-            'title' => Helpers::get_clean_title($post_id),
-            'url' => get_permalink($post_id),
-            'price' => floatval($price),
-            'excerpt' => $excerpt,
-            'author' => $author,
-            'featured_image_url' => $featured_image_url ?: null,
-            'word_count' => $word_count,
-            'tags' => $tags,
-            'modified_at' => $post->post_modified,
-            'json_content' => $json_content  // NEW: Full content in JSON format
-        ]);
-    }
-    
-    /**
-     * Normalize timeframe/period values to canonical format
-     * Protects against frontend variations (7d vs 1w vs week)
-     */
-    private function normalize_period($value) {
-        $value = strtolower(trim($value ?: '30d'));
-        
-        // Map variations → canonical values for edge functions
-        if (in_array($value, ['7d', '1w', 'week'])) return 'week';
-        if (in_array($value, ['30d', '1m', 'month'])) return '30d';
-        if (in_array($value, ['90d', '3m', 'quarter'])) return '90d';
-        if (in_array($value, ['365d', '1y', 'year', 'all'])) return 'all';
-        
-        return '30d'; // safe default
-    }
-    
-    /**
-     * Get site-specific analytics (agent_crawls + agent_payments)
-     * Used for: Overview tab cards
-     */
-    public function get_site_analytics($period = '30d') {
-        $site_id = get_option('402links_site_id');
-        if (!$site_id) {
-            return ['success' => false, 'error' => 'Site not registered'];
-        }
-        
-        $period = $this->normalize_period($period);
-        
-        $result = $this->request('GET', '/get-site-analytics', [
-            'site_id' => $site_id,
-            'period'  => $period
-        ]);
-        
-        return $result;
-    }
-    
-    /**
-     * Get WordPress site analytics (agent + human payments combined)
-     * Used for: Analytics tab lower fold (Top Performing Content)
-     */
-    public function get_wordpress_analytics($timeframe = '30d') {
-        $result = $this->request('POST', '/wordpress-analytics', [
-            'site_url'  => get_site_url(),
-            'timeframe' => $timeframe ?: '30d'
-        ]);
-        
-        return $result;
-    }
-    
-    /**
-     * @deprecated Use get_site_analytics() or get_wordpress_analytics() instead
-     * Kept for backward compatibility - redirects to ecosystem stats
+     * Get analytics data
      */
     public function get_analytics($timeframe = '30d') {
-        return $this->get_ecosystem_stats($timeframe);
-    }
-    
-    /**
-     * Get ecosystem-wide statistics
-     */
-    public function get_ecosystem_stats($timeframe = '30d') {
-        $url = '/wordpress-ecosystem-stats';
-        $payload = ['timeframe' => $timeframe];
+        $site_id = get_option('angreessen49_site_id');
         
-        $result = $this->request('POST', $url, $payload);
-        
-        if (!isset($result['success'])) {
-            return ['success' => false, 'error' => 'Invalid response from server'];
-        }
-        
-        return $result;
-    }
-    
-    /**
-     * Check if agent is blacklisted
-     */
-    public function check_blacklist($user_agent, $site_id = null) {
-        if (!$site_id) {
-            $site_id = get_option('402links_site_id');
-        }
-        
-        return $this->request('POST', '/check-agent-blacklist', [
-            'user_agent' => $user_agent,
-            'site_id' => $site_id
-        ]);
-    }
-    
-    /**
-     * Get all links for this site
-     */
-    public function get_links($page = 1, $per_page = 20) {
-        $site_id = get_option('402links_site_id');
-        return $this->request('GET', "/wordpress-links?site_id={$site_id}&page={$page}&per_page={$per_page}");
-    }
-    
-    /**
-     * Get page analytics for all synced pages
-     */
-    public function get_pages_analytics($site_id) {
-        return $this->request('GET', '/get-site-pages-analytics?site_id=' . $site_id);
-    }
-    
-    /**
-     * Get site info from Supabase
-     */
-    public function get_site_info($site_id) {
-        return $this->request('GET', '/get-site-info?site_id=' . $site_id);
-    }
-    
-    /**
-     * Get site pages with their associated paid links
-     */
-    public function get_site_pages_with_links($site_id) {
-        if (!$site_id) {
-            return [
-                'success' => false,
-                'error' => 'Site ID is required'
-            ];
-        }
-        
-        return $this->request('GET', '/get-site-pages-with-links?site_id=' . $site_id);
-    }
-    
-    /**
-     * Get bot registry from Supabase
-     * Returns all active bots with their detection patterns
-     */
-    public function get_bot_registry() {
-        $result = $this->request('GET', '/get-bot-registry');
-        
-        if ($result['success'] && isset($result['bots'])) {
-            return $result['bots'];
-        }
-        
-        return [];
-    }
-    
-    /**
-     * Report agent violation to backend
-     * 
-     * @param array $violation_data {
-     *     @type string $site_id Site UUID
-     *     @type int $wordpress_post_id WordPress post ID
-     *     @type string $agent_name Bot/Agent name
-     *     @type string $user_agent Full user agent string
-     *     @type string $ip_address Client IP address
-     *     @type string $requested_url The URL that was accessed
-     *     @type string $violation_type Type: 'unpaid_access', 'ignored_402', 'scraped_content', 'robots_txt'
-     *     @type string $detected_at ISO 8601 timestamp
-     *     @type string $robots_txt_directive Optional robots.txt rule that was violated
-     * }
-     * @return array Response from backend
-     */
-    public function report_violation($violation_data) {
-        $site_id = get_option('402links_site_id');
-        if (!$site_id) {
-            return ['success' => false, 'error' => 'Site not registered'];
-        }
-        
-        // Ensure required fields
-        $payload = array_merge([
-            'site_id' => $site_id,
-            'detected_at' => gmdate('Y-m-d\TH:i:s\Z')
-        ], $violation_data);
-        
-        return $this->request('POST', '/report-violation', $payload);
-    }
-    
-    /**
-     * Static wrapper for report_violation() for use in PaymentGate
-     * Creates temporary API instance and reports violation
-     * Non-blocking - failures won't prevent 402 response
-     * 
-     * @param array $violation_data Violation data array
-     * @return array Response from backend (or error array)
-     */
-    public static function report_violation_static($violation_data) {
-        try {
-            $api = new self();
-            $result = $api->report_violation($violation_data);
-            
-            return $result;
-        } catch (\Exception $e) {
-            return ['success' => false, 'error' => $e->getMessage()];
-        }
-    }
-    
-    /**
-     * Get top performing pages via API proxy
-     */
-    public function get_top_pages($timeframe = '30d', $limit = 10, $offset = 0) {
-        $site_id = get_option('402links_site_id');
-        if (!$site_id) {
-            return ['success' => false, 'error' => 'Site not registered'];
-        }
-
-        // Build query params
-        $params = [
-            'site_id' => $site_id,
-            'limit' => $limit,
-            'offset' => $offset
-        ];
-
-        // Call proxied endpoint via WordPress API key authentication
-        $endpoint = '/agent-hub-top-pages?' . http_build_query($params);
-        $result = $this->request('GET', $endpoint);
-
-        if ($result && isset($result['pages'])) {
-            return [
-                'success' => true,
-                'pages' => $result['pages'],
-                'total' => $result['total'] ?? count($result['pages']),
-                'limit' => $limit,
-                'offset' => $offset
-            ];
-        }
-
-        return ['success' => false, 'error' => 'Failed to fetch top pages'];
-    }
-    
-    /**
-     * Get agent violations from backend
-     * 
-     * @param string $site_id Site UUID
-     * @param array $filters Optional filters (violation_type, agent_name, start_date, end_date)
-     * @return array Response from backend
-     */
-    public function get_violations($site_id, $filters = []) {
-        $params = array_merge(['site_id' => $site_id], $filters);
-        $query_string = http_build_query($params);
-        
-        $result = $this->request('GET', '/get-violations?' . $query_string);
-        
-        if ($result['success'] && isset($result['violations'])) {
-            return [
-                'success' => true,
-                'violations' => $result['violations'],
-                'count' => $result['count'] ?? count($result['violations'])
-            ];
-        }
-        
-        return [
-            'success' => false,
-            'error' => $result['error'] ?? 'Failed to fetch violations',
-            'violations' => [],
-            'count' => 0
-        ];
-    }
-    
-    /**
-     * Register REST API routes
-     */
-    public static function register_rest_routes() {
-        register_rest_route('402links/v1', '/sync-meta', [
-            'methods' => 'POST',
-            'callback' => [self::class, 'rest_sync_meta'],
-            'permission_callback' => [self::class, 'rest_permission_check']
-        ]);
-    }
-    
-    /**
-     * REST API permission check
-     */
-    public static function rest_permission_check($request) {
-        $auth_header = $request->get_header('X-402Links-Auth');
-        if (empty($auth_header)) {
-            return new \WP_Error('no_auth', 'Missing authentication', ['status' => 401]);
-        }
-        
-        // Extract Bearer token
-        $api_key = str_replace('Bearer ', '', $auth_header);
-        $stored_key = get_option('402links_api_key');
-        
-        if ($api_key !== $stored_key) {
-            return new \WP_Error('invalid_auth', 'Invalid API key', ['status' => 403]);
-        }
-        
-        return true;
-    }
-    
-    /**
-     * REST API endpoint: Sync post meta from Supabase
-     */
-    public static function rest_sync_meta($request) {
-        $params = $request->get_json_params();
-        
-        $post_id = $params['post_id'] ?? null;
-        $link_id = $params['link_id'] ?? null;
-        $short_id = $params['short_id'] ?? null;
-        $link_url = $params['link_url'] ?? null;
-        $force_agent = $params['force_agent_payment'] ?? true;
-        $force_human = $params['force_human_payment'] ?? false;
-        
-        if (!$post_id || !$link_id) {
-            return new \WP_Error('missing_params', 'Missing required parameters', ['status' => 400]);
-        }
-        
-        // Update post meta to enable PaymentGate blocking
-        update_post_meta($post_id, '_402links_id', $link_id);
-        update_post_meta($post_id, '_402links_short_id', $short_id);
-        update_post_meta($post_id, '_402links_url', $link_url);
-        update_post_meta($post_id, '_402links_synced_at', current_time('mysql'));
-        update_post_meta($post_id, '_402links_block_humans', $force_human ? '1' : '0');
-        
-        return rest_ensure_response([
-            'success' => true,
-            'message' => 'Post meta updated',
-            'post_id' => $post_id
-        ]);
-    }
-    
-    /**
-     * Bulk sync meta for all existing links from Supabase
-     */
-    public function bulk_sync_meta() {
-        $site_id = get_option('402links_site_id');
         if (!$site_id) {
             return [
                 'success' => false,
@@ -880,169 +502,171 @@ class API {
             ];
         }
         
-        // Get all pages from Supabase
-        $result = $this->request('GET', '/get-site-pages-analytics?site_id=' . $site_id);
-        
-        if (!$result['success'] || !isset($result['data']['pages'])) {
-            return [
-                'success' => false,
-                'error' => 'Failed to fetch pages from backend'
-            ];
-        }
-        
-        $pages = $result['data']['pages'];
-        $updated = 0;
-        
-        foreach ($pages as $page) {
-            if (!isset($page['wordpress_post_id']) || !isset($page['paid_link_id'])) {
-                continue;
-            }
-            
-            $post_id = $page['wordpress_post_id'];
-            
-            // Get paid_link details
-            $paid_link_result = $this->request('GET', "/paid-links/{$page['paid_link_id']}");
-            if (!$paid_link_result['success']) {
-                continue;
-            }
-            
-            $paid_link = $paid_link_result['data'];
-            $link_url = 'https://api.402links.com/p/' . $paid_link['short_id'];
-            
-            // Update post meta
-            update_post_meta($post_id, '_402links_id', $page['paid_link_id']);
-            update_post_meta($post_id, '_402links_short_id', $paid_link['short_id']);
-            update_post_meta($post_id, '_402links_url', $link_url);
-            update_post_meta($post_id, '_402links_synced_at', current_time('mysql'));
-            update_post_meta($post_id, '_402links_block_humans', $page['force_human_payment'] ? '1' : '0');
-            
-            $updated++;
-        }
-        
-        return [
-            'success' => true,
-            'updated' => $updated,
-            'message' => "Synced {$updated} posts"
-        ];
+        return $this->request('GET', '/wordpress-analytics?site_id=' . $site_id . '&timeframe=' . $timeframe);
     }
     
     /**
-     * Get violations summary from backend
+     * Get rogue agents data
+     */
+    public function get_rogue_agents($timeframe = '30d') {
+        $site_id = get_option('angreessen49_site_id');
+        
+        if (!$site_id) {
+            return [
+                'success' => false,
+                'error' => 'Site not registered'
+            ];
+        }
+        
+        return $this->request('GET', '/wordpress-rogue-agents?site_id=' . $site_id . '&timeframe=' . $timeframe);
+    }
+    
+    /**
+     * Get violations data
+     */
+    public function get_violations() {
+        $site_id = get_option('angreessen49_site_id');
+        
+        if (!$site_id) {
+            return [
+                'success' => false,
+                'error' => 'Site not registered'
+            ];
+        }
+        
+        return $this->request('GET', '/wordpress-violations?site_id=' . $site_id);
+    }
+    
+    /**
+     * Get violations summary
      */
     public function get_violations_summary() {
-        $site_id = get_option('402links_site_id');
+        $site_id = get_option('angreessen49_site_id');
         
         if (!$site_id) {
             return [
                 'success' => false,
-                'error' => 'Site not registered. Please complete setup first.'
+                'error' => 'Site not registered'
             ];
         }
         
-        return $this->request('GET', '/get-agent-violations-summary', [
-            'site_id' => $site_id
-        ]);
+        return $this->request('GET', '/wordpress-violations-summary?site_id=' . $site_id);
     }
     
     /**
-     * Get site bot policies from backend
+     * Get site bot policies
      */
-    public function get_site_bot_policies($site_id) {
+    public function get_site_bot_policies() {
+        $site_id = get_option('angreessen49_site_id');
+        
         if (!$site_id) {
             return [
                 'success' => false,
-                'error' => 'Site ID is required'
+                'error' => 'Site not registered'
             ];
         }
         
-        return $this->request('GET', '/get-site-bot-policies', [
-            'site_id' => $site_id
-        ]);
+        return $this->request('GET', '/wordpress-bot-policies?site_id=' . $site_id);
     }
     
     /**
-     * Update site bot policies
+     * Save site bot policies
      */
-    public function update_site_bot_policies($site_id, $policies) {
+    public function save_site_bot_policies($policies) {
+        $site_id = get_option('angreessen49_site_id');
+        
         if (!$site_id) {
             return [
                 'success' => false,
-                'error' => 'Site ID is required'
+                'error' => 'Site not registered'
             ];
         }
         
-        if (!is_array($policies)) {
-            return [
-                'success' => false,
-                'error' => 'Policies must be an array'
-            ];
-        }
-        
-        // Validate policy structure
-        foreach ($policies as $policy) {
-            if (!isset($policy['bot_registry_id']) || !isset($policy['action'])) {
-                return [
-                    'success' => false,
-                    'error' => 'Each policy must have bot_registry_id and action'
-                ];
-            }
-        }
-        
-        return $this->request('POST', '/update-site-bot-policies', [
+        return $this->request('POST', '/wordpress-bot-policies', [
             'site_id' => $site_id,
             'policies' => $policies
         ]);
     }
     
     /**
-     * Make HTTP request to API
+     * Get content analytics
      */
-    private function request($method, $endpoint, $data = []) {
-        $url = $this->api_endpoint . $endpoint;
+    public function get_content_analytics() {
+        $site_id = get_option('angreessen49_site_id');
         
-        // For GET requests, append data as query parameters
-        if ($method === 'GET' && !empty($data)) {
-            $url = add_query_arg($data, $url);
+        if (!$site_id) {
+            return [
+                'success' => false,
+                'error' => 'Site not registered'
+            ];
         }
+        
+        return $this->request('GET', '/wordpress-content-analytics?site_id=' . $site_id);
+    }
+    
+    /**
+     * Report violation
+     */
+    public function report_violation($data) {
+        $site_id = get_option('angreessen49_site_id');
+        
+        if (!$site_id) {
+            return;
+        }
+        
+        $data['site_id'] = $site_id;
+        
+        // Fire-and-forget
+        wp_remote_post($this->api_endpoint . '/report-violation', [
+            'headers' => [
+                'Authorization' => 'Bearer ' . $this->api_key,
+                'Content-Type' => 'application/json'
+            ],
+            'body' => wp_json_encode($data),
+            'timeout' => 5,
+            'blocking' => false
+        ]);
+    }
+    
+    /**
+     * Make API request
+     */
+    private function request($method, $endpoint, $payload = null) {
+        $url = $this->api_endpoint . $endpoint;
         
         $args = [
             'method' => $method,
-            'timeout' => 8, // Increased from 3 to 8 seconds for stability
-            'redirection' => 0, // Disable redirects to prevent delays
-            'sslverify' => true, // Ensure SSL verification
             'headers' => [
-                'Content-Type' => 'application/json',
-                'Authorization' => 'Bearer ' . $this->api_key
-            ]
+                'Authorization' => 'Bearer ' . $this->api_key,
+                'Content-Type' => 'application/json'
+            ],
+            'timeout' => 30
         ];
         
-        if ($method === 'POST' || $method === 'PUT') {
-            $args['body'] = json_encode($data);
+        if ($payload && $method !== 'GET') {
+            $args['body'] = wp_json_encode($payload);
         }
         
         $response = wp_remote_request($url, $args);
         
         if (is_wp_error($response)) {
-            $error_msg = $response->get_error_message();
             return [
                 'success' => false,
-                'error' => $error_msg
+                'error' => $response->get_error_message()
             ];
         }
         
-        $body = wp_remote_retrieve_body($response);
-        $status_code = wp_remote_retrieve_response_code($response);
+        $body = json_decode(wp_remote_retrieve_body($response), true);
+        $code = wp_remote_retrieve_response_code($response);
         
-        $result = json_decode($body, true);
-        
-        if ($status_code >= 400) {
+        if ($code >= 400) {
             return [
                 'success' => false,
-                'error' => $result['error'] ?? 'API request failed',
-                'status_code' => $status_code
+                'error' => $body['error'] ?? $body['message'] ?? 'API error',
+                'code' => $code
             ];
         }
         
-        return array_merge(['success' => true], $result ?? []);
+        return array_merge(['success' => true], $body ?? []);
     }
 }

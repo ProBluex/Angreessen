@@ -1,10 +1,10 @@
 <?php
-namespace AgentHub;
+namespace Angreessen49;
 
 class BatchProcessor {
     const BATCH_SIZE = 50;
     const MAX_EXECUTION_TIME = 25; // seconds
-    const PROGRESS_KEY = '402links_batch_progress';
+    const PROGRESS_KEY = 'angreessen49_batch_progress';
     
     /**
      * Initialize batch processing
@@ -56,7 +56,7 @@ class BatchProcessor {
         }
         
         // FIXED: Always get the FIRST batch of pending posts (no offset!)
-        // As posts get _402links_short_id set, they disappear from this query
+        // As posts get _angreessen49_short_id set, they disappear from this query
         // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Required to find unlinked posts, limited to 50 per batch
         $posts = get_posts([
             'post_type' => 'post',
@@ -69,11 +69,11 @@ class BatchProcessor {
             'meta_query' => [
                 'relation' => 'OR',
                 [
-                    'key' => '_402links_short_id',
+                    'key' => '_angreessen49_short_id',
                     'compare' => 'NOT EXISTS'
                 ],
                 [
-                    'key' => '_402links_short_id',
+                    'key' => '_angreessen49_short_id',
                     'value' => '',
                     'compare' => '='
                 ]
@@ -91,7 +91,7 @@ class BatchProcessor {
             set_transient(self::PROGRESS_KEY, $progress, 3600);
             
             // Clear protected pages cache so dashboard updates
-            delete_transient('agent_hub_protected_pages_count');
+            delete_transient('angreessen49_protected_pages_count');
             
             return ['success' => true, 'completed' => true, 'progress' => $progress];
         }
@@ -123,7 +123,7 @@ class BatchProcessor {
             $progress['status'] = 'completed';
             
             // Clear protected pages cache so dashboard updates immediately
-            delete_transient('agent_hub_protected_pages_count');
+            delete_transient('angreessen49_protected_pages_count');
         }
         
         set_transient(self::PROGRESS_KEY, $progress, 3600);
@@ -177,7 +177,7 @@ class BatchProcessor {
     
     /**
      * Get count of posts WITH existing 402links (protected)
-     * Uses _402links_short_id as the source of truth for protection
+     * Uses _angreessen49_short_id as the source of truth for protection
      */
     private static function get_protected_post_count() {
         global $wpdb;
@@ -189,7 +189,7 @@ class BatchProcessor {
             INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
             WHERE p.post_type = 'post'
             AND p.post_status = 'publish'
-            AND pm.meta_key = '_402links_short_id'
+            AND pm.meta_key = '_angreessen49_short_id'
             AND pm.meta_value != ''
             AND pm.meta_value IS NOT NULL
         ");
@@ -203,12 +203,12 @@ class BatchProcessor {
     private static function get_pending_post_count() {
         global $wpdb;
         
-        // Count posts that DON'T have a _402links_short_id meta (or have empty value)
+        // Count posts that DON'T have a _angreessen49_short_id meta (or have empty value)
         // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Complex LEFT JOIN query for batch stats, results change frequently
         $count = $wpdb->get_var("
             SELECT COUNT(DISTINCT p.ID)
             FROM {$wpdb->posts} p
-            LEFT JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = '_402links_short_id'
+            LEFT JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = '_angreessen49_short_id'
             WHERE p.post_type = 'post'
             AND p.post_status = 'publish'
             AND (pm.meta_value IS NULL OR pm.meta_value = '')

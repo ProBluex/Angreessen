@@ -2,8 +2,8 @@
 (function (w, d, $) {
   "use strict";
 
-  // Soft guard; keep working even if agentHubData is missing
-  const cfg = w.agentHubData || {};
+  // Soft guard; keep working even if angreessen49Data is missing
+  const cfg = w.angreessen49Data || {};
   const ENDPOINT = cfg.contactEndpoint || "https://api.402links.com/functions/v1/submit-contact-message";
 
   // state
@@ -119,7 +119,7 @@
     e.preventDefault();
 
     if (submitCount >= MAX_SUBMISSIONS) {
-      showToast("Limit reached", "You’ve reached the submission limit. Please try again later.", "error");
+      showToast("Limit reached", "You've reached the submission limit. Please try again later.", "error");
       return;
     }
 
@@ -174,10 +174,10 @@
       });
   });
 
-  // “Send another” path preserves session rate-limit
+  // "Send another" path preserves session rate-limit
   $sendAnother.on("click", function () {
     if (submitCount >= MAX_SUBMISSIONS) {
-      showToast("Limit reached", "You’ve reached the submission limit for this session.", "error");
+      showToast("Limit reached", "You've reached the submission limit for this session.", "error");
       return;
     }
     $success.hide();

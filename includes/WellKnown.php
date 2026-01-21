@@ -1,5 +1,5 @@
 <?php
-namespace AgentHub;
+namespace Angreessen49;
 
 class WellKnown {
     /**
@@ -41,7 +41,7 @@ class WellKnown {
                           preg_match('#/\.well-known/402\.json(\?.*)?$#', $request_uri);
         
         if ($is_402_request) {
-            $settings = get_option('402links_settings');
+            $settings = get_option('angreessen49_settings');
             $site_url = get_site_url();
             
             // Get USDC contract address based on network
@@ -62,7 +62,7 @@ class WellKnown {
                     'network' => $network,
                     'maxAmountRequired' => (string)$price_atomic,
                     'asset' => $usdc_address,
-                    'payTo' => get_option('402links_agent_payment_wallet') ?: ($settings['payment_wallet'] ?? ''),
+                    'payTo' => get_option('angreessen49_agent_payment_wallet') ?: ($settings['payment_wallet'] ?? ''),
                     'resource' => $page['url'],
                     'description' => $page['title'],
                     'mimeType' => 'text/html',
@@ -109,17 +109,17 @@ class WellKnown {
             'posts_per_page' => 100,
             'meta_query' => [
                 [
-                    'key' => '_402links_id',
+                    'key' => '_angreessen49_link_id',
                     'compare' => 'EXISTS'
                 ]
             ]
         ]);
         
         $pages = [];
-        $settings = get_option('402links_settings');
+        $settings = get_option('angreessen49_settings');
         
         foreach ($posts as $post) {
-            $price = get_post_meta($post->ID, '_402links_price', true);
+            $price = get_post_meta($post->ID, '_angreessen49_price', true);
             if (empty($price)) {
                 $price = $settings['default_price'] ?? 0.10;
             }
@@ -146,7 +146,7 @@ class WellKnown {
                                  preg_match('#/\.well-known/agent-card\.json(\?.*)?$#', $request_uri);
         
         if ($is_agent_card_request) {
-            $settings = get_option('402links_settings');
+            $settings = get_option('angreessen49_settings');
             $site_url = get_site_url();
             
             // Call Supabase edge function to generate agent-card
@@ -187,7 +187,7 @@ class WellKnown {
      * Generate fallback agent-card when edge function is unavailable
      */
     private static function generate_fallback_agent_card() {
-        $settings = get_option('402links_settings');
+        $settings = get_option('angreessen49_settings');
         $site_url = get_site_url();
         
         return [
@@ -212,7 +212,7 @@ class WellKnown {
      */
     public static function inject_robots_txt($output, $public) {
         if ($public) {
-            $settings = get_option('402links_settings');
+            $settings = get_option('angreessen49_settings');
             $site_url = get_site_url();
             
             $output .= "\n# AI Agent Payment Protocol\n";

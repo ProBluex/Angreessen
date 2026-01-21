@@ -12,13 +12,13 @@
   const debugLog = DEBUG_MODE ? console.log.bind(console) : () => {};
   const debugWarn = DEBUG_MODE ? console.warn.bind(console) : () => {};
 
-  if (!w.agentHubData || !w.agentHubData.ajaxUrl || !w.agentHubData.nonce) {
-    console.error("[Analytics] Missing agentHubData config.");
+  if (!w.angreessen49Data || !w.angreessen49Data.ajaxUrl || !w.angreessen49Data.nonce) {
+    console.error("[Analytics] Missing angreessen49Data config.");
     return;
   }
 
   /* ------------------ Config & State ------------------ */
-  const DEBUG = !!w.agentHubData.debug;
+  const DEBUG = !!w.angreessen49Data.debug;
   // Chart.js is now bundled locally and enqueued via wp_enqueue_script
   const COLORS = {
     tx: "#00D091",
@@ -69,7 +69,7 @@
   // Browser-level cache for analytics data (timeframe-specific)
   const ANALYTICS_CACHE_TTL = 120000; // 2 minutes
   
-  const getCacheKey = (timeframe) => `agent_hub_analytics_cache_${timeframe}`;
+  const getCacheKey = (timeframe) => `angreessen49_analytics_cache_${timeframe}`;
 
   function getAnalyticsCache(timeframe) {
     try {
@@ -116,13 +116,13 @@
   };
 
   const ajaxPost = (action, payload = {}) => {
-    if (!w.agentHubData?.ajaxUrl) return $.Deferred().reject("Missing ajaxUrl").promise();
+    if (!w.angreessen49Data?.ajaxUrl) return $.Deferred().reject("Missing ajaxUrl").promise();
     return $.ajax({
-      url: w.agentHubData.ajaxUrl,
+      url: w.angreessen49Data.ajaxUrl,
       type: "POST",
       dataType: "json",
       timeout: 10000,
-      data: { action, nonce: w.agentHubData.nonce, ...payload },
+      data: { action, nonce: w.angreessen49Data.nonce, ...payload },
     });
   };
 
@@ -324,7 +324,7 @@
     // Show loading overlay
     showAnalyticsLoading();
     
-    // REMOVED: Redundant agent_hub_get_analytics call
+    // REMOVED: Redundant angreessen49_get_analytics call
     // Data is fetched directly from ecosystem-data.php and top-pages endpoints
     
     // Load ecosystem stats directly
@@ -379,14 +379,14 @@
       rqEcosystem.abort();
     }
     
-    const ajaxUrl = w.agentHubData.pluginUrl + 'ecosystem-data.php';
+    const ajaxUrl = w.angreessen49Data.pluginUrl + 'ecosystem-data.php';
     
     rqEcosystem = $.ajax({
       url: ajaxUrl,
       method: 'POST',
       data: { 
         timeframe: timeframe,
-        nonce: w.agentHubData.nonce
+        nonce: w.angreessen49Data.nonce
       },
       timeout: 10000,  // Reduced timeout with PHP fallback
       success: function(response) {
@@ -498,676 +498,396 @@
 
     // abort stale request
     if (rqTopPages && rqTopPages.abort) {
-      debugLog("⚪ [TopPages] Aborting previous top pages request");
       rqTopPages.abort();
     }
 
-    debugLog("📄 [TopPages] Making AJAX request to agent_hub_get_top_pages");
-    rqTopPages = ajaxPost("agent_hub_get_top_pages", requestData)
-      .done((res) => {
-        debugLog("✅ [TopPages] Response received");
-        debugLog("📄 [TopPages] Response success:", res?.success);
-        debugLog("📄 [TopPages] Response has data:", !!res?.data);
-        
+    rqTopPages = ajaxPost("angreessen49_get_top_pages", requestData)
+      .done(function (res) {
+        debugLog("📄 [TopPages] Response:", res);
         if (res?.success && res.data) {
-          const pages = res.data.pages || [];
-          const total = Number(res.data.total || 0);
-          debugLog("📄 [TopPages] Pages count:", pages.length);
-          debugLog("📄 [TopPages] Total pages:", total);
-          
-          renderTopContent(pages);
-          renderPagination(total, currentPage, perPage);
-          debugLog("✅ [TopPages] Rendering completed");
+          renderTopPages(res.data.pages || [], res.data.total || 0);
         } else {
-          debugWarn("⚠️ [TopPages] No pages found in response");
-          $("#top-content-body").html(
-            '<tr><td colspan="2" style="text-align:center; color:#666;">No pages found</td></tr>',
-          );
-          $("#top-content-pagination").hide();
+          debugWarn("📄 [TopPages] No data in response");
+          renderTopPages([], 0);
         }
       })
-      .fail((xhr, status, error) => {
-        // Don't log aborts as errors
+      .fail(function (xhr, status, error) {
         if (status === 'abort') {
-          debugLog("⚪ [TopPages] Request aborted (expected)");
+          debugLog("📄 [TopPages] Request aborted");
           return;
         }
-        
-        console.error("🔴 [TopPages] Request failed:", status, error);
-        
-        console.error("❌ [TopPages] Real error:", status, error, xhr?.responseText);
-        $("#top-content-body").html(
-          '<tr><td colspan="2" style="text-align:center; color:#c00;">Failed to load top pages</td></tr>',
-        );
-        $("#top-content-pagination").hide();
+        console.error("📄 [TopPages] Request failed:", status, error);
+        renderTopPages([], 0);
       });
   }
 
-  /* ------------------ Rendering ------------------ */
-
-  function renderAnalytics(data) {
-    log("Rendering analytics dashboard");
-
-    // NOTE: Ecosystem stats are now handled by direct ecosystem-data.php call
-    // This function is kept for backwards compatibility and site-specific data
-    // Only render chart if site data has bucketed_data
+  function loadFacilitatorData() {
+    const timeframe = $("#analytics-timeframe").val() || "30d";
     
-    const site = data.site || {};
-    const series = Array.isArray(site.bucketed_data) ? site.bucketed_data : [];
+    debugLog("🏭 [Facilitators] Loading data for timeframe:", timeframe);
     
-    if (series.length) {
-      renderMarketOverviewChart(series);
-    } else {
-      showEmptyChartState();
-    }
-  }
-
-  function renderMarketOverviewChart(bucketedData) {
-    const canvas = d.getElementById("market-chart");
-    if (!canvas) {
-      console.warn("[Analytics] Market chart canvas not found");
-      return;
-    }
-
-    if (!bucketedData || bucketedData.length === 0) {
-      console.warn("[Analytics] No bucketed data for market chart");
-      showEmptyChartState();
-      return;
-    }
-
-    // Wait if Chart.js not ready yet
-    if (typeof w.Chart === "undefined") {
-      console.log("Chart.js not ready; retrying...");
-      return setTimeout(() => renderMarketOverviewChart(bucketedData), 200);
-    }
-
-    // Destroy previous chart to prevent leaks
-    if (marketChart) marketChart.destroy();
-
-    // Support multiple field formats
-    const labels = bucketedData.map((d) => formatDate(d.bucket_start || d.timestamp || d.date));
-    const datasets = [];
-
-    const coalesce = (v) => {
-      const n = Number(v || 0);
-      return Number.isFinite(n) ? n : 0;
-    };
-
-    if (activeMetrics.transactions) {
-      datasets.push({
-        label: "Transactions",
-        data: bucketedData.map((d) => coalesce(d.total_transactions || d.transactions)),
-        borderColor: COLORS.tx,
-        backgroundColor: "rgba(0, 208, 145, 0.10)",
-        yAxisID: "y",
-        tension: 0.35,
-        pointRadius: 0,
-      });
-    }
-    if (activeMetrics.volume) {
-      datasets.push({
-        label: "Volume (USDC)",
-        data: bucketedData.map((d) => coalesce(d.volume || d.total_amount)),
-        borderColor: COLORS.vol,
-        backgroundColor: "rgba(139, 92, 246, 0.10)",
-        yAxisID: "y",
-        tension: 0.35,
-        pointRadius: 0,
-      });
-    }
-    if (activeMetrics.buyers) {
-      datasets.push({
-        label: "Buyers",
-        data: bucketedData.map((d) => coalesce(d.unique_buyers || d.buyers)),
-        borderColor: COLORS.buyers,
-        backgroundColor: "rgba(59, 130, 246, 0.10)",
-        yAxisID: "y",
-        tension: 0.35,
-        pointRadius: 0,
-      });
-    }
-    if (activeMetrics.sellers) {
-      datasets.push({
-        label: "Sellers",
-        data: bucketedData.map((d) => coalesce(d.unique_sellers || d.sellers)),
-        borderColor: COLORS.sellers,
-        backgroundColor: "rgba(245, 158, 11, 0.10)",
-        yAxisID: "y",
-        tension: 0.35,
-        pointRadius: 0,
-      });
-    }
-
-    $("#market-chart-container").show();
-    $(".chart-empty-state").hide();
-
-    marketChart = new w.Chart(canvas, {
-      type: "line",
-      data: { labels, datasets },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: { mode: "index", intersect: false },
-        plugins: {
-          legend: { display: true, position: "top" },
-          tooltip: { backgroundColor: "rgba(0,0,0,0.8)", padding: 12 },
-        },
-        scales: {
-          x: {
-            grid: { display: false },
-            ticks: { maxRotation: 45, minRotation: 45 },
-          },
-          y: {
-            type: "linear",
-            display: true,
-            position: "left",
-            title: { display: true, text: "Count" },
-            beginAtZero: true,
-          },
-          y1: {
-            type: "linear",
-            display: true,
-            position: "right",
-            title: { display: true, text: "Volume (USDC)" },
-            beginAtZero: true,
-            grid: { drawOnChartArea: false },
-          },
-        },
+    const ajaxUrl = w.angreessen49Data.pluginUrl + 'facilitators-data.php';
+    
+    $.ajax({
+      url: ajaxUrl,
+      method: 'POST',
+      data: { 
+        timeframe: timeframe,
+        nonce: w.angreessen49Data.nonce
       },
+      timeout: 10000,
+      success: function(response) {
+        debugLog("🏭 [Facilitators] Response:", response);
+        
+        if (response.success && response.data && response.data.facilitators) {
+          renderFacilitatorData(response.data.facilitators, response.data.totals);
+        } else {
+          debugWarn("🏭 [Facilitators] No data in response");
+          renderFacilitatorData([], null);
+        }
+      },
+      error: function(xhr, status, error) {
+        console.error("🏭 [Facilitators] Request failed:", status, error);
+        renderFacilitatorData([], null);
+      }
     });
   }
-
-  function showEmptyChartState() {
-    $("#market-chart-container").hide();
-    $(".chart-empty-state")
-      .show()
-      .html(
-        '<p style="text-align:center; color:#666; padding:60px 20px;">No ecosystem data available yet. Check back soon!</p>',
-      );
-  }
-
-  function renderTopContent(pages) {
-    const $tbody = $("#top-content-body");
-    $tbody.empty();
-
-    if (!Array.isArray(pages) || pages.length === 0) {
-      $tbody.html('<tr><td colspan="2" style="text-align:center; color:#666;">No pages found</td></tr>');
-      return;
-    }
-
-    const rows = pages
-      .map((p) => {
-        const url = p.url || p.page_url || "#";
-        const title = p.title || p.page_title || "Untitled";
-        const revenue = p.total_revenue ?? p.revenue ?? 0;
-        return `
-        <tr>
-          <td>${safeLink(url, title)}</td>
-          <td>$${formatMoney(revenue)}</td>
-        </tr>`;
-      })
-      .join("");
-
-    $tbody.html(rows);
-  }
-
-  function renderPagination(total, page, size) {
-    const $container = $("#top-content-pagination");
-    const totalPages = Math.max(1, Math.ceil(Number(total || 0) / size));
-
-    if (totalPages <= 1) {
-      $container.hide();
-      return;
-    }
-
-    $container.show().empty();
-
-    let html = '<div class="pagination">';
-
-    if (page > 1) html += `<button class="page-btn" data-page="${page - 1}">← Previous</button>`;
-
-    for (let i = 1; i <= totalPages; i++) {
-      if (i === page) {
-        html += `<span class="page-current">${i}</span>`;
-      } else if (i === 1 || i === totalPages || Math.abs(i - page) <= 2) {
-        html += `<button class="page-btn" data-page="${i}">${i}</button>`;
-      } else if (i === page - 3 || i === page + 3) {
-        html += "<span>...</span>";
-      }
-    }
-
-    if (page < totalPages) html += `<button class="page-btn" data-page="${page + 1}">Next →</button>`;
-
-    html += "</div>";
-    $container.html(html);
-  }
-
-  /* ------------------ Auto Refresh (manual-only, safe) ------------------ */
 
   function startAnalyticsAutoRefresh() {
-    // clear existing
+    // Clear any existing interval
     if (analyticsRefreshInterval) {
       clearInterval(analyticsRefreshInterval);
-      analyticsRefreshInterval = null;
     }
-    // As requested: disabled; only manual triggers
-    log("Auto-refresh disabled: refresh on load, tab switch, timeframe change only.");
+    
+    // Auto-refresh every 5 minutes
+    analyticsRefreshInterval = setInterval(function() {
+      if ($('[data-tab="analytics"]').hasClass("active")) {
+        loadAnalyticsData();
+      }
+    }, 300000); // 5 minutes
   }
 
-  /* ------------------ Errors ------------------ */
+  /* ------------------ Rendering Functions ------------------ */
 
-  function showError(message) {
-    console.error("[Analytics]", message);
-    if (typeof w.showToast === "function") {
-      w.showToast("Analytics Error", String(message || "Unknown error"), "error");
-    }
-  }
-
-  /* ------------------ Public API ------------------ */
-  w.agentHubAnalytics = {
-    loadAnalyticsData,
-    renderMarketOverviewChart,
-    startAnalyticsAutoRefresh,
-  };
-
-  /* ------------------ Sparklines ------------------ */
-  
-  function renderSparklines(bucketedData) {
-    if (!bucketedData || !bucketedData.length) {
+  function renderTopPages(pages, total) {
+    const $container = $("#top-pages-list");
+    const $pagination = $("#top-pages-pagination");
+    
+    if (!$container.length) {
+      debugWarn("📄 [TopPages] Container #top-pages-list not found");
       return;
     }
     
-    ensureChartJS(() => {
-      try {
-        // Support multiple field name formats
-        const labels = bucketedData.map(b => formatDate(b.bucket_start || b.timestamp || b.date));
-        
-        // Transactions sparkline
-        const txData = bucketedData.map(b => Number(b.total_transactions || b.transactions || 0));
-        renderSparkline('sparkline-transactions', labels, txData, COLORS.tx);
-        
-        // Volume sparkline
-        const volData = bucketedData.map(b => Number(b.volume || b.total_amount || 0));
-        renderSparkline('sparkline-volume', labels, volData, COLORS.vol);
-        
-        // Buyers sparkline
-        const buyersData = bucketedData.map(b => Number(b.unique_buyers || b.buyers || 0));
-        renderSparkline('sparkline-buyers', labels, buyersData, COLORS.buyers);
-        
-        // Sellers sparkline
-        const sellersData = bucketedData.map(b => Number(b.unique_sellers || b.sellers || 0));
-        renderSparkline('sparkline-sellers', labels, sellersData, COLORS.sellers);
-      } catch (error) {
-        console.error('[SPARKLINES] Error:', error);
+    $container.empty();
+    
+    if (!pages || pages.length === 0) {
+      $container.html('<div class="no-data-message">No page data available for this timeframe</div>');
+      $pagination.empty();
+      return;
+    }
+    
+    pages.forEach(function(page, index) {
+      const rank = (currentPage - 1) * perPage + index + 1;
+      const $row = $(`
+        <div class="top-page-row">
+          <span class="page-rank">#${rank}</span>
+          <div class="page-info">
+            <a href="${esc(page.url || '#')}" target="_blank" class="page-title">${esc(page.title || 'Untitled')}</a>
+            <span class="page-url">${esc(page.domain || '')}</span>
+          </div>
+          <div class="page-stats">
+            <span class="stat-transactions">${formatNumber(page.transactions || 0)} txns</span>
+            <span class="stat-revenue">${formatCurrency(page.revenue || 0)}</span>
+          </div>
+        </div>
+      `);
+      $container.append($row);
+    });
+    
+    // Render pagination
+    const totalPages = Math.ceil(total / perPage);
+    if (totalPages > 1) {
+      let paginationHtml = '<div class="pagination-controls">';
+      
+      if (currentPage > 1) {
+        paginationHtml += `<button class="page-btn" data-page="${currentPage - 1}">← Prev</button>`;
       }
+      
+      paginationHtml += `<span class="page-info">Page ${currentPage} of ${totalPages}</span>`;
+      
+      if (currentPage < totalPages) {
+        paginationHtml += `<button class="page-btn" data-page="${currentPage + 1}">Next →</button>`;
+      }
+      
+      paginationHtml += '</div>';
+      $pagination.html(paginationHtml);
+    } else {
+      $pagination.empty();
+    }
+  }
+
+  function renderSparklines(bucketedData) {
+    if (!bucketedData || bucketedData.length === 0) return;
+    
+    ensureChartJS(function() {
+      const labels = bucketedData.map(d => formatDate(d.bucket_date || d.date));
+      
+      // Transactions sparkline
+      renderSparkline('sparkline-transactions', labels, 
+        bucketedData.map(d => d.transactions || 0), COLORS.tx);
+      
+      // Volume sparkline
+      renderSparkline('sparkline-volume', labels, 
+        bucketedData.map(d => d.total_amount || 0), COLORS.vol);
+      
+      // Buyers sparkline
+      renderSparkline('sparkline-buyers', labels, 
+        bucketedData.map(d => d.unique_buyers || 0), COLORS.buyers);
+      
+      // Sellers sparkline
+      renderSparkline('sparkline-sellers', labels, 
+        bucketedData.map(d => d.unique_sellers || 0), COLORS.sellers);
     });
   }
-  
+
   function renderSparkline(canvasId, labels, data, color) {
-    const canvas = d.getElementById(canvasId);
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
     
-    if (!canvas) {
-      return;
-    }
+    const ctx = canvas.getContext('2d');
     
-    // Destroy existing chart
+    // Destroy existing chart if any
     if (sparklineCharts[canvasId]) {
       sparklineCharts[canvasId].destroy();
     }
     
-    try {
-      sparklineCharts[canvasId] = new w.Chart(canvas, {
-        type: 'line',
-        data: {
-          labels: labels,
-          datasets: [{
-            data: data,
-            borderColor: color,
-            backgroundColor: color + '20',
-            borderWidth: 2,
-            fill: true,
-            tension: 0.4,
-            pointRadius: 0,
-            pointHoverRadius: 0,
-          }]
+    sparklineCharts[canvasId] = new w.Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          data: data,
+          borderColor: color,
+          borderWidth: 2,
+          fill: true,
+          backgroundColor: color + '20',
+          tension: 0.4,
+          pointRadius: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { enabled: false }
         },
+        scales: {
+          x: { display: false },
+          y: { display: false }
+        },
+        elements: {
+          line: { borderCapStyle: 'round' }
+        }
+      }
+    });
+  }
+
+  function renderMarketOverviewChart(bucketedData) {
+    if (!bucketedData || bucketedData.length === 0) return;
+    
+    ensureChartJS(function() {
+      const canvas = document.getElementById('market-overview-chart');
+      if (!canvas) return;
+      
+      const ctx = canvas.getContext('2d');
+      
+      // Destroy existing chart if any
+      if (marketChart) {
+        marketChart.destroy();
+      }
+      
+      const labels = bucketedData.map(d => formatDate(d.bucket_date || d.date));
+      
+      const datasets = [];
+      
+      if (activeMetrics.transactions) {
+        datasets.push({
+          label: 'Transactions',
+          data: bucketedData.map(d => d.transactions || 0),
+          borderColor: COLORS.tx,
+          backgroundColor: COLORS.tx + '20',
+          yAxisID: 'y-count',
+          tension: 0.4
+        });
+      }
+      
+      if (activeMetrics.volume) {
+        datasets.push({
+          label: 'Volume (USD)',
+          data: bucketedData.map(d => d.total_amount || 0),
+          borderColor: COLORS.vol,
+          backgroundColor: COLORS.vol + '20',
+          yAxisID: 'y-volume',
+          tension: 0.4
+        });
+      }
+      
+      if (activeMetrics.buyers) {
+        datasets.push({
+          label: 'Buyers',
+          data: bucketedData.map(d => d.unique_buyers || 0),
+          borderColor: COLORS.buyers,
+          backgroundColor: COLORS.buyers + '20',
+          yAxisID: 'y-count',
+          tension: 0.4
+        });
+      }
+      
+      if (activeMetrics.sellers) {
+        datasets.push({
+          label: 'Sellers',
+          data: bucketedData.map(d => d.unique_sellers || 0),
+          borderColor: COLORS.sellers,
+          backgroundColor: COLORS.sellers + '20',
+          yAxisID: 'y-count',
+          tension: 0.4
+        });
+      }
+      
+      marketChart = new w.Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false },
-            tooltip: { enabled: false }
-          },
-          scales: {
-            x: { display: false },
-            y: { display: false }
-          },
           interaction: {
-            intersect: false,
-            mode: 'index'
-          }
-        }
-      });
-    } catch (error) {
-      console.error(`[SPARKLINE] Error creating ${canvasId}:`, error);
-    }
-  }
-  
-  /* ------------------ Facilitators ------------------ */
-  
-  function loadFacilitatorData() {
-    const timeframe = $("#analytics-timeframe").val() || "30d";
-    
-    $("#facilitators-loading").show();
-    $("#facilitators-grid").hide();
-    $("#facilitators-error").hide();
-    
-    $.ajax({
-      url: w.agentHubData.supabaseUrl + '/functions/v1/x402scan-trpc-proxy',
-      method: 'POST',
-      headers: {
-        'Authorization': 'Bearer ' + w.agentHubData.supabaseAnonKey,
-        'Content-Type': 'application/json'
-      },
-      data: JSON.stringify({
-        endpoint: 'facilitators',
-        timeframe: timeframe,
-        chain: 'base'
-      }),
-      timeout: 10000,
-      success: function(response) {
-        if (response && response.data && response.data.items) {
-          const facilitators = response.data.items.slice(0, 3);
-          renderFacilitators(facilitators, timeframe);
-        } else {
-          showFacilitatorsError();
-        }
-      },
-      error: function(xhr, status, error) {
-        showFacilitatorsError();
-      }
-    });
-  }
-  
-  function renderFacilitators(facilitators, timeframe) {
-    if (!facilitators || facilitators.length === 0) {
-      showFacilitatorsError();
-      return;
-    }
-    
-    $("#facilitators-loading").hide();
-    $("#facilitators-error").hide();
-    $("#facilitators-grid").show().empty();
-    
-    const colors = [FACILITATOR_COLORS['Node 1'], FACILITATOR_COLORS['Node 2'], FACILITATOR_COLORS['Node 3']];
-    
-    facilitators.forEach((fac, index) => {
-      const apiName = fac.facilitator?.name || 'Unknown';
-      // Map API names to display names
-      const name = FACILITATOR_NAME_MAP[apiName] || `Node ${index + 1}`;
-      const addresses = fac.facilitator_addresses || [];
-      const transactions = Number(fac.tx_count || 0);
-      const volume = Number(fac.total_amount || 0);
-      const buyers = Number(fac.unique_buyers || 0);
-      const sellers = Number(fac.unique_sellers || 0);
-      const color = colors[index] || '#666';
-      
-      // Truncate addresses
-      const displayAddresses = addresses.slice(0, 2).map(addr => 
-        addr.substring(0, 6) + '...' + addr.substring(addr.length - 4)
-      );
-      
-      if (addresses.length > 2) {
-        displayAddresses.push(`+${addresses.length - 2} more`);
-      }
-      
-      const card = `
-        <div class="facilitator-card">
-          <div class="facilitator-header">
-            <div class="facilitator-logo" style="background: ${color};">
-              ${name.charAt(0)}
-            </div>
-            <div class="facilitator-info">
-              <h4 class="facilitator-name">${esc(name)}</h4>
-              <div class="facilitator-addresses">
-                ${displayAddresses.map(addr => `<span class="facilitator-address">${esc(addr)}</span>`).join('')}
-              </div>
-            </div>
-          </div>
-          <div class="facilitator-chart">
-            <canvas id="facilitator-chart-${index}"></canvas>
-          </div>
-          <div class="facilitator-stats-grid">
-            <div class="facilitator-stat">
-              <div class="facilitator-stat-label">Requests</div>
-              <div class="facilitator-stat-value">${formatLargeNumber(transactions)}</div>
-            </div>
-            <div class="facilitator-stat">
-              <div class="facilitator-stat-label">Volume</div>
-              <div class="facilitator-stat-value">${formatCurrencyFromMicro(volume)}</div>
-            </div>
-            <div class="facilitator-stat">
-              <div class="facilitator-stat-label">Buyers</div>
-              <div class="facilitator-stat-value">${formatLargeNumber(buyers)}</div>
-            </div>
-            <div class="facilitator-stat">
-              <div class="facilitator-stat-label">Sellers</div>
-              <div class="facilitator-stat-value">${formatLargeNumber(sellers)}</div>
-            </div>
-          </div>
-        </div>
-      `;
-      
-      $("#facilitators-grid").append(card);
-      
-      // Render chart for this facilitator
-      loadFacilitatorChart(index, fac.facilitator_id, color, timeframe);
-    });
-  }
-  
-  function loadFacilitatorChart(index, facilitatorId, color, timeframe) {
-    console.log(`🎯 [FACILITATOR-${index}] ========== loadFacilitatorChart CALLED ==========`);
-    console.log(`🎯 [FACILITATOR-${index}] index:`, index);
-    console.log(`🎯 [FACILITATOR-${index}] facilitatorId:`, facilitatorId);
-    console.log(`🎯 [FACILITATOR-${index}] color:`, color);
-    console.log(`🎯 [FACILITATOR-${index}] timeframe:`, timeframe);
-    console.log(`🎯 [FACILITATOR-${index}] Making AJAX request to:`, w.agentHubData.supabaseUrl + '/functions/v1/x402scan-trpc-proxy');
-    
-    const requestBody = {
-      endpoint: 'bucketed',
-      timeframe: timeframe,
-      chain: 'base',
-      facilitatorIds: [facilitatorId]
-    };
-    console.log(`🎯 [FACILITATOR-${index}] Request body:`, JSON.stringify(requestBody));
-    
-    $.ajax({
-      url: w.agentHubData.supabaseUrl + '/functions/v1/x402scan-trpc-proxy',
-      method: 'POST',
-      headers: {
-        'Authorization': 'Bearer ' + w.agentHubData.supabaseAnonKey,
-        'Content-Type': 'application/json'
-      },
-      data: JSON.stringify(requestBody),
-      timeout: 10000,
-      success: function(response) {
-        console.log(`🎯 [FACILITATOR-${index}] ========== AJAX SUCCESS ==========`);
-        console.log(`🎯 [FACILITATOR-${index}] Raw response:`, response);
-        console.log(`🎯 [FACILITATOR-${index}] response.success:`, response.success);
-        console.log(`🎯 [FACILITATOR-${index}] response.data:`, response.data);
-        console.log(`🎯 [FACILITATOR-${index}] response.data type:`, typeof response.data);
-        console.log(`🎯 [FACILITATOR-${index}] response.data is array:`, Array.isArray(response.data));
-        
-        if (response.data) {
-          console.log(`🎯 [FACILITATOR-${index}] response.data keys:`, Object.keys(response.data));
-          console.log(`🎯 [FACILITATOR-${index}] response.data.items exists:`, !!response.data.items);
-          
-          if (response.data.items) {
-            console.log(`🎯 [FACILITATOR-${index}] response.data.items length:`, response.data.items.length);
-            console.log(`🎯 [FACILITATOR-${index}] response.data.items[0]:`, response.data.items[0]);
-          }
-          
-          // Check if data is directly an array
-          if (Array.isArray(response.data)) {
-            console.log(`🎯 [FACILITATOR-${index}] response.data is direct array with length:`, response.data.length);
-            console.log(`🎯 [FACILITATOR-${index}] response.data[0]:`, response.data[0]);
-          }
-        }
-        
-        if (response && response.data && response.data.items) {
-          console.log(`🎯 [FACILITATOR-${index}] ✅ Calling renderFacilitatorChart with items`);
-          renderFacilitatorChart(index, response.data.items, color);
-        } else {
-          console.log(`🎯 [FACILITATOR-${index}] ❌ NO data.items - checking alternatives`);
-          
-          // Try direct array
-          if (Array.isArray(response.data)) {
-            console.log(`🎯 [FACILITATOR-${index}] ⚠️ data is array, attempting render with direct data`);
-            renderFacilitatorChart(index, response.data, color);
-          } else {
-            console.log(`🎯 [FACILITATOR-${index}] ❌ Cannot render - no valid data structure`);
-          }
-        }
-      },
-      error: function(xhr, status, error) {
-        console.log(`🎯 [FACILITATOR-${index}] ========== AJAX ERROR ==========`);
-        console.log(`🎯 [FACILITATOR-${index}] xhr:`, xhr);
-        console.log(`🎯 [FACILITATOR-${index}] status:`, status);
-        console.log(`🎯 [FACILITATOR-${index}] error:`, error);
-        console.log(`🎯 [FACILITATOR-${index}] responseText:`, xhr.responseText);
-      }
-    });
-  }
-  
-  function renderFacilitatorChart(index, bucketedData, color) {
-    console.log(`📊 [RENDER-${index}] ========== renderFacilitatorChart CALLED ==========`);
-    console.log(`📊 [RENDER-${index}] index:`, index);
-    console.log(`📊 [RENDER-${index}] bucketedData:`, bucketedData);
-    console.log(`📊 [RENDER-${index}] bucketedData type:`, typeof bucketedData);
-    console.log(`📊 [RENDER-${index}] bucketedData is array:`, Array.isArray(bucketedData));
-    console.log(`📊 [RENDER-${index}] color:`, color);
-    
-    const canvasId = `facilitator-chart-${index}`;
-    const canvas = d.getElementById(canvasId);
-    
-    console.log(`📊 [RENDER-${index}] canvasId:`, canvasId);
-    console.log(`📊 [RENDER-${index}] canvas element found:`, !!canvas);
-    
-    if (!canvas) {
-      console.log(`📊 [RENDER-${index}] ❌ Canvas not found`);
-      return;
-    }
-    
-    if (!bucketedData) {
-      console.log(`📊 [RENDER-${index}] ❌ bucketedData is null/undefined`);
-      return;
-    }
-    
-    if (Array.isArray(bucketedData)) {
-      console.log(`📊 [RENDER-${index}] bucketedData length:`, bucketedData.length);
-      if (bucketedData.length > 0) {
-        console.log(`📊 [RENDER-${index}] First bucket:`, bucketedData[0]);
-        console.log(`📊 [RENDER-${index}] First bucket keys:`, Object.keys(bucketedData[0]));
-      }
-    }
-    
-    if (!bucketedData || bucketedData.length === 0) {
-      console.log(`📊 [RENDER-${index}] ❌ bucketedData empty array`);
-      return;
-    }
-    
-    ensureChartJS(() => {
-      console.log(`📊 [RENDER-${index}] ✅ Chart.js loaded, processing data...`);
-      
-      const labels = bucketedData.map(b => {
-        const label = formatDate(b.bucket_start || b.timestamp || b.date);
-        return label;
-      });
-      const data = bucketedData.map(b => {
-        const value = Number(b.total_transactions || b.transactions || 0);
-        return value;
-      });
-      
-      console.log(`📊 [RENDER-${index}] Labels:`, labels);
-      console.log(`📊 [RENDER-${index}] Data:`, data);
-      console.log(`📊 [RENDER-${index}] Creating chart...`);
-      
-      // Destroy existing chart
-      if (facilitatorCharts[canvasId]) {
-        facilitatorCharts[canvasId].destroy();
-      }
-      facilitatorCharts[canvasId] = new w.Chart(canvas, {
-        type: 'line',
-        data: {
-          labels: labels,
-          datasets: [{
-            data: data,
-            borderColor: color,
-            backgroundColor: color + '20',
-            borderWidth: 3,
-            fill: true,
-            tension: 0.4,
-            pointRadius: 0,
-            pointHoverRadius: 4,
-            pointHoverBackgroundColor: color,
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
+            mode: 'index',
+            intersect: false
+          },
           plugins: {
-            legend: { display: false },
-            tooltip: {
-              mode: 'index',
-              intersect: false,
-              callbacks: {
-                label: function(context) {
-                  return formatNumber(context.parsed.y) + ' txns';
-                }
-              }
+            legend: {
+              position: 'top',
+              labels: { usePointStyle: true }
             }
           },
           scales: {
             x: {
-              display: true,
+              grid: { display: false }
+            },
+            'y-count': {
+              type: 'linear',
+              position: 'left',
+              beginAtZero: true,
+              grid: { color: '#e5e7eb' }
+            },
+            'y-volume': {
+              type: 'linear',
+              position: 'right',
+              beginAtZero: true,
               grid: { display: false },
               ticks: {
-                maxRotation: 0,
-                autoSkipPadding: 20,
-                font: { size: 10 },
-                color: '#999'
-              }
-            },
-            y: {
-              display: true,
-              grid: { 
-                color: '#f0f0f0',
-                drawBorder: false
-              },
-              ticks: {
-                font: { size: 10 },
-                color: '#999',
                 callback: function(value) {
-                  return formatLargeNumber(value);
+                  return formatCurrency(value);
                 }
               }
             }
-          },
-          interaction: {
-            intersect: false,
-            mode: 'index'
           }
         }
       });
-      
-      console.log(`📊 [RENDER-${index}] ✅ Chart created successfully`);
     });
   }
-  
-  function showFacilitatorsError() {
-    $("#facilitators-loading").hide();
-    $("#facilitators-grid").hide();
-    $("#facilitators-error").show();
+
+  function renderFacilitatorData(facilitators, totals) {
+    const $container = $("#facilitators-list");
+    const $chart = $("#facilitators-chart");
+    
+    if (!$container.length) {
+      debugWarn("🏭 [Facilitators] Container not found");
+      return;
+    }
+    
+    $container.empty();
+    
+    if (!facilitators || facilitators.length === 0) {
+      $container.html('<div class="no-data-message">No facilitator data available</div>');
+      return;
+    }
+    
+    // Render facilitator cards
+    facilitators.forEach(function(fac) {
+      const displayName = FACILITATOR_NAME_MAP[fac.name] || fac.name;
+      const color = FACILITATOR_COLORS[displayName] || '#6B7280';
+      
+      const $card = $(`
+        <div class="facilitator-card" style="border-left: 4px solid ${color}">
+          <div class="facilitator-header">
+            <span class="facilitator-name">${esc(displayName)}</span>
+            <span class="facilitator-badge" style="background: ${color}20; color: ${color}">${formatNumber(fac.transactions || 0)} txns</span>
+          </div>
+          <div class="facilitator-stats">
+            <div class="fac-stat">
+              <span class="fac-stat-value">${formatCurrencyFromMicro(fac.total_amount || 0)}</span>
+              <span class="fac-stat-label">Volume</span>
+            </div>
+            <div class="fac-stat">
+              <span class="fac-stat-value">${formatNumber(fac.unique_buyers || 0)}</span>
+              <span class="fac-stat-label">Buyers</span>
+            </div>
+            <div class="fac-stat">
+              <span class="fac-stat-value">${formatNumber(fac.unique_sellers || 0)}</span>
+              <span class="fac-stat-label">Sellers</span>
+            </div>
+          </div>
+        </div>
+      `);
+      $container.append($card);
+    });
+    
+    // Render pie chart if chart container exists
+    if ($chart.length && facilitators.length > 0) {
+      renderFacilitatorChart(facilitators);
+    }
+  }
+
+  function renderFacilitatorChart(facilitators) {
+    ensureChartJS(function() {
+      const canvas = document.getElementById('facilitators-pie-chart');
+      if (!canvas) return;
+      
+      const ctx = canvas.getContext('2d');
+      
+      // Destroy existing chart
+      if (facilitatorCharts['pie']) {
+        facilitatorCharts['pie'].destroy();
+      }
+      
+      const labels = facilitators.map(f => FACILITATOR_NAME_MAP[f.name] || f.name);
+      const data = facilitators.map(f => f.transactions || 0);
+      const colors = labels.map(name => FACILITATOR_COLORS[name] || '#6B7280');
+      
+      facilitatorCharts['pie'] = new w.Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: labels,
+          datasets: [{
+            data: data,
+            backgroundColor: colors,
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { usePointStyle: true }
+            }
+          }
+        }
+      });
+    });
   }
 
 })(window, document, jQuery);

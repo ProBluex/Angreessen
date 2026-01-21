@@ -2,21 +2,21 @@
  * Agent Angreessen - Paywall JavaScript
  * Initializes payment widget for 402 payment required pages
  * 
- * Configuration is passed via wp_localize_script as x402Config
+ * Configuration is passed via wp_localize_script as angreessen49Paywall
  */
 (function() {
     'use strict';
 
     // Initialize when DOM is ready
     document.addEventListener('DOMContentLoaded', function() {
-        // x402Config is injected via wp_localize_script
-        if (typeof x402Config === 'undefined') {
-            console.error('x402 configuration not found');
+        // angreessen49Paywall is injected via wp_localize_script
+        if (typeof angreessen49Paywall === 'undefined') {
+            console.error('angreessen49 payment configuration not found');
             return;
         }
 
         // Copy config to window.x402 for compatibility
-        window.x402 = x402Config;
+        window.x402 = angreessen49Paywall;
 
         console.log('x402 Payment Requirements:', window.x402);
 

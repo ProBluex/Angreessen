@@ -22,11 +22,11 @@
         $('#violations-empty').hide();
 
         $.ajax({
-            url: agentHubData.ajaxUrl,
+            url: angreessen49Data.ajaxUrl,
             type: 'POST',
             data: $.extend({
-                action: 'agent_hub_get_violations',
-                nonce: agentHubData.nonce
+                action: 'angreessen49_get_violations',
+                nonce: angreessen49Data.nonce
             }, filters),
             success: function(response) {
                 $('#violations-loading').hide();

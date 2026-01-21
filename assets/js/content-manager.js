@@ -88,11 +88,11 @@
             btn.prop('disabled', true).text('Retrying...');
             
             $.ajax({
-                url: agentHubData.ajaxUrl,
+                url: angreessen49Data.ajaxUrl,
                 type: 'POST',
                 data: {
-                    action: 'agent_hub_generate_link',
-                    nonce: agentHubData.nonce,
+                    action: 'angreessen49_generate_link',
+                    nonce: angreessen49Data.nonce,
                     post_id: postId
                 },
                 success: function(response) {
@@ -123,12 +123,12 @@
         currentPage = page;
         
         $.ajax({
-            url: agentHubData.ajaxUrl,
+            url: angreessen49Data.ajaxUrl,
             type: 'POST',
             timeout: 10000, // 10 second timeout to prevent infinite hang
             data: {
-                action: 'agent_hub_get_content',
-                nonce: agentHubData.nonce,
+                action: 'angreessen49_get_content',
+                nonce: angreessen49Data.nonce,
                 page: page,
                 per_page: perPage
             },
@@ -185,12 +185,12 @@
         debugLog('[ContentManager] Loading analytics in background...');
         
         $.ajax({
-            url: agentHubData.ajaxUrl,
+            url: angreessen49Data.ajaxUrl,
             type: 'POST',
             timeout: 15000, // Allow more time for analytics API
             data: {
-                action: 'agent_hub_get_content_analytics',
-                nonce: agentHubData.nonce
+                action: 'angreessen49_get_content_analytics',
+                nonce: angreessen49Data.nonce
             },
             success: function(response) {
                 if (response.success && response.data.page_stats) {
@@ -461,11 +461,11 @@
             const postId = postIds[index];
             
             $.ajax({
-                url: agentHubData.ajaxUrl,
+                url: angreessen49Data.ajaxUrl,
                 type: 'POST',
                 data: {
-                    action: 'agent_hub_generate_link',
-                    nonce: agentHubData.nonce,
+                    action: 'angreessen49_generate_link',
+                    nonce: angreessen49Data.nonce,
                     post_id: postId
                 },
                 success: function(response) {
@@ -474,108 +474,103 @@
                     } else {
                         failed++;
                     }
+                    processNext(index + 1);
                 },
                 error: function() {
                     failed++;
-                },
-                complete: function() {
-                    // Process next item
                     processNext(index + 1);
                 }
             });
         };
         
-        // Start processing
         processNext(0);
     }
     
     /**
-     * Handle single link generation
+     * Handle generate link button
      */
     function handleGenerateLink(e) {
         e.preventDefault();
-        const postId = $(e.currentTarget).data('id');
+        const postId = $(e.currentTarget).data('post-id');
+        const btn = $(e.currentTarget);
         
         debugLog('[ContentManager] Generating link for post', postId);
         
+        btn.prop('disabled', true).text('Generating...');
+        
         $.ajax({
-            url: agentHubData.ajaxUrl,
+            url: angreessen49Data.ajaxUrl,
             type: 'POST',
             data: {
-                action: 'agent_hub_generate_link',
-                nonce: agentHubData.nonce,
+                action: 'angreessen49_generate_link',
+                nonce: angreessen49Data.nonce,
                 post_id: postId
-            },
-            beforeSend: function() {
-                $(e.currentTarget).prop('disabled', true).text('Generating...');
             },
             success: function(response) {
                 if (response.success) {
                     showToast('Success', 'Link generated successfully!', 'success');
-                    loadContent(currentPage); // Reload current page
+                    loadContent(currentPage);
                 } else {
                     showToast('Error', response.data?.message || 'Failed to generate link', 'error');
+                    btn.prop('disabled', false).text('Generate');
                 }
             },
-            error: function(xhr, status, error) {
-                showToast('Error', 'Failed to generate link: ' + error, 'error');
-            },
-            complete: function() {
-                $(e.currentTarget).prop('disabled', false).text('Generate Link');
+            error: function() {
+                showToast('Error', 'Network error occurred', 'error');
+                btn.prop('disabled', false).text('Generate');
             }
         });
     }
     
     /**
-     * Handle edit link
+     * Handle edit link button
      */
     function handleEditLink(e) {
         e.preventDefault();
-        const postId = $(e.currentTarget).data('id');
-        
-        // Find the content item
-        const item = currentContent.find(c => c.id === postId);
-        if (!item) return;
-        
-        debugLog('[ContentManager] Editing link for post', postId);
-        
-        // TODO: Open modal with link settings
-        // For now, just show info
-        showToast('Edit Link', 'Link editing modal coming soon!', 'info');
+        const postId = $(e.currentTarget).data('post-id');
+        debugLog('[ContentManager] Edit link for post', postId);
+        // TODO: Open edit modal
+        showToast('Coming Soon', 'Link editing will be available in a future update', 'info');
     }
     
     /**
      * Handle human access toggle
      */
     function handleHumanAccessToggle(e) {
-        const checkbox = $(e.currentTarget);
-        const postId = checkbox.data('post-id');
-        const blockHumans = checkbox.is(':checked');
+        const postId = $(e.currentTarget).data('post-id');
+        const blockHumans = $(e.currentTarget).is(':checked');
+        const label = $(e.currentTarget).siblings('.toggle-label');
         
-        debugLog('[ContentManager] Toggling human access for post', postId, 'block:', blockHumans);
+        debugLog('[ContentManager] Toggle human access for post', postId, '- Block:', blockHumans);
         
         $.ajax({
-            url: agentHubData.ajaxUrl,
+            url: angreessen49Data.ajaxUrl,
             type: 'POST',
             data: {
-                action: 'agent_hub_toggle_human_access',
-                nonce: agentHubData.nonce,
+                action: 'angreessen49_toggle_human_access',
+                nonce: angreessen49Data.nonce,
                 post_id: postId,
-                block_humans: blockHumans
+                block_humans: blockHumans ? 1 : 0
             },
             success: function(response) {
                 if (response.success) {
-                    const label = blockHumans ? 'Blocked' : 'Allowed';
-                    checkbox.siblings('.toggle-label').text(label);
-                    showToast('Success', 'Human access updated', 'success');
+                    // Update label
+                    if (blockHumans) {
+                        label.removeClass('status-badge-allowed').addClass('status-badge-blocked').text('Blocked');
+                    } else {
+                        label.removeClass('status-badge-blocked').addClass('status-badge-allowed').text('Allowed');
+                    }
+                    showToast('Updated', `Human access ${blockHumans ? 'blocked' : 'allowed'}`, 'success');
                 } else {
-                    checkbox.prop('checked', !blockHumans);
-                    showToast('Error', response.data?.message || 'Failed to update human access', 'error');
+                    // Revert toggle
+                    $(e.currentTarget).prop('checked', !blockHumans);
+                    showToast('Error', response.data?.message || 'Failed to update', 'error');
                 }
             },
-            error: function(xhr, status, error) {
-                checkbox.prop('checked', !blockHumans);
-                showToast('Error', 'Failed to update human access: ' + error, 'error');
+            error: function() {
+                // Revert toggle
+                $(e.currentTarget).prop('checked', !blockHumans);
+                showToast('Error', 'Network error occurred', 'error');
             }
         });
     }
@@ -583,21 +578,21 @@
     /**
      * Handle type filter
      */
-    function handleTypeFilter() {
+    function handleTypeFilter(e) {
         applyFilters();
         renderContent();
     }
     
     /**
-     * Handle link status filter
+     * Handle link filter
      */
-    function handleLinkFilter() {
+    function handleLinkFilter(e) {
         applyFilters();
         renderContent();
     }
     
     /**
-     * Apply all active filters
+     * Apply all filters
      */
     function applyFilters() {
         const typeFilter = $('#content-type-filter').val();
@@ -608,34 +603,23 @@
             // Type filter
             if (typeFilter && item.type !== typeFilter) return false;
             
-            // Link status filter
-            if (linkFilter === 'protected' && !item.has_link) return false;
-            if (linkFilter === 'unprotected' && item.has_link) return false;
+            // Link filter
+            if (linkFilter === 'has_link' && !item.has_link) return false;
+            if (linkFilter === 'no_link' && item.has_link) return false;
             
             // Search filter
-            if (searchTerm && !item.title.toLowerCase().includes(searchTerm)) return false;
+            if (searchTerm) {
+                const matchesSearch = item.title.toLowerCase().includes(searchTerm) ||
+                                     item.type.toLowerCase().includes(searchTerm);
+                if (!matchesSearch) return false;
+            }
             
             return true;
         });
-        
-        debugLog('[ContentManager] Filtered to', filteredContent.length, 'items');
     }
     
     /**
-     * Update content stats
-     */
-    function updateStats() {
-        const total = currentContent.length;
-        const protectedCount = currentContent.filter(c => c.has_link).length;
-        const unprotected = total - protectedCount;
-        
-        $('#stat-total-content').text(formatNumber(total));
-        $('#stat-protected-content').text(formatNumber(protectedCount));
-        $('#stat-unprotected-content').text(formatNumber(unprotected));
-    }
-    
-    /**
-     * Render pagination controls
+     * Render pagination
      */
     function renderPagination() {
         const container = $('#content-pagination');
@@ -648,77 +632,58 @@
         
         container.show();
         
-        const startIndex = (currentPage - 1) * perPage + 1;
-        const endIndex = Math.min(currentPage * perPage, totalPosts);
+        let html = '<div class="content-pagination-controls">';
         
-        const paginationHtml = `
-            <div class="pagination-info">
-                Showing ${startIndex}-${endIndex} of ${formatNumber(totalPosts)}
-            </div>
-            <div class="pagination-buttons">
-                <button class="pagination-btn content-page-link" 
-                        data-page="${currentPage - 1}" 
-                        ${currentPage === 1 ? 'disabled' : ''}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="15 18 9 12 15 6"/>
-                    </svg>
-                    Prev
-                </button>
-                <span class="pagination-current">${currentPage} / ${totalPages}</span>
-                <button class="pagination-btn content-page-link" 
-                        data-page="${currentPage + 1}" 
-                        ${currentPage === totalPages ? 'disabled' : ''}>
-                    Next
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="9 18 15 12 9 6"/>
-                    </svg>
-                </button>
-            </div>
-        `;
+        // Previous button
+        if (currentPage > 1) {
+            html += `<a href="#" class="content-page-link" data-page="${currentPage - 1}">← Previous</a>`;
+        }
         
-        container.html(paginationHtml);
-        debugLog('[ContentManager] Rendered pagination:', currentPage, 'of', totalPages);
+        // Page numbers
+        html += `<span class="content-page-info">Page ${currentPage} of ${totalPages}</span>`;
+        
+        // Next button
+        if (currentPage < totalPages) {
+            html += `<a href="#" class="content-page-link" data-page="${currentPage + 1}">Next →</a>`;
+        }
+        
+        html += '</div>';
+        container.html(html);
+    }
+    
+    /**
+     * Update stats
+     */
+    function updateStats() {
+        // Could update any stats displays here
+    }
+    
+    /**
+     * Show toast notification
+     */
+    function showToast(title, message, type, duration = 4000) {
+        if (typeof window.showToast === 'function') {
+            return window.showToast(title, message, type, duration);
+        }
+        console.log(`[${type.toUpperCase()}] ${title}: ${message}`);
     }
     
     /**
      * Utility functions
      */
-    function formatNumber(num) {
-        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-    }
-    
-    function formatMoney(amount) {
-        return parseFloat(amount || 0).toFixed(3);
-    }
-    
-    function ucfirst(str) {
-        return str.charAt(0).toUpperCase() + str.slice(1);
-    }
-    
     function escapeHtml(text) {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
     }
     
-    function showError(message) {
-        console.error('[ContentManager]', message);
-        if (typeof showToast === 'function') {
-            showToast('Content Manager Error', message, 'error');
-        }
+    function ucfirst(str) {
+        return str.charAt(0).toUpperCase() + str.slice(1);
     }
     
-    // Expose to agentHub namespace (used by admin.js)
-    window.agentHub = window.agentHub || {};
-    window.agentHub.loadContent = loadContent;
-    window.agentHub.refreshContent = loadContent;
-    
-    // Also expose to agentHubContent for backwards compatibility
-    window.agentHubContent = {
-        loadContent: loadContent,
-        refreshContent: loadContent
-    };
-    
-    console.log('[ContentManager] Module loaded successfully');
+    function formatMoney(amount) {
+        const n = Number(amount || 0);
+        return Number.isFinite(n) ? n.toFixed(2) : '0.00';
+    }
     
 })(jQuery);

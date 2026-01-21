@@ -8,10 +8,10 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-$agent_hub_site_id = get_option('402links_site_id');
+$angreessen49_site_id = get_option('angreessen49_site_id');
 ?>
 
-<div class="wrap agent-hub-violations">
+<div class="wrap angreessen49-violations">
     <div class="violations-header-row">
         <div class="violations-title-section">
             <div class="violations-icon">
@@ -38,9 +38,9 @@ $agent_hub_site_id = get_option('402links_site_id');
         </div>
     </div>
     
-    <?php if (!$agent_hub_site_id): ?>
+    <?php if (!$angreessen49_site_id): ?>
         <div class="notice notice-error">
-            <p><strong>Site Not Registered:</strong> Please register your site in the main <a href="<?php echo esc_url(admin_url('admin.php?page=agent-hub')); ?>">Angreessen dashboard</a> first.</p>
+            <p><strong>Site Not Registered:</strong> Please register your site in the main <a href="<?php echo esc_url(admin_url('admin.php?page=angreessen49')); ?>">Angreessen dashboard</a> first.</p>
         </div>
         <?php return; ?>
     <?php endif; ?>

@@ -1,5 +1,5 @@
 <?php
-namespace AgentHub;
+namespace Angreessen49;
 
 /**
  * HTML Paywall Template for Browser Visitors
@@ -20,22 +20,22 @@ class PaywallTemplate {
         
         // Register and enqueue scripts/styles properly
         wp_register_style(
-            'agent-hub-paywall',
-            AGENT_HUB_PLUGIN_URL . 'assets/css/paywall.css',
+            'angreessen49-paywall',
+            ANGREESSEN49_PLUGIN_URL . 'assets/css/paywall.css',
             array(),
-            AGENT_HUB_VERSION
+            ANGREESSEN49_VERSION
         );
         
         wp_register_script(
-            'agent-hub-paywall',
-            AGENT_HUB_PLUGIN_URL . 'assets/js/paywall.js',
+            'angreessen49-paywall',
+            ANGREESSEN49_PLUGIN_URL . 'assets/js/paywall.js',
             array(),
-            AGENT_HUB_VERSION,
+            ANGREESSEN49_VERSION,
             true // Load in footer
         );
         
         // Pass PHP data to JavaScript via wp_localize_script
-        wp_localize_script('agent-hub-paywall', 'x402Config', array(
+        wp_localize_script('angreessen49-paywall', 'angreessen49Paywall', array(
             'amount' => $amount_usd,
             'paymentRequirements' => $requirements,
             'x402Response' => $x402_response,
@@ -45,13 +45,13 @@ class PaywallTemplate {
         ));
         
         // Enqueue all assets
-        wp_enqueue_style('agent-hub-paywall');
-        wp_enqueue_script('agent-hub-paywall');
+        wp_enqueue_style('angreessen49-paywall');
+        wp_enqueue_script('angreessen49-paywall');
         
         // Capture enqueued assets HTML
         ob_start();
-        wp_print_styles(array( 'agent-hub-paywall' ));
-        wp_print_scripts(array( 'agent-hub-paywall' ));
+        wp_print_styles(array( 'angreessen49-paywall' ));
+        wp_print_scripts(array( 'angreessen49-paywall' ));
         $enqueued_assets = ob_get_clean();
         
         ob_start();
