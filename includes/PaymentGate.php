@@ -45,11 +45,11 @@ class PaymentGate {
                         : 'Agents Only';
                         
                     $wp_admin_bar->add_node([
-                        'id' => '402links-preview-notice',
+                        'id' => 'angreessen49-preview-notice',
                         'title' => '⚠️ ADMIN PREVIEW - Paywall Active (' . $protection_type . ')',
                         'href' => false,
                         'meta' => [
-                            'class' => '402links-preview-warning',
+                            'class' => 'angreessen49-preview-warning',
                             'title' => 'You are viewing as admin. Others will see paywall. Test in incognito to verify.'
                         ]
                     ]);

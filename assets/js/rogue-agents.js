@@ -29,11 +29,11 @@ jQuery(document).ready(function($) {
      */
     function loadRogueAgentsData() {
         $.ajax({
-            url: agentHubData.ajaxUrl,
+            url: angreessen49Data.ajaxUrl,
             type: 'POST',
             data: {
-                action: 'agent_hub_get_rogue_agents',
-                nonce: agentHubData.nonce,
+                action: 'angreessen49_get_rogue_agents',
+                nonce: angreessen49Data.nonce,
                 timeframe: currentTimeframe
             },
             success: function(response) {
@@ -231,7 +231,7 @@ jQuery(document).ready(function($) {
     function exportRogueReport() {
         if (!rogueData) return;
 
-        const siteName = agentHubData.siteName || 'Site';
+        const siteName = angreessen49Data.siteName || 'Site';
         const timestamp = new Date().toISOString();
         const timeframeText = getTimeframeText(currentTimeframe);
 

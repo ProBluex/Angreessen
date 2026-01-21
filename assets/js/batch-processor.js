@@ -129,8 +129,8 @@
       modalElement = null;
     }
     // Refresh content view
-    if (w.agentHub && w.agentHub.loadContent) {
-      w.agentHub.loadContent();
+    if (w.angreessen49 && w.angreessen49.loadContent) {
+      w.angreessen49.loadContent();
     }
   }
 

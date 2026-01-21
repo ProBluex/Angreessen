@@ -53,6 +53,7 @@ class Core {
         // Violations AJAX handler
         add_action('wp_ajax_angreessen49_get_violations', [Admin::class, 'ajax_get_violations']);
         add_action('wp_ajax_angreessen49_get_violations_summary', [Admin::class, 'ajax_get_violations_summary']);
+        add_action('wp_ajax_angreessen49_get_rogue_agents', [Admin::class, 'ajax_get_rogue_agents']);
         
         // Bot policy AJAX handlers
         add_action('wp_ajax_angreessen49_get_site_bot_policies', [Admin::class, 'ajax_get_site_bot_policies']);
